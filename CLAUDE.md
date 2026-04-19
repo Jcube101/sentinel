@@ -3,6 +3,44 @@
 Python data pipeline for the Sentinel natural disaster tracker.
 Fetches from 5 APIs and upserts to Supabase every 30 minutes via Render cron.
 
+## Status
+All 5 fetchers complete and validated. pipeline.py working end-to-end.
+- FIRMS → ~5,800 fire hotspot events
+- EONET → ~93 events (wildfires + severe storms)
+- GDACS → ~47 events (floods, cyclones, earthquakes)
+- USGS → ~102 earthquake events
+- OpenAQ → ~200 AQI readings
+
+## How to Run
+
+Full pipeline:
+```bash
+PYTHONPATH=. python pipeline.py
+```
+
+Individual fetchers:
+```bash
+PYTHONPATH=. python -m fetchers.firms
+PYTHONPATH=. python -m fetchers.eonet
+PYTHONPATH=. python -m fetchers.gdacs
+PYTHONPATH=. python -m fetchers.usgs
+PYTHONPATH=. python -m fetchers.openaq
+```
+
+Note: use `python -m fetchers.firms` (module syntax), not `python fetchers/firms.py`,
+due to the relative import of `config`.
+
+## Known Issues
+- OpenAQ rate limiting: ~10-20% of location sensor requests return 429.
+  Mitigated with `time.sleep(0.5)` between requests and limit=50 locations.
+- aqi_readings upsert requires a unique constraint on (location_id, parameter, recorded_at).
+  Run this SQL in Supabase once: `ALTER TABLE aqi_readings ADD CONSTRAINT aqi_readings_location_param_time_key UNIQUE (location_id, parameter, recorded_at);`
+
+## Next Steps
+- backfill.py: historical data load for events table
+- Render deployment: cron job running pipeline.py every 30 minutes
+- Environment variables on Render dashboard
+
 ## Stack
 - Python 3.11
 - supabase-py
