@@ -105,6 +105,19 @@ PYTHONPATH=. python -m fetchers.usgs
 PYTHONPATH=. python -m fetchers.openaq
 ```
 
+### 5. Backfill historical data
+
+```bash
+# Seed all sources (90 days back)
+PYTHONPATH=. python backfill.py --source all --days 90
+
+# Single source
+PYTHONPATH=. python backfill.py --source firms --days 30
+PYTHONPATH=. python backfill.py --source usgs --days 365
+```
+
+Sources: `all`, `firms`, `eonet`, `gdacs`, `usgs`
+
 ---
 
 ## Environment Variables
@@ -126,7 +139,7 @@ See `.env.example` for the exact format.
 sentinel-pipeline/
 ├── config.py              # env vars + India bounding box constants
 ├── pipeline.py            # main orchestrator — runs all fetchers, upserts to Supabase
-├── backfill.py            # historical data loader (in progress)
+├── backfill.py            # historical data loader (--source, --days CLI args)
 ├── requirements.txt
 ├── render.yaml            # Render cron job config
 ├── .env.example

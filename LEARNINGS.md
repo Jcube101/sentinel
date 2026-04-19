@@ -91,3 +91,43 @@ PYTHONPATH=. python -m fetchers.firms
 ```
 
 This applies to any project where modules import from a sibling directory.
+
+---
+
+## FIRMS API Has a Maximum of 5 Days Per Chunk
+
+The FIRMS `/api/area/csv/{key}/{product}/{bbox}/{day_range}/{date}` endpoint
+caps `day_range` at 5 days for both NRT and SP products. Requests with
+`day_range > 5` return a 400 error. Always chunk backfill windows to 5 days
+maximum.
+
+---
+
+## FIRMS Has Two Products: NRT and SP
+
+The FIRMS VIIRS NOAA-20 data is available in two products:
+- **NRT (Near Real-Time):** covers only the last ~10 days
+- **SP (Standard Processing):** covers months of history, but has a ~2-month
+  processing lag — data from roughly 2 months ago to today is in a gap where
+  NRT has expired and SP hasn't been processed yet
+
+During backfill, use `VIIRS_NOAA20_NRT` for chunks where
+`chunk_start.date() >= (utcnow - 10 days).date()`, and `VIIRS_NOAA20_SP`
+for older chunks. Chunks falling in the SP processing gap (roughly the last
+2 months) will return 0 rows — this is expected and not a bug.
+
+---
+
+## Postgres Rejects Duplicate IDs Within a Single Upsert Payload
+
+If you pass two rows with the same `id` value in a single `INSERT ... ON CONFLICT`
+statement, Postgres raises:
+
+```
+ON CONFLICT DO UPDATE command cannot affect row a second time
+```
+
+This means deduplication must happen **before** sending rows to Supabase, not
+only on conflict with existing data. The fix is a `_dedup()` helper that keeps
+the last occurrence of any duplicate `id` within the batch. Apply it in both
+`pipeline.py` (on the combined events list) and inside `backfill.py`'s `_upsert()`.

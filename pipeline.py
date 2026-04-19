@@ -1,6 +1,7 @@
 import logging
 import sys
 import time
+from datetime import datetime, timedelta, timezone
 
 from supabase import Client, create_client
 
@@ -52,6 +53,31 @@ def _upsert(supabase, table: str, rows: list, conflict_key: str) -> int:
     return upserted
 
 
+def _cleanup(supabase) -> None:
+    now = datetime.now(tz=timezone.utc)
+    cutoff_60 = (now - timedelta(days=60)).isoformat()
+    cutoff_365 = (now - timedelta(days=365)).isoformat()
+    cutoff_7 = (now - timedelta(days=7)).isoformat()
+
+    try:
+        resp = supabase.table(EVENTS_TABLE).delete().in_("source", ["FIRMS", "GDACS"]).lt("started_at", cutoff_60).execute()
+        logger.info("cleanup: deleted %d high-volume events (FIRMS/GDACS >60 days)", len(resp.data))
+    except Exception as exc:
+        logger.error("cleanup: events (FIRMS/GDACS) delete failed — %s", exc)
+
+    try:
+        resp = supabase.table(EVENTS_TABLE).delete().in_("source", ["EONET", "USGS"]).lt("started_at", cutoff_365).execute()
+        logger.info("cleanup: deleted %d low-volume events (EONET/USGS >365 days)", len(resp.data))
+    except Exception as exc:
+        logger.error("cleanup: events (EONET/USGS) delete failed — %s", exc)
+
+    try:
+        resp = supabase.table(AQI_TABLE).delete().lt("recorded_at", cutoff_7).execute()
+        logger.info("cleanup: deleted %d aqi_readings (>7 days)", len(resp.data))
+    except Exception as exc:
+        logger.error("cleanup: aqi_readings delete failed — %s", exc)
+
+
 def run():
     start = time.monotonic()
     supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
@@ -97,6 +123,8 @@ def run():
     print(f"  Total AQI readings upserted: {aqi_upserted}")
     print(f"  Duration: {duration:.1f}s")
     print("============================")
+
+    _cleanup(supabase)
 
     return 1 if any_failure else 0
 

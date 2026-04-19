@@ -21,19 +21,19 @@ active events.
 ## Architecture
 
 ```
-Render Cron (every 30 min)
-  └── pipeline.py
-        ├── fetchers/firms.py    → events table
-        ├── fetchers/eonet.py    → events table
-        ├── fetchers/gdacs.py    → events table
-        ├── fetchers/usgs.py     → events table
-        └── fetchers/openaq.py  → aqi_readings table
-              │
-              ▼
-         Supabase (Postgres)
-              │
-              ▼
-         Frontend (MapLibre GL + Recharts)
+backfill.py (one-time)         Render Cron (every 30 min)
+  ├── firms.fetch_range()         └── pipeline.py
+  ├── eonet.fetch()                     ├── fetchers/firms.py    → events table
+  ├── gdacs.fetch()                     ├── fetchers/eonet.py    → events table
+  └── usgs.fetch()                      ├── fetchers/gdacs.py    → events table
+         │                              ├── fetchers/usgs.py     → events table
+         │                              └── fetchers/openaq.py  → aqi_readings table
+         └──────────────────────────────────────┐
+                                                ▼
+                                         Supabase (Postgres)
+                                                │
+                                                ▼
+                                         Frontend (MapLibre GL + Recharts)
 ```
 
 ---
@@ -148,10 +148,17 @@ Every fetcher must:
 4. Log clearly: source name, rows fetched, any errors
 5. Use deterministic IDs — never random UUIDs
 
+### Deduplication
+
+Before every upsert, rows are deduplicated by `id` (keeping the last
+occurrence). This is required because Postgres raises an error if the same
+`id` appears twice in a single `INSERT ... ON CONFLICT` payload. The
+`_dedup()` helper in both `pipeline.py` and `backfill.py` handles this.
+
 ### Batching
 
-`pipeline.py` upserts in batches of 500 rows to stay within Supabase's
-request payload limits. Batching is handled by `_chunks()` in pipeline.py.
+`pipeline.py` and `backfill.py` upsert in batches of 500 rows to stay within
+Supabase's request payload limits. Batching is handled by `_chunks()`.
 
 ### Error Isolation
 
@@ -200,6 +207,19 @@ request payload limits. Batching is handled by `_chunks()` in pipeline.py.
 - Total open events count
 - Count by category (Recharts bar chart)
 - Last pipeline run timestamp
+
+---
+
+## Backfill
+
+`backfill.py` loads historical event data into the `events` table. It accepts
+`--source` (`all` | `firms` | `eonet` | `gdacs` | `usgs`) and `--days` arguments.
+
+**FIRMS chunking:** 5-day windows; `VIIRS_NOAA20_NRT` for chunks within the
+last 10 days, `VIIRS_NOAA20_SP` for older data. SP has a ~2-month processing
+lag — chunks in that window return 0 rows (expected).
+
+**USGS chunking:** 90-day windows to avoid the 20,000-result API cap.
 
 ---
 

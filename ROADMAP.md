@@ -16,7 +16,7 @@
 
 ## Phase 2 — Backfill & Deployment (IN PROGRESS)
 
-- [ ] backfill.py — historical data load for events table (90-day seed)
+- [x] backfill.py — historical data load for events table (FIRMS/EONET/GDACS/USGS, --source, --days CLI)
 - [ ] Render cron job — deploy pipeline.py on 30-minute schedule
 - [ ] Environment variables configured on Render dashboard
 - [ ] Add unique constraint for aqi_readings on Supabase

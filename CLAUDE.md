@@ -4,8 +4,8 @@ Python data pipeline for the Sentinel natural disaster tracker.
 Fetches from 5 APIs and upserts to Supabase every 30 minutes via Render cron.
 
 ## Status
-All 5 fetchers complete and validated. pipeline.py working end-to-end.
-- FIRMS → ~5,800 fire hotspot events
+All 5 fetchers complete and validated. pipeline.py and backfill.py working end-to-end.
+- FIRMS → ~5,800 fire hotspot events (pipeline); ~97,245 events backfilled (30 days)
 - EONET → ~93 events (wildfires + severe storms)
 - GDACS → ~47 events (floods, cyclones, earthquakes)
 - USGS → ~102 earthquake events
@@ -36,8 +36,45 @@ due to the relative import of `config`.
 - aqi_readings upsert requires a unique constraint on (location_id, parameter, recorded_at).
   Run this SQL in Supabase once: `ALTER TABLE aqi_readings ADD CONSTRAINT aqi_readings_location_param_time_key UNIQUE (location_id, parameter, recorded_at);`
 
+## Backfill
+
+Run historical load:
+```bash
+PYTHONPATH=. python backfill.py --source all --days 90
+PYTHONPATH=. python backfill.py --source firms --days 30
+PYTHONPATH=. python backfill.py --source usgs --days 365
+```
+
+Note: FIRMS NRT product only covers the last ~10 days. The SP (Standard Processing)
+product has a ~2-month processing lag, so chunks in the Mar-Apr 2026 window return 0
+rows — this is expected, not a bug.
+
+## Archive
+
+Run archive.py to copy old Supabase data to local SQLite (sentinel_archive.db):
+```bash
+PYTHONPATH=. python archive.py
+```
+
+- Archives events older than 30 days
+- Archives aqi_readings older than 7 days
+- Uses INSERT OR REPLACE — safe to run multiple times
+- Does NOT delete from Supabase (cleanup is handled by pipeline.py)
+
+To set up automatic daily archival on Windows logon (Mon–Fri), run once:
+```
+setup_task_scheduler.bat
+```
+This creates a Windows Task Scheduler task named "Sentinel Archive".
+
+## Cleanup (auto, runs inside pipeline.py)
+
+`_cleanup()` runs at the end of every `pipeline.run()`:
+- FIRMS / GDACS events: keep 60 days
+- EONET / USGS events: keep 365 days
+- AQI readings: keep 7 days
+
 ## Next Steps
-- backfill.py: historical data load for events table
 - Render deployment: cron job running pipeline.py every 30 minutes
 - Environment variables on Render dashboard
 
@@ -46,6 +83,7 @@ due to the relative import of `config`.
 - supabase-py
 - requests
 - python-dotenv
+- python-dateutil
 
 ## Environment Variables
 - SUPABASE_URL
