@@ -13,10 +13,10 @@ ENDPOINT = (
     "https://firms.modaps.eosdis.nasa.gov/api/area/csv"
     "/{key}/VIIRS_NOAA20_NRT/{bbox}/1"
 )
-# Backfill endpoint: supports day_range up to 10 and an explicit start date
+# Backfill endpoint: product is NRT (last ~10 days) or SP (standard, months of history)
 ENDPOINT_DATE = (
     "https://firms.modaps.eosdis.nasa.gov/api/area/csv"
-    "/{key}/VIIRS_NOAA20_NRT/{bbox}/{day_range}/{date}"
+    "/{key}/{product}/{bbox}/{day_range}/{date}"
 )
 
 
@@ -114,10 +114,17 @@ def fetch(start_date: str | None = None, end_date: str | None = None) -> list[di
     return events
 
 
-def fetch_range(start_date: datetime, end_date: datetime, chunk_days: int = 10) -> list[dict]:
-    """Fetch FIRMS data over a date range in chunk_days-sized windows."""
+def fetch_range(start_date: datetime, end_date: datetime, chunk_days: int = 5) -> list[dict]:
+    """Fetch FIRMS data over a date range in chunk_days-sized windows.
+
+    Uses VIIRS_NOAA20_NRT for chunks within the last 10 days (only source
+    available for recent data) and VIIRS_NOAA20_SP for older chunks (NRT
+    only retains ~10 days; SP has months of history).
+    """
     from datetime import timedelta
     import time as _time
+
+    ten_days_ago = (datetime.utcnow() - timedelta(days=10)).date()
 
     total_days = (end_date - start_date).days
     num_chunks = max(1, (total_days + chunk_days - 1) // chunk_days)
@@ -131,12 +138,14 @@ def fetch_range(start_date: datetime, end_date: datetime, chunk_days: int = 10) 
         actual_days = (chunk_end - chunk_start).days or 1
         date_str = chunk_start.strftime("%Y-%m-%d")
 
+        product = "VIIRS_NOAA20_NRT" if chunk_start.date() >= ten_days_ago else "VIIRS_NOAA20_SP"
         logger.info(
-            "FIRMS: fetching chunk %d/%d (%s, %d days)",
-            chunk_num, num_chunks, date_str, actual_days,
+            "FIRMS: fetching chunk %d/%d (%s, %d days) via %s",
+            chunk_num, num_chunks, date_str, actual_days, product,
         )
         url = ENDPOINT_DATE.format(
             key=FIRMS_MAP_KEY,
+            product=product,
             bbox=INDIA_BBOX_FIRMS,
             day_range=actual_days,
             date=date_str,

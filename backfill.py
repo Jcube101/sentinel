@@ -52,7 +52,11 @@ def _upsert(supabase: Client, rows: list) -> int:
 # ---------------------------------------------------------------------------
 
 def _backfill_firms(start: datetime, end: datetime) -> list[dict]:
-    return firms.fetch_range(start, end, chunk_days=10)
+    # FIRMS API max day_range = 5 for both NRT and SP products.
+    # SP (Standard Processing) has a ~2-month lag — chunks older than that
+    # return 0 rows, which is expected. NRT covers only the last ~10 days.
+    # Chunks falling in the gap between SP cutoff and NRT window return 0 rows.
+    return firms.fetch_range(start, end, chunk_days=5)
 
 
 def _backfill_eonet(start: datetime, end: datetime) -> list[dict]:
