@@ -17,40 +17,58 @@
 
 ## Phase 2 — Frontend V1 (IN PROGRESS 🔧)
 
-### Structure
+### Infrastructure
 - [ ] Vite + React + TypeScript scaffold in frontend/
-- [ ] Standalone design system (dark, utilitarian, data-forward — separate identity from job-joseph.com)
-- [ ] Deployed as Render static site
+- [ ] Standalone design system:
+      Background: #0a0a0f (near-black)
+      Accent: #f97316 (amber-orange)
+      Typography: Inter or DM Sans
+      Dark, utilitarian, data-forward
+      Separate visual identity from job-joseph.com
+- [ ] MapLibre GL JS + react-map-gl v8 + supercluster
+- [ ] Supabase client (anon key, env vars set on Render)
+- [ ] React Query for data fetching
+- [ ] Deployed as Render static site (separate service from cron job, same repo)
+- [ ] render.yaml updated for both services
 
-### Landing page
-- [ ] Hero section explaining what Sentinel is
-- [ ] Live event count stats (fires, floods, cyclones, earthquakes)
-- [ ] "View Live Map" CTA
-- [ ] Data sources attribution section
+### Landing page (/)
+- [ ] Hero: what Sentinel is in one sentence
+- [ ] Live event count stats pulled from Supabase (fires, floods, cyclones, earthquakes)
+- [ ] "Open Live Map" CTA → /dashboard
+- [ ] Data sources attribution (NASA, USGS, UN GDACS, OpenAQ)
+- [ ] Last updated timestamp
 - [ ] Footer with GitHub link
 
 ### Dashboard page (/dashboard)
-- [ ] MapLibre GL map centred on India (dark OpenFreeMap tiles)
-- [ ] Coloured event markers by category fire=#ef4444, flood=#3b82f6, cyclone=#8b5cf6, earthquake=#f59e0b
-- [ ] Supercluster clustering for FIRMS hotspots
+- [ ] MapLibre GL map centred on India
+      Dark OpenFreeMap tiles
+      Initial view: lon 82.8, lat 22.5, zoom 4.2
+- [ ] Coloured event markers by category:
+      fire → #ef4444
+      flood → #3b82f6
+      cyclone → #8b5cf6
+      earthquake → #f59e0b
+- [ ] Supercluster clustering for dense FIRMS hotspots
 - [ ] Category filter toggles (fire/flood/cyclone/earthquake)
-- [ ] Status filter (open/closed/all)
-- [ ] Days range filter (7/30/90 days)
+- [ ] Status filter (open / closed / all)
+- [ ] Days range selector (7 / 30 / 90 days)
 - [ ] Event detail panel on marker click
-- [ ] Stats bar using Recharts (event counts over time)
-- [ ] Mobile responsive layout
+      (bottom sheet mobile, side panel desktop)
+- [ ] Stats bar — Recharts event counts over time
+- [ ] Mobile responsive (390px baseline)
+- [ ] Loading and empty states
 
 ### Data layer
-- [ ] Supabase client (anon key, env vars on Render)
-- [ ] useNaturalEvents hook (React Query, 15min stale)
-- [ ] useAqiReadings hook (React Query, 30min stale)
+- [ ] src/lib/supabase.ts
+- [ ] src/hooks/useNaturalEvents.ts (React Query, 15min stale, limit 5000)
+- [ ] src/hooks/useAqiReadings.ts (React Query, 30min stale, last 24h)
 
 ## Phase 3 — Frontend V2 (PLANNED 📋)
 - [ ] AQI heatmap overlay layer
-- [ ] Cyclone track lines from EONET geometry sequences
-- [ ] Historical trend charts (Recharts, 90-day view)
-- [ ] Tighter India bbox filtering (remove border noise)
-- [ ] OpenAQ pagination for more station coverage
+- [ ] Cyclone track lines from EONET geometry
+- [ ] Historical trend charts (90-day view)
+- [ ] Tighter India bbox filtering
+- [ ] OpenAQ pagination for more stations
 - [ ] Custom subdomain (sentinel.job-joseph.com)
 
 ## Phase 4 — Enhancements (FUTURE 💡)
@@ -58,7 +76,7 @@
 - [ ] Public API endpoint for Sentinel data
 - [ ] OpenAPI documentation
 - [ ] Flood season historical analysis (June-September)
-- [ ] Expand coverage beyond India bbox
+- [ ] Expand coverage beyond India
 
 ---
 
@@ -69,5 +87,5 @@
 | Apr 2026 | Pipeline complete — all 5 fetchers working |
 | Apr 2026 | 100k+ events backfilled into Supabase |
 | Apr 2026 | Render cron deployed, daily automation live |
-| Apr 2026 | Monorepo restructured |
+| Apr 2026 | Monorepo restructured (sentinel-pipeline → sentinel) |
 | Apr 2026 | Frontend V1 in progress |
