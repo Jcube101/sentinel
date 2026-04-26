@@ -1,0 +1,7 @@
+services:
+  - type: cron
+    name: sentinel-pipeline
+    runtime: python
+    buildCommand: pip install -r pipeline/requirements.txt
+    startCommand: python pipeline/pipeline.py
+    schedule: "*/30 * * * *"

@@ -208,3 +208,12 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Node
+node_modules/
+dist/
+.env.local
+.env.*.local
+
+# SQLite
+*.db

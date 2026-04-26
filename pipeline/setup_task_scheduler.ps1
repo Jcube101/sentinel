@@ -1,7 +1,7 @@
 $action = New-ScheduledTaskAction `
-  -Execute "C:\Users\jobjo\Github\sentinel-pipeline\venv\Scripts\python.exe" `
-  -Argument "C:\Users\jobjo\Github\sentinel-pipeline\archive.py" `
-  -WorkingDirectory "C:\Users\jobjo\Github\sentinel-pipeline"
+  -Execute "C:\Users\jobjo\Github\sentinel\pipeline\venv\Scripts\python.exe" `
+  -Argument "C:\Users\jobjo\Github\sentinel\pipeline\archive.py" `
+  -WorkingDirectory "C:\Users\jobjo\Github\sentinel\pipeline"
 
 $trigger = New-ScheduledTaskTrigger -AtLogOn
 
