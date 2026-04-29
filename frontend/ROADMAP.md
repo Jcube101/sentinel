@@ -3,10 +3,10 @@
 ## Phase 1 — V1 Dashboard (IN PROGRESS 🔧)
 
 ### Infrastructure
-- [ ] Vite + React + TypeScript scaffold
-- [ ] Standalone design system (dark #0a0a0f, amber #f97316, Inter/DM Sans)
-- [ ] MapLibre GL JS + react-map-gl v8 + supercluster
-- [ ] Supabase client + React Query hooks
+- [x] Vite + React + TypeScript scaffold
+- [x] Standalone design system (dark #0a0a0f, amber #f97316, Inter/DM Sans)
+- [x] MapLibre GL JS + react-map-gl v8 + supercluster
+- [x] Supabase client + React Query hooks
 - [ ] Render static site deployment
 - [ ] Environment variables on Render
 

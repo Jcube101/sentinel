@@ -26,6 +26,16 @@ Run a single fetcher to test it in isolation:
 PYTHONPATH=. python -m fetchers.firms
 ```
 
+### Frontend
+
+```bash
+cd sentinel/frontend
+npm install
+cp .env.example .env.local
+# fill in Supabase anon key in .env.local
+npm run dev
+```
+
 ---
 
 ## How to Add a New Fetcher

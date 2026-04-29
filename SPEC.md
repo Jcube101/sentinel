@@ -30,7 +30,14 @@ sentinel/
 │   ├── config.py          — env vars + India bbox constants
 │   ├── requirements.txt
 │   └── render.yaml        — Render cron job config
-└── frontend/              — Vite + React + TypeScript (in progress)
+└── frontend/              — Vite + React + TypeScript dashboard
+    ├── src/
+    │   ├── lib/            — Supabase client, types, constants
+    │   ├── hooks/          — React Query data hooks
+    │   ├── pages/          — Landing, Dashboard
+    │   └── components/     — map, layout, ui
+    ├── package.json
+    └── render.yaml         — Render static site config
 ```
 
 ---
@@ -294,9 +301,25 @@ task that runs `archive.py` on every logon using `Register-ScheduledTask`.
 - Command: `python pipeline/pipeline.py`
 - Build command: `pip install -r pipeline/requirements.txt`
 
-**Frontend service (planned):**
+**Frontend service:**
 - Type: Static Site
-- Build command: `cd frontend && npm run build`
-- Publish directory: `frontend/dist`
+- Root directory: `frontend`
+- Build command: `npm install && npm run build`
+- Publish directory: `dist`
+- Environment: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
 
 **Environment variables:** Set in Render dashboard, matching `.env` keys above
+
+---
+
+## Frontend Stack
+
+- React 19 + TypeScript 6
+- Tailwind CSS 3
+- MapLibre GL JS + react-map-gl v8 + supercluster
+- Supabase client (`@supabase/supabase-js`) + React Query (`@tanstack/react-query`)
+- React Router (`react-router-dom`)
+- Recharts
+- Lucide icons
+
+**Path alias:** `@/` maps to `src/` (configured in both `vite.config.ts` and `tsconfig.app.json`)

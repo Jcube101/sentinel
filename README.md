@@ -23,7 +23,14 @@ sentinel/
 │   ├── config.py
 │   ├── requirements.txt
 │   └── render.yaml
-└── frontend/    — Vite + React map interface (in progress)
+└── frontend/    — Vite + React + TypeScript dashboard
+    ├── src/
+    │   ├── lib/          — Supabase client, types
+    │   ├── hooks/        — React Query data hooks
+    │   ├── pages/        — Landing, Dashboard
+    │   └── components/   — map, layout, ui
+    ├── package.json
+    └── render.yaml
 ```
 
 ---
@@ -82,7 +89,9 @@ sentinel/
 - **python-dotenv** — environment variables
 - **Supabase** — Postgres database + REST API
 - **Render** — cron job + static site host
-- **Vite + React + TypeScript + MapLibre GL** — frontend (in progress)
+- **Vite + React 19 + TypeScript** — frontend
+- **Tailwind CSS + MapLibre GL + Recharts** — styling, map, charts
+- **React Query + Supabase client** — frontend data layer
 
 ---
 
@@ -171,7 +180,19 @@ Old data is archived locally via `archive.py` before deletion.
 | `FIRMS_MAP_KEY` | Yes | NASA FIRMS MAP key |
 | `OPENAQ_API_KEY` | Yes | OpenAQ API key |
 
-See `.env.example` for the exact format.
+See `pipeline/.env.example` for the pipeline and `frontend/.env.example` for the frontend.
+
+---
+
+## Frontend Dev
+
+```bash
+cd frontend
+npm install
+cp .env.example .env.local
+# fill in Supabase anon key in .env.local
+npm run dev
+```
 
 ---
 

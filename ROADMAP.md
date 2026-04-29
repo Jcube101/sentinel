@@ -25,4 +25,4 @@ Alerts, public API, expanded coverage.
 | Apr 2026 | 100k+ events backfilled into Supabase |
 | Apr 2026 | Render cron deployed, daily automation live |
 | Apr 2026 | Monorepo restructured |
-| Apr 2026 | Frontend V1 started |
+| Apr 2026 | Frontend scaffolded — Vite + React + TS + Tailwind + MapLibre + Supabase |
