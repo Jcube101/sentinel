@@ -19,15 +19,15 @@
 - [x] Footer with GitHub link + daily refresh note
 
 ### Dashboard (/dashboard)
-- [ ] MapLibre GL map centred on India
-- [ ] Coloured markers by category
-- [ ] Supercluster clustering
-- [ ] Category filter toggles
-- [ ] Status filter (open/closed/all)
-- [ ] Days range selector (7/30/90)
-- [ ] Event detail panel (marker click)
-- [ ] Stats bar with Recharts
-- [ ] Mobile responsive (390px baseline)
+- [x] MapLibre GL map centred on India (dark tiles via OpenFreeMap)
+- [x] Coloured markers by category with pulse animation for open events
+- [x] Supercluster clustering with zoom-on-click expansion
+- [x] Category filter toggles (fire/flood/cyclone/earthquake)
+- [x] Status filter (open/closed/all)
+- [x] Days range selector (7d/30d/90d)
+- [x] Event detail panel (marker click, mobile bottom sheet + desktop side panel)
+- [x] Stats bar with category counts
+- [x] Mobile responsive (scrollable filter bar, bottom sheet detail panel)
 
 ## Phase 2 — V2 Enhancements (PLANNED 📋)
 - [ ] AQI heatmap overlay
