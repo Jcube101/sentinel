@@ -19,7 +19,7 @@ export function useAqiReadings() {
       if (error) throw error
       return (data ?? []) as unknown as AqiReading[]
     },
-    staleTime: 0,
+    staleTime: 1000 * 60 * 5,
     refetchOnWindowFocus: true,
     enabled: !!supabase,
   })
