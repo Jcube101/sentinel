@@ -9,6 +9,9 @@
 
 Sentinel fetches fire hotspots, earthquakes, floods, cyclones, and air quality readings from five public APIs and upserts them into Supabase every day. A frontend map visualises active events across India.
 
+## Live Demo
+https://sentinel-frontend-8hem.onrender.com
+
 ---
 
 ## Structure
@@ -23,7 +26,7 @@ sentinel/
 │   ├── config.py
 │   ├── requirements.txt
 │   └── render.yaml
-└── frontend/    — Vite + React + TypeScript dashboard
+└── frontend/    — Vite + React map interface (live at sentinel-frontend-8hem.onrender.com)
     ├── src/
     │   ├── lib/          — Supabase client, types
     │   ├── hooks/        — React Query data hooks
