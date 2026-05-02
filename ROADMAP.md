@@ -30,3 +30,4 @@ Alerts, public API, expanded coverage.
 | Apr 2026 | Landing page built — hero with live stats, data sources, navbar, footer |
 | May 2026 | Dashboard built — map, filters, clustering, event detail panel, stats bar |
 | May 2026 | Frontend deployed on Render — live at sentinel-frontend-8hem.onrender.com |
+| May 2026 | V1 cleanup — favicon, meta/OG tags, per-category landing stats, map loading overlay |

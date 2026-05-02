@@ -28,6 +28,13 @@
 - [x] Event detail panel (marker click, mobile bottom sheet + desktop side panel)
 - [x] Stats bar with category counts
 - [x] Mobile responsive (scrollable filter bar, bottom sheet detail panel)
+- [x] Map loading overlay (isLoading prop)
+
+### V1 Cleanup
+- [x] Page title + meta description + Open Graph tags
+- [x] Custom favicon (fire emoji on dark rect)
+- [x] Per-category stat counts on landing page (4 separate queries)
+- [x] Per-category query limits (fire 2000, earthquake 1000, flood/cyclone 500)
 
 ## Phase 2 — V2 Enhancements (PLANNED 📋)
 - [ ] AQI heatmap overlay

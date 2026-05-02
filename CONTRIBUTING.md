@@ -43,7 +43,7 @@ npm run dev
 Create `pipeline/fetchers/your_source.py`. The interface contract is simple:
 
 1. **Export `fetch() -> List[dict]`** — this is the only function `pipeline.py` calls
-2. **Return dicts matching the events table schema exactly** (see SPEC.md or pipeline/CLAUDE.md for all fields)
+2. **Return dicts matching the events table schema exactly** (see pipeline/CLAUDE.md for all fields)
 3. **Handle all exceptions internally** — catch errors per-row and per-request, log warnings, never raise to the caller
 4. **Use deterministic IDs** — build the `id` field from source data fields, never `uuid4()`
 5. **Never write to Supabase** — fetchers only fetch and transform; `pipeline.py` handles all writes
@@ -73,8 +73,9 @@ If your fetcher writes to a different table (like `openaq.py` writes to `aqi_rea
 
 1. Fork the repo and create a branch: `git checkout -b feat/your-feature`
 2. Make your changes
-3. Test by running `cd pipeline && PYTHONPATH=. python pipeline.py` end-to-end
-4. Open a PR with a clear description of what you changed and why
+3. Test pipeline changes: `cd pipeline && PYTHONPATH=. python pipeline.py`
+4. Test frontend changes: `cd frontend && npm run build` (must pass with zero errors)
+5. Open a PR with a clear description of what you changed and why
 
 ---
 
