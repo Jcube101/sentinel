@@ -29,7 +29,7 @@ sentinel/
 │   ├── archive.py         — Supabase → local SQLite archiver
 │   ├── config.py          — env vars + India bbox constants
 │   ├── requirements.txt
-│   └── render.yaml        — Render cron job config
+│   └── render.yaml        — legacy Render cron config (unused; pipeline runs on the Pi)
 └── frontend/              — Vite + React + TypeScript dashboard
     ├── src/
     │   ├── lib/            — Supabase client, types, constants
@@ -45,7 +45,7 @@ sentinel/
 ## Architecture
 
 ```
-backfill.py (one-time)         Render Cron (daily)
+backfill.py (one-time)         Pi systemd timer (daily)
   ├── firms.fetch_range()         └── pipeline/pipeline.py
   ├── eonet.fetch()                     ├── fetchers/firms.py    → events table
   ├── gdacs.fetch()                     ├── fetchers/eonet.py    → events table
@@ -293,22 +293,22 @@ task that runs `archive.py` on every logon using `Register-ScheduledTask`.
 
 ## Deployment
 
-**Platform:** Render
+**Pipeline:** Raspberry Pi (`jobpi`)
+- Host: self-hosted Raspberry Pi 5
+- Scheduler: systemd timer pair (`sentinel-pipeline.service` + `sentinel-pipeline.timer`)
+- Schedule: Daily at 01:00 UTC (6:30am IST), `Persistent=true` to catch missed runs
+- ExecStart: `pipeline/.venv/bin/python pipeline.py` (WorkingDirectory `pipeline/`)
+- Venv: `pipeline/.venv`
+- Logs: journald — `journalctl -u sentinel-pipeline.service`
 
-**Pipeline service:**
-- Type: Cron Job
-- Schedule: Daily (6:30am IST)
-- Command: `python pipeline/pipeline.py`
-- Build command: `pip install -r pipeline/requirements.txt`
-
-**Frontend service:**
+**Frontend service:** Render
 - Type: Static Site
 - Root directory: `frontend`
 - Build command: `npm install && npm run build`
 - Publish directory: `dist`
 - Environment: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
 
-**Environment variables:** Set in Render dashboard, matching `.env` keys above
+**Environment variables:** Pipeline keys live in `pipeline/.env` on the Pi; frontend keys are set in the Render dashboard, matching the `.env` keys above
 
 ---
 

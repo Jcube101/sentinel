@@ -1,11 +1,11 @@
 # Sentinel Pipeline
 
 Python data pipeline for the Sentinel natural disaster tracker.
-Fetches from 5 APIs and upserts to Supabase daily via Render cron.
+Fetches from 5 APIs and upserts to Supabase daily via a systemd timer on the Raspberry Pi (jobpi).
 
 ## Status
 All 5 fetchers complete and validated. pipeline.py and backfill.py working end-to-end.
-Render cron job deployed (daily 6:30am IST).
+systemd timer deployed on the Raspberry Pi (jobpi), daily 6:30am IST / 01:00 UTC.
 - FIRMS → ~5,800 fire hotspot events (pipeline); ~97,245 events backfilled (30 days)
 - EONET → ~93 events (wildfires + severe storms)
 - GDACS → ~47 events (floods, cyclones, earthquakes)

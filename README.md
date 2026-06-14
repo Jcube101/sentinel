@@ -42,7 +42,7 @@ sentinel/
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    Render Cron (daily)                   │
+│           Raspberry Pi systemd timer (daily)            │
 └───────────────────────┬─────────────────────────────────┘
                         │
                         ▼
@@ -93,7 +93,8 @@ sentinel/
 - **requests** — HTTP
 - **python-dotenv** — environment variables
 - **Supabase** — Postgres database + REST API
-- **Render** — cron job + static site host
+- **Raspberry Pi (jobpi)** — pipeline cron via systemd timer
+- **Render** — frontend static site host
 - **Vite + React 19 + TypeScript** — frontend
 - **Tailwind CSS + MapLibre GL + Recharts** — styling, map, charts
 - **React Query + Supabase client** — frontend data layer
@@ -208,7 +209,7 @@ npm run dev
 3. **Upsert** — `pipeline.py` bulk-upserts to Supabase in batches of 500 using deterministic `id` as conflict key
 4. **Cleanup** — deletes stale rows at end of every run
 5. **Archive** — `archive.py` copies old data to local SQLite before it ages out of Supabase
-6. **Schedule** — Render runs `pipeline.py` daily via cron
+6. **Schedule** — a systemd timer on the Raspberry Pi (jobpi) runs `pipeline.py` daily at 6:30am IST (01:00 UTC)
 
 ---
 

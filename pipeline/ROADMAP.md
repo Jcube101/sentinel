@@ -13,6 +13,7 @@
 - [x] 60-day rolling cleanup on Supabase
 - [x] Windows Task Scheduler automation
 - [x] Render cron job (daily 6:30am IST)
+- [x] Migrated to Raspberry Pi (jobpi) — systemd timer pair, daily 01:00 UTC (6:30am IST)
 - [x] Monorepo restructure
 
 ## Phase 2 — Pipeline Improvements (PLANNED 📋)

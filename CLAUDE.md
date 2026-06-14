@@ -1,7 +1,7 @@
 # Sentinel Monorepo
 
 ## Structure
-- pipeline/ — Python pipeline, runs on Render cron job
+- pipeline/ — Python pipeline, runs on the Raspberry Pi (jobpi) via systemd timer (daily 6:30am IST / 01:00 UTC)
 - frontend/ — Vite + React frontend, Render static site (live at sentinel-frontend-8hem.onrender.com)
 
 ## Rules

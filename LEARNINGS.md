@@ -147,3 +147,39 @@ breaks everything silently.
 
 Same issue occurred earlier in `pipeline/.env` (space in `SUPABASE_URL`
 caught during pipeline setup).
+
+---
+
+## Migrating a Cron Job to the Pi Means a systemd Timer, Not a Daemon
+
+When moving the pipeline off Render cron onto the Raspberry Pi, the instinct
+is to write a long-running script with a `sleep` loop or a `Type=simple`
+service. For a job that runs once and exits, the right pattern is a **timer
++ `Type=oneshot` service pair**: the `.timer` owns the schedule
+(`OnCalendar`), the `.service` owns the command.
+
+Two things that aren't obvious until you hit them:
+- `Type=oneshot` makes `systemctl start sentinel-pipeline.service` **block
+  until the run finishes** (~60s here) instead of returning immediately.
+  That's correct behaviour for a batch job, not a hang.
+- Point `ExecStart` straight at the venv's interpreter
+  (`/home/jcube/projects/sentinel/pipeline/.venv/bin/python pipeline.py`)
+  with `WorkingDirectory` set. There's no need to "activate" the venv —
+  the absolute path to its Python binary is all systemd needs.
+
+Add `Persistent=true` to the timer so a run missed while the Pi was powered
+off fires on the next boot, instead of being silently skipped.
+
+---
+
+## A UTC `OnCalendar` Shows Up in Local Time in `systemctl list-timers`
+
+The timer is pinned with `OnCalendar=*-*-* 01:00:00 UTC` to match the old
+Render cron. But `systemctl status` and `systemctl list-timers` print the
+next trigger in the **system's local timezone** — IST on the Pi — so the
+schedule reads `06:30:00 IST` even though the unit file says `01:00:00 UTC`.
+
+This looks wrong at a glance but is correct: 01:00 UTC *is* 06:30 IST. Don't
+"fix" the unit file to say `06:30` — pin the schedule in UTC and let systemd
+handle the display conversion. If in doubt, check `date -u` against the
+listed trigger time.
