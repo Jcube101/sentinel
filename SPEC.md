@@ -66,12 +66,19 @@ backfill.py (one-time)         Pi systemd timer (daily)
 ## Data Sources
 
 ### FIRMS (NASA Fire Information for Resource Management System)
-- **Endpoint:** `https://firms.modaps.eosdis.nasa.gov/api/area/csv/{key}/VIIRS_NOAA20_NRT/{bbox}/1`
+- **Endpoint:** `https://firms.modaps.eosdis.nasa.gov/api/area/csv/{key}/VIIRS_NOAA20_NRT/{bbox}/2`
 - **Auth:** API key in URL path
 - **Format:** CSV
 - **Provides:** Fire hotspot latitude/longitude, FRP (fire radiative power in MW), brightness, confidence
 - **Update frequency:** Near real-time (~3 hours from satellite pass)
 - **India bbox:** `68.7,8.4,97.4,37.1` (west,south,east,north)
+- **Day range is 2, not 1:** VIIRS NOAA-20 overpasses India around 06:00-08:00
+  UTC. The trailing path segment is the current UTC calendar day, not a
+  rolling 24 hours, so a pipeline run scheduled before the overpass queries a
+  day that hasn't happened yet. `2` covers today and yesterday; upserts
+  dedupe by deterministic `id`, so the overlap is harmless. Never drop this
+  back to `1` without also confirming every scheduled run happens after
+  08:00 UTC.
 
 ### EONET (NASA Earth Observatory Natural Event Tracker)
 - **Endpoint:** `https://eonet.gsfc.nasa.gov/api/v3/events`
@@ -169,7 +176,10 @@ UNIQUE (location_id, parameter, recorded_at);
 Every fetcher must:
 1. Export a `fetch() -> List[dict]` function
 2. Return dicts whose keys exactly match the target table schema
-3. Handle all exceptions internally — never raise to the caller
+3. Handle per-row/per-feature errors internally (log and skip), but let
+   top-level request or response-parse failures propagate; `pipeline.py`
+   catches those and marks the source failed for the run. A legitimately
+   empty result must still return `[]` successfully.
 4. Log clearly: source name, rows fetched, any errors
 5. Use deterministic IDs — never random UUIDs
 
@@ -185,9 +195,20 @@ occurrence). This is required because Postgres raises an error if the same
 `pipeline.py` and `backfill.py` upsert in batches of 500 rows to stay within
 Supabase's request payload limits. Batching is handled by `_chunks()`.
 
+### Archive-then-cleanup
+
+`archive.run()` runs immediately before `_cleanup()` inside every
+`pipeline.run()` call, in-process rather than on a separate schedule that
+could drift out of order relative to cleanup. If archiving raises or exits
+non-zero, cleanup is skipped for that run and the pipeline exits non-zero:
+silently deleting un-archived data was the exact failure mode this closes.
+`archive.run()` only reads from Supabase and writes locally via `INSERT OR
+REPLACE`, so it's idempotent and safe to run multiple times a day.
+
 ### Cleanup
 
-`_cleanup()` runs at the end of every `pipeline.run()`:
+`_cleanup()` runs at the end of every `pipeline.run()`, gated on a
+successful archive:
 - FIRMS / GDACS events: deleted after 60 days
 - EONET / USGS events: deleted after 365 days (low volume)
 - AQI readings: deleted after 7 days
@@ -197,9 +218,19 @@ affect the others or the pipeline exit code.
 
 ### Error Isolation
 
-- Each fetcher is wrapped in `try/except` inside `pipeline.py`
-- A fetcher failure sets a flag but does not halt the pipeline
-- Exit code is `1` if any fetcher or upsert failed, `0` on full success
+- Each fetcher is wrapped in `try/except` inside `pipeline.py`'s
+  `_run_fetcher()`. A fetcher's *own* per-row/per-feature errors are handled
+  internally (see Fetcher Interface Contract above); a request or
+  response-parse failure propagates out of `fetch()` and is caught here,
+  which marks that source failed for the run without halting the others.
+- Exit code is `1` if any fetcher, upsert, or archive failed, `0` on full
+  success.
+- `_check_staleness()` runs at the end of every call, regardless of exit
+  code: it logs the newest row's age per source and warns when a source
+  exceeds its expected freshness window (2 days for FIRMS/OpenAQ, 30 for
+  USGS, 60 for the event-driven EONET/GDACS). This does not affect the exit
+  code. It's a log signal for whoever is watching `pipeline/logs/pipeline.log`,
+  not a hard failure.
 
 ### ID Formats
 
@@ -275,8 +306,10 @@ lag — chunks in that window return 0 rows (expected).
 - Paginates Supabase reads in 1000-row batches
 - Never deletes from Supabase
 
-**Windows automation:** `pipeline/setup_task_scheduler.ps1` registers a Task Scheduler
-task that runs `archive.py` on every logon using `Register-ScheduledTask`.
+**Scheduling:** `pipeline.py` calls `archive.run()` directly, immediately
+before cleanup, on every invocation; see Archive-then-cleanup above.
+`pipeline/setup_task_scheduler.ps1` (Windows Task Scheduler) predates that
+and is legacy/unused on the Pi.
 
 ---
 
@@ -296,10 +329,18 @@ task that runs `archive.py` on every logon using `Register-ScheduledTask`.
 **Pipeline:** Raspberry Pi (`jobpi`)
 - Host: self-hosted Raspberry Pi 5
 - Scheduler: systemd timer pair (`sentinel-pipeline.service` + `sentinel-pipeline.timer`)
-- Schedule: Daily at 01:00 UTC (6:30am IST), `Persistent=true` to catch missed runs
+- Schedule: three times daily at 09:00, 15:00, 21:00 UTC (`OnCalendar=*-*-*
+  09,15,21:00:00 UTC`), `Persistent=true` to catch missed runs. Chosen to
+  land after the ~06:00-08:00 UTC VIIRS overpass FIRMS depends on; the
+  original single 01:00 UTC run predated that overpass every day (see
+  LEARNINGS.md).
 - ExecStart: `pipeline/.venv/bin/python pipeline.py` (WorkingDirectory `pipeline/`)
 - Venv: `pipeline/.venv`
-- Logs: journald — `journalctl -u sentinel-pipeline.service`
+- Logs: `pipeline/logs/pipeline.log` (rotating, 5MB × 7 backups, gitignored)
+  is the durable log; journald on this host (`journalctl -u
+  sentinel-pipeline.service`) evicts entries within hours because other
+  services on the Pi generate high journal volume. See README.md's Pi
+  Deployment & Operations section for the full runbook.
 
 **Frontend service:** Render
 - Type: Static Site

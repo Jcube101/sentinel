@@ -25,7 +25,7 @@ sentinel/
 │   ├── archive.py
 │   ├── config.py
 │   ├── requirements.txt
-│   └── render.yaml
+│   └── render.yaml     (legacy Render cron config, unused; pipeline runs on the Pi)
 └── frontend/    — Vite + React map interface (live at sentinel-frontend-8hem.onrender.com)
     ├── src/
     │   ├── lib/          — Supabase client, types
@@ -42,7 +42,7 @@ sentinel/
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│           Raspberry Pi systemd timer (daily)            │
+│    Raspberry Pi systemd timer (3x daily, 09/15/21 UTC)  │
 └───────────────────────┬─────────────────────────────────┘
                         │
                         ▼
@@ -93,7 +93,7 @@ sentinel/
 - **requests** — HTTP
 - **python-dotenv** — environment variables
 - **Supabase** — Postgres database + REST API
-- **Raspberry Pi (jobpi)** — pipeline cron via systemd timer
+- **Raspberry Pi (jobpi)**: pipeline runs via a systemd timer pair, three times daily
 - **Render** — frontend static site host
 - **Vite + React 19 + TypeScript** — frontend
 - **Tailwind CSS + MapLibre GL + Recharts** — styling, map, charts
@@ -108,8 +108,8 @@ sentinel/
 ```bash
 git clone https://github.com/Jcube101/sentinel.git
 cd sentinel/pipeline
-python -m venv venv
-source venv/Scripts/activate  # Windows Git Bash
+python -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
@@ -126,6 +126,13 @@ Edit `.env` with your credentials.
 ```bash
 cd sentinel/pipeline
 python pipeline.py
+```
+
+Add `--dry-run` to run the fetchers and log what would happen, without writing
+to Supabase or running cleanup:
+
+```bash
+python pipeline.py --dry-run
 ```
 
 ### 4. Run a single fetcher
@@ -148,24 +155,28 @@ python backfill.py --source usgs --days 365
 
 ### 6. Archive old data to local SQLite
 
+`pipeline.py` runs `archive.py` automatically, immediately before cleanup, on
+every invocation, so this is not something you need to schedule separately. To
+run it on its own (for example to inspect `sentinel_archive.db` without
+running the full pipeline):
+
 ```bash
 python archive.py
 ```
 
-Archives events older than 30 days and AQI readings older than 7 days to `sentinel_archive.db`.
+Archives events older than 30 days and AQI readings older than 7 days to
+`sentinel_archive.db`. Safe to run any number of times: uses `INSERT OR
+REPLACE`, and never deletes anything from Supabase.
 
-### 7. Set up automatic archival (Windows)
-
-Run once as Administrator in PowerShell:
-```powershell
-.\setup_task_scheduler.ps1
-```
+`pipeline/setup_task_scheduler.ps1` (Windows Task Scheduler) is legacy from
+before the pipeline moved to the Pi and is unused; archival no longer needs
+separate scheduling on any platform.
 
 ---
 
 ## Data Retention
 
-`pipeline.py` runs cleanup at the end of every execution:
+`pipeline.py` runs `archive.py` and then cleanup at the end of every execution:
 
 | Data | Retention in Supabase |
 |------|-----------|
@@ -173,7 +184,9 @@ Run once as Administrator in PowerShell:
 | EONET / USGS events | 365 days |
 | AQI readings | 7 days |
 
-Old data is archived locally via `archive.py` before deletion.
+Old data is archived locally via `archive.py` before deletion. If archiving
+fails for any reason, that run skips cleanup entirely rather than deleting
+un-archived data, and the pipeline exits non-zero.
 
 ---
 
@@ -204,12 +217,116 @@ npm run dev
 
 ## How It Works
 
-1. **Fetch** — each fetcher calls its API and returns `List[dict]` matching the Supabase schema exactly
+1. **Fetch**: each fetcher calls its API and returns `List[dict]` matching the Supabase schema exactly. A failed request or a malformed response propagates and fails that source; an empty result from a healthy API does not.
 2. **Transform** — severity levels, categories, and deterministic IDs computed during fetch
 3. **Upsert** — `pipeline.py` bulk-upserts to Supabase in batches of 500 using deterministic `id` as conflict key
-4. **Cleanup** — deletes stale rows at end of every run
-5. **Archive** — `archive.py` copies old data to local SQLite before it ages out of Supabase
-6. **Schedule** — a systemd timer on the Raspberry Pi (jobpi) runs `pipeline.py` daily at 6:30am IST (01:00 UTC)
+4. **Archive**: `archive.py` copies old data to local SQLite before cleanup can age it out of Supabase; if archiving fails, cleanup is skipped for that run
+5. **Cleanup**: deletes stale rows at the end of every run, gated on a successful archive
+6. **Staleness check**: logs the newest row's age per source, and warns if a source that should be fresh has gone quiet
+7. **Schedule**: a systemd timer on the Raspberry Pi (jobpi) runs `pipeline.py` three times daily, at 09:00, 15:00, and 21:00 UTC
+
+---
+
+## Pi Deployment & Operations
+
+The pipeline runs on a Raspberry Pi (`jobpi`) as a systemd timer + oneshot
+service pair. This section is the operational reference for that setup.
+
+### Unit files
+
+`/etc/systemd/system/sentinel-pipeline.timer`:
+```ini
+[Unit]
+Description=Run Sentinel pipeline three times daily, past the VIIRS overpass window (09:00, 15:00, 21:00 UTC)
+
+[Timer]
+OnCalendar=*-*-* 09,15,21:00:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+`/etc/systemd/system/sentinel-pipeline.service`:
+```ini
+[Unit]
+Description=Sentinel Natural Disaster Pipeline
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/home/jcube/projects/sentinel/pipeline/.venv/bin/python pipeline.py
+WorkingDirectory=/home/jcube/projects/sentinel/pipeline
+User=jcube
+Environment=PYTHONUNBUFFERED=1
+StandardOutput=journal
+StandardError=journal
+```
+
+`OnCalendar` is pinned in UTC to stay correct regardless of the Pi's local
+timezone (IST). `systemctl list-timers` displays the next run converted to
+local time. That's expected, not a bug; see [LEARNINGS.md](LEARNINGS.md).
+
+`Persistent=true` means a run missed while the Pi was powered off fires once
+on the next boot instead of being silently skipped.
+
+### Operational commands
+
+```bash
+# Is the timer active, and when does it fire next?
+systemctl list-timers sentinel-pipeline.timer
+
+# Timer + service status, including the last run's exit code
+systemctl status sentinel-pipeline.timer
+systemctl status sentinel-pipeline.service
+
+# Trigger a run right now (blocks until it finishes, Type=oneshot)
+sudo systemctl start sentinel-pipeline.service
+
+# Recent output via journald (short-lived on this host, see below)
+journalctl -u sentinel-pipeline.service -n 100
+```
+
+### Deploying a change
+
+Code-only changes need nothing beyond `git pull` on the Pi: the next timer
+firing (or `systemctl start sentinel-pipeline.service`) runs the current
+working tree, since `ExecStart` points at the venv interpreter and the
+script path directly rather than a packaged build.
+
+If you change either unit file under `/etc/systemd/system/`:
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart sentinel-pipeline.timer
+```
+
+If `requirements.txt` changed:
+```bash
+cd ~/projects/sentinel/pipeline
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+### Logs
+
+`journalctl -u sentinel-pipeline.service` is not durable on this host: other
+services on the Pi generate enough journal volume that entries rotate out
+within hours, which is too short for a job that runs a few times a day. The
+pipeline also writes its own rotating logfile at
+`pipeline/logs/pipeline.log` (5MB × 7 backups, gitignored); check this
+first, not journald, when looking into a past run.
+
+Each run ends with a per-source staleness check. A `WARNING` line like:
+```
+staleness: FIRMS newest row is 35 days, 10:18:27 old (threshold 2 days, 0:00:00)
+```
+means that source's newest row in Supabase is older than expected for how
+often that API updates. This is the signal to go check whether the fetcher,
+its credentials, or the upstream API broke. An `INFO ... (ok)` line means the
+source is within its expected freshness window; thresholds are looser for
+EONET/GDACS since both are event-driven and can legitimately go quiet for
+weeks.
 
 ---
 

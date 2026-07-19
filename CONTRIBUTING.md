@@ -9,8 +9,8 @@ Sentinel is a learning project and contributions are welcome.
 ```bash
 git clone https://github.com/Jcube101/sentinel.git
 cd sentinel/pipeline
-python -m venv venv
-source venv/Scripts/activate  # Windows Git Bash
+python -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
 # fill in your API keys in .env
@@ -19,6 +19,12 @@ cp .env.example .env
 Run the full pipeline:
 ```bash
 PYTHONPATH=. python pipeline.py
+```
+
+Run it without writing to Supabase or running cleanup, to check what a change
+would do first:
+```bash
+PYTHONPATH=. python pipeline.py --dry-run
 ```
 
 Run a single fetcher to test it in isolation:
@@ -44,10 +50,10 @@ Create `pipeline/fetchers/your_source.py`. The interface contract is simple:
 
 1. **Export `fetch() -> List[dict]`** — this is the only function `pipeline.py` calls
 2. **Return dicts matching the events table schema exactly** (see pipeline/CLAUDE.md for all fields)
-3. **Handle all exceptions internally** — catch errors per-row and per-request, log warnings, never raise to the caller
+3. **Handle per-row errors internally, but let request/parse failures propagate**: wrap per-row/per-feature transform logic in its own try/except, log a warning, and skip that row. Do *not* catch the top-level request (`requests.RequestException`) or response-parse failure; let it raise. `pipeline.py`'s `_run_fetcher()` catches it there and marks that source failed for the run. A source that legitimately has zero events today must still return `[]` successfully; a broken endpoint, revoked key, or malformed response must fail loudly instead of silently returning `[]` (this was a real bug, see LEARNINGS.md).
 4. **Use deterministic IDs** — build the `id` field from source data fields, never `uuid4()`
 5. **Never write to Supabase** — fetchers only fetch and transform; `pipeline.py` handles all writes
-6. **Log clearly** — use `logger.info` for counts, `logger.warning` for skipped rows, `logger.error` for failed requests
+6. **Log clearly**: use `logger.info` for counts, `logger.warning` for skipped rows, `logger.error` before letting a request/parse failure propagate
 
 Then in `pipeline/pipeline.py`:
 - Import your fetcher
@@ -73,7 +79,7 @@ If your fetcher writes to a different table (like `openaq.py` writes to `aqi_rea
 
 1. Fork the repo and create a branch: `git checkout -b feat/your-feature`
 2. Make your changes
-3. Test pipeline changes: `cd pipeline && PYTHONPATH=. python pipeline.py`
+3. Test pipeline changes: `cd pipeline && PYTHONPATH=. python pipeline.py --dry-run` first, then a real run
 4. Test frontend changes: `cd frontend && npm run build` (must pass with zero errors)
 5. Open a PR with a clear description of what you changed and why
 

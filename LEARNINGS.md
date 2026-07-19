@@ -183,3 +183,87 @@ This looks wrong at a glance but is correct: 01:00 UTC *is* 06:30 IST. Don't
 "fix" the unit file to say `06:30` — pin the schedule in UTC and let systemd
 handle the display conversion. If in doubt, check `date -u` against the
 listed trigger time.
+
+---
+
+## A Fetcher That Swallows Every Exception Can Never Fail
+
+Every fetcher caught `requests.RequestException` (and JSON/CSV parse
+failures) at the top level and returned `[]` on error, matching an earlier
+version of the "handle all exceptions internally" rule in CONTRIBUTING.md.
+`pipeline.py`'s `_run_fetcher()` already had a `try/except` around
+`module.fetch()` specifically to catch this and mark the source failed,
+but since fetchers never raised, that code path was dead. A revoked API
+key, a moved endpoint, or a 500 all produced `(rows=[], success=True)`, and
+the pipeline exited `0` every time. FIRMS ran this way silently for 35 days
+before anyone noticed the map had stopped showing new fires.
+
+The fix: fetchers now only catch **per-row/per-feature** errors internally
+(one malformed CSV row or GeoJSON feature shouldn't sink the whole batch).
+Top-level request and parse failures propagate out of `fetch()` and hit
+`_run_fetcher()`'s existing catch, which was always the intended failure
+path. The distinction that matters: a healthy API legitimately returning
+zero rows today must still report success; a broken one must not.
+
+---
+
+## FIRMS's `day_range` Must Cover the Overpass Window, Not Just "Today"
+
+The FIRMS area-CSV endpoint's trailing path segment (`.../{bbox}/{day_range}`)
+counts back from the **current UTC calendar day**, not a rolling 24 hours.
+With `day_range=1`, a pipeline run at 01:00 UTC queries "today", but VIIRS
+NOAA-20 doesn't overpass India until roughly 06:00-08:00 UTC, so "today" is
+still empty at query time. Every run returned rows from whatever sliver of
+the current UTC day happened to already have data, which was usually
+nothing.
+
+This didn't surface under the old Render cron (`*/30 * * * *`) because
+running every 30 minutes meant *some* invocation each day landed after the
+overpass. Collapsing to a single daily run at a fixed early hour removed
+that safety margin entirely. Fixed by widening to `day_range=2` (today and
+yesterday) so the window is robust to exactly when in the day the pipeline
+runs; upserts dedupe by deterministic `id`, so the overlap costs nothing.
+The real fix is scheduling the run after 08:00 UTC in the first place; the
+wider window is a hedge, not a substitute for that.
+
+---
+
+## journald Is Not a Durable Log on a Shared Host
+
+`journalctl -u sentinel-pipeline.service` returned zero entries during an
+audit of a job that had been running daily for weeks. `Storage=persistent`
+was set correctly; the problem was eviction, not configuration. Two
+unrelated services on the same Pi (an app stuck in an OOM-driven restart
+loop) were generating enough journal volume that the ring buffer rotated
+every ~11 minutes, giving the whole host roughly 6.5 hours of retained
+history. A job that runs a few times a day has its logs gone long before
+anyone goes looking.
+
+journald's retention is host-wide, not per-unit: a noisy neighbor can
+silently zero out another service's observability with no error or warning
+on either side. Don't rely on it alone for anything that doesn't run at
+least as often as the noisiest thing sharing the box. Fixed by adding a
+rotating file handler (`pipeline/logs/pipeline.log`) inside the project
+itself, so Sentinel's logs survive regardless of what else is running on
+the Pi.
+
+---
+
+## Archival Must Be Wired Into the Run That Deletes, Not Scheduled Separately
+
+`archive.py` existed, was documented, and worked correctly in isolation,
+but nothing on the Pi ever called it. It had been a Windows Task Scheduler
+job in an earlier deployment, and that automation didn't carry over when
+the pipeline moved. Meanwhile `_cleanup()` inside `pipeline.py` kept
+deleting rows past their retention window on every run, so old data was
+being permanently destroyed with zero archive of it, silently, for as long
+as the pipeline had been running on the Pi.
+
+Two separately-scheduled jobs (one to archive, one to delete) can drift out
+of order or one can simply stop firing without the other noticing, exactly
+what happened here. The more robust pattern is to call the archive step
+directly from inside the job that deletes, immediately before it, and gate
+the delete on the archive having actually succeeded. Since `archive.py`
+only reads from Supabase and writes locally via `INSERT OR REPLACE`, it's
+idempotent and safe to call on every invocation, including multiple times a
+day.
