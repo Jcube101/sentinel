@@ -58,16 +58,11 @@ def fetch(start_date: str | None = None, end_date: str | None = None) -> list[di
         params["starttime"], params["endtime"],
     )
 
-    try:
-        resp = requests.get(ENDPOINT, params=params, timeout=30)
-        resp.raise_for_status()
-        data = resp.json()
-    except requests.RequestException as exc:
-        logger.error("USGS: request failed — %s", exc)
-        return []
-    except ValueError as exc:
-        logger.error("USGS: JSON parse failed — %s", exc)
-        return []
+    # Request/parse failures propagate — a broken endpoint must fail the run,
+    # not silently return zero rows.
+    resp = requests.get(ENDPOINT, params=params, timeout=30)
+    resp.raise_for_status()
+    data = resp.json()
 
     features = data.get("features", [])
     logger.info("USGS: received %d features", len(features))
@@ -114,8 +109,6 @@ def fetch(start_date: str | None = None, end_date: str | None = None) -> list[di
                 "geometry": {"type": "Point", "coordinates": [lon, lat, depth]},
                 "source_url": props.get("url") or "https://earthquake.usgs.gov/",
                 "raw": props,
-                "created_at": None,
-                "updated_at": None,
             })
         except Exception as exc:
             logger.warning("USGS: skipping feature due to error — %s | id=%s", exc, feature.get("id"))

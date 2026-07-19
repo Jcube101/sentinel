@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 ENDPOINT = (
     "https://firms.modaps.eosdis.nasa.gov/api/area/csv"
-    "/{key}/VIIRS_NOAA20_NRT/{bbox}/1"
+    "/{key}/VIIRS_NOAA20_NRT/{bbox}/2"
 )
 # Backfill endpoint: product is NRT (last ~10 days) or SP (standard, months of history)
 ENDPOINT_DATE = (
@@ -38,20 +38,15 @@ def _parse_datetime(acq_date: str, acq_time: str) -> str:
 
 
 def _fetch_url(url: str) -> list[dict]:
-    """Fetch and parse one FIRMS CSV URL into event dicts."""
-    try:
-        resp = requests.get(url, timeout=30)
-        resp.raise_for_status()
-    except requests.RequestException as exc:
-        logger.error("FIRMS: request failed — %s", exc)
-        return []
+    """Fetch and parse one FIRMS CSV URL into event dicts.
 
-    try:
-        reader = csv.DictReader(io.StringIO(resp.text))
-        rows = list(reader)
-    except Exception as exc:
-        logger.error("FIRMS: CSV parse failed — %s", exc)
-        return []
+    Request and parse failures propagate to the caller — a broken endpoint
+    or key must fail the run, not silently return zero rows.
+    """
+    resp = requests.get(url, timeout=30)
+    resp.raise_for_status()
+    reader = csv.DictReader(io.StringIO(resp.text))
+    rows = list(reader)
 
     events = []
     for row in rows:
@@ -101,13 +96,16 @@ def _fetch_url(url: str) -> list[dict]:
 def fetch(start_date: str | None = None, end_date: str | None = None) -> list[dict]:
     """Fetch fire hotspot events.
 
-    With no arguments fetches the last 1 day (pipeline mode).
+    With no arguments fetches a rolling 2-day window (pipeline mode) — VIIRS
+    NOAA-20 overpasses India around 06:00-08:00 UTC, so a run scheduled
+    before that time each day needs the prior day's window too, not just
+    the current UTC calendar day.
     With start_date/end_date, backfill.py drives chunked calls directly
     via fetch_range() — this signature accepts them for interface consistency
-    but ignores them in favour of the default 1-day window.
+    but ignores them in favour of the default 2-day window.
     """
     url = ENDPOINT.format(key=FIRMS_MAP_KEY, bbox=INDIA_BBOX_FIRMS)
-    logger.info("FIRMS: fetching from %s", url)
+    logger.info("FIRMS: fetching bbox=%s day_range=2", INDIA_BBOX_FIRMS)
 
     events = _fetch_url(url)
     logger.info("FIRMS: fetched %d fire hotspot events", len(events))
@@ -124,7 +122,7 @@ def fetch_range(start_date: datetime, end_date: datetime, chunk_days: int = 5) -
     from datetime import timedelta
     import time as _time
 
-    ten_days_ago = (datetime.utcnow() - timedelta(days=10)).date()
+    ten_days_ago = (datetime.now(timezone.utc) - timedelta(days=10)).date()
 
     total_days = (end_date - start_date).days
     num_chunks = max(1, (total_days + chunk_days - 1) // chunk_days)
@@ -150,7 +148,11 @@ def fetch_range(start_date: datetime, end_date: datetime, chunk_days: int = 5) -
             day_range=actual_days,
             date=date_str,
         )
-        chunk_events = _fetch_url(url)
+        try:
+            chunk_events = _fetch_url(url)
+        except Exception as exc:
+            logger.error("FIRMS: chunk %d failed — %s", chunk_num, exc)
+            chunk_events = []
         logger.info("FIRMS: chunk %d returned %d events", chunk_num, len(chunk_events))
         all_events.extend(chunk_events)
 

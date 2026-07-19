@@ -1,3 +1,4 @@
+import argparse
 import logging
 import sys
 import time
@@ -48,8 +49,8 @@ def _upsert(supabase, table: str, rows: list, conflict_key: str) -> int:
         return 0
     upserted = 0
     for batch in _chunks(rows, BATCH_SIZE):
-        supabase.table(table).upsert(batch, on_conflict=conflict_key).execute()
-        upserted += len(batch)
+        resp = supabase.table(table).upsert(batch, on_conflict=conflict_key).execute()
+        upserted += len(resp.data)
     return upserted
 
 
@@ -78,7 +79,7 @@ def _cleanup(supabase) -> None:
         logger.error("cleanup: aqi_readings delete failed — %s", exc)
 
 
-def run():
+def run(dry_run: bool = False):
     start = time.monotonic()
     supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
@@ -93,27 +94,35 @@ def run():
 
     # --- Write events ---
     all_events = _dedup(firms_rows + eonet_rows + gdacs_rows + usgs_rows)
-    try:
-        events_upserted = _upsert(supabase, EVENTS_TABLE, all_events, "id")
-        logger.info("events: upserted %d rows", events_upserted)
-    except Exception as exc:
-        logger.error("events: upsert failed — %s", exc)
+    if dry_run:
+        logger.info("dry-run: skipping events upsert (%d rows would be written)", len(all_events))
         events_upserted = 0
-        any_failure = True
+    else:
+        try:
+            events_upserted = _upsert(supabase, EVENTS_TABLE, all_events, "id")
+            logger.info("events: upserted %d rows", events_upserted)
+        except Exception as exc:
+            logger.error("events: upsert failed — %s", exc)
+            events_upserted = 0
+            any_failure = True
 
     # --- Write AQI readings ---
-    try:
-        aqi_upserted = _upsert(supabase, AQI_TABLE, openaq_rows, "location_id,parameter,recorded_at")
-        logger.info("aqi_readings: upserted %d rows", aqi_upserted)
-    except Exception as exc:
-        logger.error("aqi_readings: upsert failed — %s", exc)
+    if dry_run:
+        logger.info("dry-run: skipping aqi_readings upsert (%d rows would be written)", len(openaq_rows))
         aqi_upserted = 0
-        any_failure = True
+    else:
+        try:
+            aqi_upserted = _upsert(supabase, AQI_TABLE, openaq_rows, "location_id,parameter,recorded_at")
+            logger.info("aqi_readings: upserted %d rows", aqi_upserted)
+        except Exception as exc:
+            logger.error("aqi_readings: upsert failed — %s", exc)
+            aqi_upserted = 0
+            any_failure = True
 
     duration = time.monotonic() - start
 
     print("")
-    print("=== Sentinel Pipeline Run ===")
+    print("=== Sentinel Pipeline Run ===" + (" (DRY RUN)" if dry_run else ""))
     print(f"  FIRMS:   {len(firms_rows)} events")
     print(f"  EONET:   {len(eonet_rows)} events")
     print(f"  GDACS:   {len(gdacs_rows)} events")
@@ -124,10 +133,20 @@ def run():
     print(f"  Duration: {duration:.1f}s")
     print("============================")
 
-    _cleanup(supabase)
+    if dry_run:
+        logger.info("dry-run: skipping cleanup")
+    else:
+        _cleanup(supabase)
 
     return 1 if any_failure else 0
 
 
 if __name__ == "__main__":
-    sys.exit(run())
+    parser = argparse.ArgumentParser(description="Sentinel disaster data pipeline")
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Run fetchers and report counts only; skip Supabase writes and cleanup",
+    )
+    args = parser.parse_args()
+    sys.exit(run(dry_run=args.dry_run))

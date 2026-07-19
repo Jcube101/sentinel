@@ -27,7 +27,7 @@ SEVERITY_MAP = {
 
 
 def _build_params(start_date: str | None = None, end_date: str | None = None) -> dict:
-    today = datetime.utcnow()
+    today = datetime.now(timezone.utc)
     from_date = start_date or (today - timedelta(days=90)).strftime("%Y-%m-%d")
     to_date = end_date or today.strftime("%Y-%m-%d")
     return {
@@ -71,16 +71,11 @@ def fetch(start_date: str | None = None, end_date: str | None = None) -> list[di
         "GDACS: fetching events from=%s to=%s", params["fromDate"], params["toDate"]
     )
 
-    try:
-        resp = requests.get(ENDPOINT, params=params, timeout=30)
-        resp.raise_for_status()
-        data = resp.json()
-    except requests.RequestException as exc:
-        logger.error("GDACS: request failed — %s", exc)
-        return []
-    except ValueError as exc:
-        logger.error("GDACS: JSON parse failed — %s", exc)
-        return []
+    # Request/parse failures propagate — a broken endpoint must fail the run,
+    # not silently return zero rows.
+    resp = requests.get(ENDPOINT, params=params, timeout=30)
+    resp.raise_for_status()
+    data = resp.json()
 
     features = data.get("features", [])
     logger.info("GDACS: received %d features", len(features))
@@ -149,8 +144,6 @@ def fetch(start_date: str | None = None, end_date: str | None = None) -> list[di
                 "geometry": geometry,
                 "source_url": props.get("url", {}).get("report") or "https://www.gdacs.org/",
                 "raw": props,
-                "created_at": None,
-                "updated_at": None,
             })
         except Exception as exc:
             logger.warning(

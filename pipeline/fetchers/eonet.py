@@ -4,7 +4,7 @@ from datetime import timezone
 import requests
 from dateutil import parser as dateutil_parser
 
-from config import INDIA_BBOX
+from config import INDIA_BBOX_FIRMS
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +12,7 @@ ENDPOINT = "https://eonet.gsfc.nasa.gov/api/v3/events"
 _BASE_PARAMS = {
     "status": "all",
     "category": "wildfires,severeStorms",
-    "bbox": "68.7,8.4,97.4,37.1",
+    "bbox": INDIA_BBOX_FIRMS,
 }
 
 CATEGORY_MAP = {
@@ -81,16 +81,11 @@ def fetch(start_date: str | None = None, end_date: str | None = None) -> list[di
         params = {**_BASE_PARAMS, "days": 30}
         logger.info("EONET: fetching events (last 30 days)")
 
-    try:
-        resp = requests.get(ENDPOINT, params=params, timeout=30)
-        resp.raise_for_status()
-        data = resp.json()
-    except requests.RequestException as exc:
-        logger.error("EONET: request failed — %s", exc)
-        return []
-    except ValueError as exc:
-        logger.error("EONET: JSON parse failed — %s", exc)
-        return []
+    # Request/parse failures propagate — a broken endpoint must fail the run,
+    # not silently return zero rows.
+    resp = requests.get(ENDPOINT, params=params, timeout=30)
+    resp.raise_for_status()
+    data = resp.json()
 
     raw_events = data.get("events", [])
     logger.info("EONET: received %d raw events", len(raw_events))
@@ -160,8 +155,6 @@ def fetch(start_date: str | None = None, end_date: str | None = None) -> list[di
                 "geometry": full_geometry,
                 "source_url": raw.get("link") or "https://eonet.gsfc.nasa.gov/",
                 "raw": raw,
-                "created_at": None,
-                "updated_at": None,
             })
         except Exception as exc:
             logger.warning("EONET: skipping event due to error — %s | id=%s", exc, raw.get("id"))

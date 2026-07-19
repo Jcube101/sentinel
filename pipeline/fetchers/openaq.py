@@ -52,18 +52,17 @@ def _is_fresh(recorded_at: str | None) -> bool:
 
 
 def _fetch_locations() -> list[dict]:
-    try:
-        resp = requests.get(
-            LOCATIONS_ENDPOINT,
-            headers=_headers(),
-            params={"countries_id": 9, "limit": 50, "page": 1},
-            timeout=30,
-        )
-        resp.raise_for_status()
-        return resp.json().get("results", [])
-    except requests.RequestException as exc:
-        logger.error("OpenAQ: failed to fetch locations — %s", exc)
-        return []
+    # Propagates on failure — a broken locations endpoint must fail the run,
+    # not silently return zero rows. Individual sensor lookups (below) stay
+    # resilient per-location since OpenAQ's sensor endpoint rate-limits.
+    resp = requests.get(
+        LOCATIONS_ENDPOINT,
+        headers=_headers(),
+        params={"countries_id": 9, "limit": 50, "page": 1},
+        timeout=30,
+    )
+    resp.raise_for_status()
+    return resp.json().get("results", [])
 
 
 def _fetch_sensors(location_id: int) -> list[dict]:
