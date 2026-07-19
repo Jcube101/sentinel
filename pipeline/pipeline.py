@@ -9,6 +9,7 @@ from logging.handlers import RotatingFileHandler
 from dateutil import parser as dateutil_parser
 from supabase import Client, create_client
 
+import archive
 from config import SUPABASE_SERVICE_KEY, SUPABASE_URL
 from fetchers import eonet, firms, gdacs, openaq, usgs
 
@@ -210,8 +211,26 @@ def run(dry_run: bool = False):
     print(f"  Duration: {duration:.1f}s")
     print("============================")
 
+    # --- Archive before cleanup, so cleanup can never delete un-archived data ---
+    # archive.run() only reads from Supabase and writes locally (INSERT OR
+    # REPLACE — idempotent), so it's safe to actually run under --dry-run too;
+    # only the destructive _cleanup() step below is gated on dry_run.
+    try:
+        archive_exit = archive.run()
+        archive_ok = archive_exit == 0
+        if not archive_ok:
+            logger.error("archive: run exited %d — skipping cleanup this run", archive_exit)
+    except Exception as exc:
+        logger.error("archive: run raised an exception — %s — skipping cleanup this run", exc)
+        archive_ok = False
+
+    if not archive_ok:
+        any_failure = True
+
     if dry_run:
         logger.info("dry-run: skipping cleanup")
+    elif not archive_ok:
+        logger.warning("cleanup: skipped — archive did not complete successfully")
     else:
         _cleanup(supabase)
 
