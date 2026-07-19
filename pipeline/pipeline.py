@@ -1,24 +1,52 @@
 import argparse
 import logging
+import os
 import sys
 import time
 from datetime import datetime, timedelta, timezone
+from logging.handlers import RotatingFileHandler
 
+from dateutil import parser as dateutil_parser
 from supabase import Client, create_client
 
 from config import SUPABASE_SERVICE_KEY, SUPABASE_URL
 from fetchers import eonet, firms, gdacs, openaq, usgs
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+# journald on this host evicts entries after a few hours (unrelated services
+# flood it), so a once- or thrice-daily job's logs are gone before anyone can
+# read them. A rotating file next to the pipeline is the durable log.
+LOG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
+os.makedirs(LOG_DIR, exist_ok=True)
+LOG_FILE = os.path.join(LOG_DIR, "pipeline.log")
+
+_formatter = logging.Formatter(
+    fmt="%(asctime)s %(levelname)s %(name)s: %(message)s",
     datefmt="%Y-%m-%dT%H:%M:%S",
 )
+_file_handler = RotatingFileHandler(LOG_FILE, maxBytes=5 * 1024 * 1024, backupCount=7)
+_file_handler.setFormatter(_formatter)
+_stream_handler = logging.StreamHandler()
+_stream_handler.setFormatter(_formatter)
+
+# force=True: wins over any basicConfig a module we import (e.g. archive.py)
+# already ran at import time, regardless of import order.
+logging.basicConfig(level=logging.INFO, handlers=[_stream_handler, _file_handler], force=True)
 logger = logging.getLogger(__name__)
 
 EVENTS_TABLE = "events"
 AQI_TABLE = "aqi_readings"
 BATCH_SIZE = 500
+
+# "Sane" freshness thresholds per source, derived from each API's documented
+# update cadence (see SPEC.md) — not "always fresh", since EONET/GDACS are
+# event-driven and can legitimately go quiet for weeks.
+STALENESS_THRESHOLDS = {
+    "FIRMS": timedelta(days=2),
+    "USGS": timedelta(days=30),
+    "EONET": timedelta(days=60),
+    "GDACS": timedelta(days=60),
+}
+AQI_STALENESS_THRESHOLD = timedelta(hours=48)
 
 
 def _chunks(lst: list, size: int):
@@ -79,6 +107,55 @@ def _cleanup(supabase) -> None:
         logger.error("cleanup: aqi_readings delete failed — %s", exc)
 
 
+def _newest_age(supabase, table: str, date_col: str, **eq_filters) -> timedelta | None:
+    query = supabase.table(table).select(date_col)
+    for col, val in eq_filters.items():
+        query = query.eq(col, val)
+    resp = query.order(date_col, desc=True).limit(1).execute()
+    if not resp.data:
+        return None
+    newest = dateutil_parser.parse(resp.data[0][date_col])
+    return datetime.now(tz=timezone.utc) - newest
+
+
+def _check_staleness(supabase) -> None:
+    """Log the newest-row age per source; warn if a source has gone stale.
+
+    This is the tripwire that would have caught FIRMS silently ingesting
+    nothing for 35 days — every prior run reported "success" with no signal
+    that the data itself had stopped moving.
+    """
+    for source, threshold in STALENESS_THRESHOLDS.items():
+        try:
+            age = _newest_age(supabase, EVENTS_TABLE, "started_at", source=source)
+        except Exception as exc:
+            logger.error("staleness: check failed for %s — %s", source, exc)
+            continue
+        if age is None:
+            logger.warning("staleness: %s has no rows in events table", source)
+        elif age > threshold:
+            logger.warning(
+                "staleness: %s newest row is %s old (threshold %s)", source, age, threshold
+            )
+        else:
+            logger.info("staleness: %s newest row is %s old (ok)", source, age)
+
+    try:
+        age = _newest_age(supabase, AQI_TABLE, "recorded_at")
+    except Exception as exc:
+        logger.error("staleness: check failed for aqi_readings — %s", exc)
+        return
+    if age is None:
+        logger.warning("staleness: aqi_readings has no rows")
+    elif age > AQI_STALENESS_THRESHOLD:
+        logger.warning(
+            "staleness: aqi_readings newest row is %s old (threshold %s)",
+            age, AQI_STALENESS_THRESHOLD,
+        )
+    else:
+        logger.info("staleness: aqi_readings newest row is %s old (ok)", age)
+
+
 def run(dry_run: bool = False):
     start = time.monotonic()
     supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
@@ -137,6 +214,8 @@ def run(dry_run: bool = False):
         logger.info("dry-run: skipping cleanup")
     else:
         _cleanup(supabase)
+
+    _check_staleness(supabase)
 
     return 1 if any_failure else 0
 
