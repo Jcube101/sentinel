@@ -64,8 +64,9 @@ PYTHONPATH=. python archive.py
 
 `pipeline.py` calls `archive.run()` directly, immediately before cleanup, on
 every invocation, so this does not need separate scheduling. The command
-above is for running it standalone. `setup_task_scheduler.ps1` (Windows
-Task Scheduler) predates that and is unused on the Pi.
+above is for running it standalone. Windows Task Scheduler archival is
+fully retired: `setup_task_scheduler.ps1` has been removed from the repo
+and the Windows scheduled task has been disabled.
 
 ## Cleanup (auto, runs inside pipeline.py)
 

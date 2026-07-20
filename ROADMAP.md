@@ -36,3 +36,30 @@ Alerts, public API, expanded coverage.
 | Jun 2026 | Pipeline migrated from Render to Raspberry Pi (jobpi) — systemd timer, daily 01:00 UTC |
 | Jul 2026 | Pipeline hardened: fail-loud fetchers, FIRMS overpass fix, archival wired in, rescheduled to 3x/day (09:00, 15:00, 21:00 UTC) |
 | Jul 2026 | Staleness thresholds recalibrated from real history (dense vs event-driven sources), failure and staleness alerting added, first AQI view shipped to the dashboard |
+| Jul 2026 | Alerting live end to end (n8n webhook to Gmail, tested for real from the Pi); Windows Task Scheduler archival fully retired, `setup_task_scheduler.ps1` removed |
+
+---
+
+## Follow-ups / Known Issues
+
+Recorded so these aren't lost or re-raised from scratch next time someone
+looks at this project.
+
+- **`supabase` 2.15.0 to 2.31.0 upgrade.** 16 minor versions behind, and the
+  sub-packages (`postgrest`, `realtime`, `storage3`) are pinned well below
+  what 2.31.0 expects. Do this as a reviewed run, not unattended: the writes
+  this pipeline depends on could break in a way that only shows up against
+  real data.
+- **Stray n8n workflow `sentinel-firms`.** Left over from the Render era and
+  still active. Not readable through the current n8n MCP connector, so this
+  needs a manual look in the n8n UI: confirm whether it still does anything,
+  and retire it if it's defunct.
+- **`dating-profile-optimizer` API and UI units in an OOM restart loop**
+  (`status=9/KILL`). An external project on the same Pi, not a Sentinel
+  task. Recorded here only because it floods the shared journald and is the
+  reason `journalctl -u sentinel-pipeline.service` isn't reliable (see
+  README.md's Logs section and LEARNINGS.md).
+- **`FIRMS_MAP_KEY` was not rotated.** It's a free-tier key that was only
+  ever exposed in local terminal output and journald, never committed to
+  the repo. Deliberately left as-is; this is a recorded decision, not an
+  oversight.

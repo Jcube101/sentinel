@@ -168,9 +168,10 @@ Archives events older than 30 days and AQI readings older than 7 days to
 `sentinel_archive.db`. Safe to run any number of times: uses `INSERT OR
 REPLACE`, and never deletes anything from Supabase.
 
-`pipeline/setup_task_scheduler.ps1` (Windows Task Scheduler) is legacy from
-before the pipeline moved to the Pi and is unused; archival no longer needs
-separate scheduling on any platform.
+Windows Task Scheduler archival is fully retired: `setup_task_scheduler.ps1`
+has been removed from the repo and the Windows scheduled task itself has
+been disabled. Archival runs only on the Pi, inside `pipeline.py`, before
+every cleanup; it has no Windows or Render component.
 
 ---
 
@@ -354,10 +355,19 @@ gaps that set these thresholds.
 
 A failed run or a stale dense source (FIRMS, USGS, OpenAQ) sends an alert
 through `notify.py`: a POST of `{source, subject, body}` JSON to
-`NOTIFY_WEBHOOK_URL`, which can be an n8n webhook, a Slack incoming webhook,
-or anything else that accepts a POST. If `NOTIFY_WEBHOOK_URL` isn't set, the
-attempt is logged and skipped rather than raising, so a missing alert
-channel can't break the run it's trying to report on.
+`NOTIFY_WEBHOOK_URL`. If `NOTIFY_WEBHOOK_URL` isn't set, the attempt is
+logged and skipped rather than raising, so a missing alert channel can't
+break the run it's trying to report on.
+
+**Live delivery:** `NOTIFY_WEBHOOK_URL` is currently set to a webhook
+trigger on an n8n workflow named "Sentinel Alerts", which forwards the
+POST to a Gmail send node and emails Job. Sentinel itself holds no mail
+credentials; n8n owns delivery entirely. The webhook is currently
+unauthenticated (no header/token check), which is acceptable for a
+low-value, append-only alert sink, but is worth adding if it's ever abused
+(spam, unrelated traffic hitting the endpoint). The literal URL is
+intentionally not written in any tracked file; read it from `.env` at
+runtime, never paste it into a commit, an issue, or chat.
 
 Two paths call it:
 - **In-process**, from `_check_staleness()` inside `pipeline.py`, when a
@@ -370,8 +380,28 @@ Two paths call it:
   gathers `systemctl show` output and the tail of `pipeline/logs/pipeline.log`
   and sends one alert with no secrets in it.
 
-To test either path locally without a real webhook, point
-`NOTIFY_WEBHOOK_URL` at a local listener and trigger the condition:
+### Testing the live chain (on the Pi, real email)
+
+Reads `NOTIFY_WEBHOOK_URL` from `.env`, never prints it:
+```bash
+cd ~/projects/sentinel/pipeline
+PYTHONPATH=. .venv/bin/python -c "
+from notify import send_alert
+ok = send_alert('Manual test', 'Testing the n8n to Gmail alert chain from the Pi.')
+print('sent' if ok else 'NOTIFY_WEBHOOK_URL not set or the POST failed, check logs')
+"
+```
+Confirm an email lands in Job's inbox. To test the `OnFailure=` path
+specifically (still real, still emails):
+```bash
+cd ~/projects/sentinel/pipeline
+PYTHONPATH=. .venv/bin/python notify_failure.py
+```
+
+### Testing without touching the real webhook
+
+Point `NOTIFY_WEBHOOK_URL` at a local listener instead, so nothing reaches
+n8n or Gmail:
 ```bash
 # terminal 1: minimal receiver
 python3 -c "

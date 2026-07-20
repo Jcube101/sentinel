@@ -318,3 +318,29 @@ key then made real REST calls against `events` and `aqi_readings` exactly
 as the browser would, which is what proved RLS wasn't the problem (both
 returned 200 with real rows) rather than assuming it based on the schema
 alone.
+
+---
+
+## Route Alerts Through a Webhook, Not a Mail Library
+
+Once the fetchers were fixed to fail loudly and staleness was calibrated
+correctly (see the entries above), the remaining gap was that a `WARNING`
+log line and a red systemd unit still only reach someone actively reading
+logs, which is detection, not notification. The two look identical from
+outside the process until a human happens to go looking, and the whole
+point of the FIRMS outage this project was built around is that nobody was
+looking for 35 days.
+
+The choice that mattered wasn't "add alerting", it was how: `notify.py`
+POSTs a generic `{source, subject, body}` JSON payload to
+`NOTIFY_WEBHOOK_URL` rather than calling an SMTP library or a Gmail API
+client directly from the pipeline. Delivery, the mail credential, and any
+future routing logic (multiple recipients, a different channel on
+weekends, whatever) live entirely in an n8n workflow on the other end of
+that webhook, not in Sentinel. The pipeline never holds a mail credential,
+never depends on n8n's specific auth flow, and could be repointed at
+Slack, a different inbox, or a pager service by changing one env var and
+zero code. The cost is one more hop and one more thing (n8n, the workflow
+itself) that has to stay up for alerts to land, which is a reasonable
+trade for keeping credentials and delivery logic out of a data pipeline
+that has no other reason to know about either.

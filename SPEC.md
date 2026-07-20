@@ -262,10 +262,17 @@ than a normal lull.
 
 A failed run and a dense-source staleness breach both notify through
 `notify.py`, which POSTs `{source, subject, body}` JSON to
-`NOTIFY_WEBHOOK_URL` if set (an n8n webhook, a Slack incoming webhook, or
-any endpoint that accepts a POST). If unset, `send_alert()` logs and returns
+`NOTIFY_WEBHOOK_URL` if set. If unset, `send_alert()` logs and returns
 `False` instead of raising, so a missing or broken alert channel can never
 itself break the run it's trying to report on.
+
+`NOTIFY_WEBHOOK_URL` currently points at an n8n workflow ("Sentinel
+Alerts") whose webhook trigger forwards to a Gmail send node. Delivery and
+the Gmail credential live entirely in n8n; Sentinel posts a generic JSON
+payload and holds no mail credentials of its own. See README.md's Alerting
+section for the live test commands. The webhook is unauthenticated by
+design for now, treat the URL itself as sensitive since it's the only
+access control in front of it.
 
 Two call sites:
 - `_check_staleness()` inside `pipeline.py`, in-process, for dense-source
@@ -363,9 +370,11 @@ lag — chunks in that window return 0 rows (expected).
 - Never deletes from Supabase
 
 **Scheduling:** `pipeline.py` calls `archive.run()` directly, immediately
-before cleanup, on every invocation; see Archive-then-cleanup above.
-`pipeline/setup_task_scheduler.ps1` (Windows Task Scheduler) predates that
-and is legacy/unused on the Pi.
+before cleanup, on every invocation; see Archive-then-cleanup above. Windows
+Task Scheduler archival is fully retired: `setup_task_scheduler.ps1` has
+been removed from the repo and the Windows scheduled task has been
+disabled. Archival has no Windows or Render component; it runs only on the
+Pi.
 
 ---
 
