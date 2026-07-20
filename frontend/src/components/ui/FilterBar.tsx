@@ -9,9 +9,12 @@ interface Props {
   filters: EventFilters
   onChange: (filters: EventFilters) => void
   totalCount: number
+  showAqi: boolean
+  onToggleAqi: () => void
+  aqiCount: number
 }
 
-export default function FilterBar({ filters, onChange, totalCount }: Props) {
+export default function FilterBar({ filters, onChange, totalCount, showAqi, onToggleAqi, aqiCount }: Props) {
   function toggleCategory(cat: (typeof CATEGORIES)[number]) {
     const has = filters.categories.includes(cat)
     const next = has
@@ -83,6 +86,20 @@ export default function FilterBar({ filters, onChange, totalCount }: Props) {
           </button>
         )
       })}
+
+      <div className="w-px h-5 mx-1" style={{ backgroundColor: '#2a2a3a' }} />
+
+      <button
+        onClick={onToggleAqi}
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors"
+        style={
+          showAqi
+            ? { backgroundColor: '#f9731633', border: '1px solid #f97316', color: '#f97316' }
+            : { backgroundColor: '#16161f', border: '1px solid #2a2a3a', color: '#7070a0' }
+        }
+      >
+        💨 AQI{aqiCount > 0 ? ` (${aqiCount})` : ''}
+      </button>
 
       <div className="ml-auto pl-4 hidden sm:block">
         <span className="text-sm whitespace-nowrap" style={{ color: '#7070a0' }}>
