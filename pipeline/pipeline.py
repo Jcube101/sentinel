@@ -10,6 +10,7 @@ from dateutil import parser as dateutil_parser
 from supabase import Client, create_client
 
 import archive
+import notify
 from config import SUPABASE_SERVICE_KEY, SUPABASE_URL
 from fetchers import eonet, firms, gdacs, openaq, usgs
 
@@ -38,16 +39,29 @@ EVENTS_TABLE = "events"
 AQI_TABLE = "aqi_readings"
 BATCH_SIZE = 500
 
-# "Sane" freshness thresholds per source, derived from each API's documented
-# update cadence (see SPEC.md) — not "always fresh", since EONET/GDACS are
-# event-driven and can legitimately go quiet for weeks.
-STALENESS_THRESHOLDS = {
+# FIRMS and USGS produce new rows on a schedule tight enough that "no new
+# rows in N days" is itself a real failure signal. Thresholds are set from
+# observed history, not guessed: FIRMS is active on ~every UTC day; the
+# widest gap seen between active USGS days in the last 50 rows was 7 days,
+# so 7 gives one day of margin over the worst quiet week actually observed
+# in this bbox/magnitude filter, well short of the old 30-day threshold
+# that would have let most of a month pass unnoticed.
+DENSE_STALENESS_THRESHOLDS = {
     "FIRMS": timedelta(days=2),
-    "USGS": timedelta(days=30),
-    "EONET": timedelta(days=60),
-    "GDACS": timedelta(days=60),
+    "USGS": timedelta(days=7),
 }
 AQI_STALENESS_THRESHOLD = timedelta(hours=48)
+
+# EONET and GDACS are genuinely event-driven: a real quiet stretch and a
+# broken fetcher produce an identical "no new rows" signal, so row age is
+# not a reliable tripwire for them (EONET's own history has a 28-day gap
+# between active days with nothing wrong; the current ~50-day gap was
+# confirmed live to be a real lull, not a bug, see AUDIT.md). For these,
+# the reliable signal is whether the fetch itself succeeded, which is
+# already what fails the run and fires the OnFailure alert; row age is
+# still logged for visibility but never triggers a WARNING or a
+# staleness notification.
+SPARSE_SOURCES = {"EONET", "GDACS"}
 
 
 def _chunks(lst: list, size: int):
@@ -119,24 +133,52 @@ def _newest_age(supabase, table: str, date_col: str, **eq_filters) -> timedelta 
     return datetime.now(tz=timezone.utc) - newest
 
 
-def _check_staleness(supabase) -> None:
-    """Log the newest-row age per source; warn if a source has gone stale.
+def _check_staleness(supabase, fetch_results: dict) -> None:
+    """Log the newest-row age per source; notify Job when a dense source has
+    gone stale, or when any source has zero rows on record.
 
     This is the tripwire that would have caught FIRMS silently ingesting
     nothing for 35 days — every prior run reported "success" with no signal
-    that the data itself had stopped moving.
+    that the data itself had stopped moving. A WARNING alone doesn't reach
+    anyone, so a breach here also calls notify.send_alert(), not just the log.
     """
-    for source, threshold in STALENESS_THRESHOLDS.items():
+    all_sources = {*DENSE_STALENESS_THRESHOLDS, *SPARSE_SOURCES}
+    for source in all_sources:
+        fetch_ok = fetch_results.get(source)
         try:
             age = _newest_age(supabase, EVENTS_TABLE, "started_at", source=source)
         except Exception as exc:
-            logger.error("staleness: check failed for %s — %s", source, exc)
+            logger.error("staleness: check failed for %s: %s", source, exc)
             continue
+
         if age is None:
             logger.warning("staleness: %s has no rows in events table", source)
-        elif age > threshold:
+            notify.send_alert(
+                f"Sentinel: {source} has never ingested any rows",
+                f"events table has zero rows for source={source}. Last fetch for this "
+                f"run: {'ok' if fetch_ok else 'FAILED'}.",
+            )
+            continue
+
+        if source in SPARSE_SOURCES:
+            # Row age is expected to swing widely for event-driven sources;
+            # only a fetch failure (which already fails the run) is a real
+            # signal here, so this is INFO-only regardless of age.
+            logger.info(
+                "staleness: %s newest row is %s old (event-driven source, not alerted on age)",
+                source, age,
+            )
+            continue
+
+        threshold = DENSE_STALENESS_THRESHOLDS[source]
+        if age > threshold:
             logger.warning(
                 "staleness: %s newest row is %s old (threshold %s)", source, age, threshold
+            )
+            notify.send_alert(
+                f"Sentinel: {source} data is stale",
+                f"{source} newest row is {age} old, threshold is {threshold}. "
+                f"Last fetch for this run: {'ok' if fetch_ok else 'FAILED'}.",
             )
         else:
             logger.info("staleness: %s newest row is %s old (ok)", source, age)
@@ -144,14 +186,24 @@ def _check_staleness(supabase) -> None:
     try:
         age = _newest_age(supabase, AQI_TABLE, "recorded_at")
     except Exception as exc:
-        logger.error("staleness: check failed for aqi_readings — %s", exc)
+        logger.error("staleness: check failed for aqi_readings: %s", exc)
         return
     if age is None:
         logger.warning("staleness: aqi_readings has no rows")
+        notify.send_alert(
+            "Sentinel: aqi_readings has never ingested any rows",
+            f"aqi_readings table has zero rows. Last OpenAQ fetch for this run: "
+            f"{'ok' if fetch_results.get('OpenAQ') else 'FAILED'}.",
+        )
     elif age > AQI_STALENESS_THRESHOLD:
         logger.warning(
             "staleness: aqi_readings newest row is %s old (threshold %s)",
             age, AQI_STALENESS_THRESHOLD,
+        )
+        notify.send_alert(
+            "Sentinel: aqi_readings data is stale",
+            f"aqi_readings newest row is {age} old, threshold is {AQI_STALENESS_THRESHOLD}. "
+            f"Last OpenAQ fetch for this run: {'ok' if fetch_results.get('OpenAQ') else 'FAILED'}.",
         )
     else:
         logger.info("staleness: aqi_readings newest row is %s old (ok)", age)
@@ -168,7 +220,11 @@ def run(dry_run: bool = False):
     usgs_rows,   usgs_ok   = _run_fetcher("USGS",   usgs)
     openaq_rows, openaq_ok = _run_fetcher("OpenAQ", openaq)
 
-    any_failure = not all([firms_ok, eonet_ok, gdacs_ok, usgs_ok, openaq_ok])
+    fetch_results = {
+        "FIRMS": firms_ok, "EONET": eonet_ok, "GDACS": gdacs_ok,
+        "USGS": usgs_ok, "OpenAQ": openaq_ok,
+    }
+    any_failure = not all(fetch_results.values())
 
     # --- Write events ---
     all_events = _dedup(firms_rows + eonet_rows + gdacs_rows + usgs_rows)
@@ -221,7 +277,7 @@ def run(dry_run: bool = False):
         if not archive_ok:
             logger.error("archive: run exited %d — skipping cleanup this run", archive_exit)
     except Exception as exc:
-        logger.error("archive: run raised an exception — %s — skipping cleanup this run", exc)
+        logger.error("archive: run raised an exception: %s, skipping cleanup this run", exc)
         archive_ok = False
 
     if not archive_ok:
@@ -230,11 +286,11 @@ def run(dry_run: bool = False):
     if dry_run:
         logger.info("dry-run: skipping cleanup")
     elif not archive_ok:
-        logger.warning("cleanup: skipped — archive did not complete successfully")
+        logger.warning("cleanup: skipped, archive did not complete successfully")
     else:
         _cleanup(supabase)
 
-    _check_staleness(supabase)
+    _check_staleness(supabase, fetch_results)
 
     return 1 if any_failure else 0
 
