@@ -11,16 +11,28 @@
 - [x] backfill.py for historical data
 - [x] archive.py → local SQLite
 - [x] 60-day rolling cleanup on Supabase
-- [x] Windows Task Scheduler automation
-- [x] Render cron job (daily 6:30am IST)
-- [x] Migrated to Raspberry Pi (jobpi) — systemd timer pair, daily 01:00 UTC (6:30am IST)
+- [x] Windows Task Scheduler automation (legacy, superseded by the Pi migration below)
+- [x] Render cron job (daily 6:30am IST) (legacy, superseded by the Pi migration below)
+- [x] Migrated to Raspberry Pi (jobpi), systemd timer pair, rescheduled to 3x daily
+      (09:00, 15:00, 21:00 UTC) after the original 01:00 UTC schedule was found to
+      predate the FIRMS overpass every day
 - [x] Monorepo restructure
+- [x] Fail-loud fetchers: request/parse failures now propagate and fail the run,
+      instead of returning an empty list that reads identically to a quiet day
+- [x] archive.py wired directly into pipeline.py, immediately before cleanup, so
+      cleanup can never delete un-archived data
+- [x] Per-source staleness thresholds recalibrated from real Supabase history
+      (dense sources: FIRMS/USGS/OpenAQ; event-driven: EONET/GDACS, not alerted on
+      row age)
+- [x] Failure and staleness alerting via an optional webhook (notify.py), with an
+      OnFailure= systemd hook for failures the process can't self-report
 
 ## Phase 2 — Pipeline Improvements (PLANNED 📋)
 - [ ] OpenAQ pagination (currently capped at 50 locations)
 - [ ] Tighter India bbox to reduce border noise
 - [ ] Retry logic for transient API failures
-- [ ] Slack/email alert if pipeline fails 2x in a row
+- [x] Webhook alert on pipeline failure or dense-source staleness (see above);
+      Slack/email specifically not implemented, any webhook-consuming channel works
 - [ ] FIRMS backfill beyond 30 days (SP source coverage gaps investigation)
 
 ## Phase 3 — Pipeline Enhancements (FUTURE 💡)

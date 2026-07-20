@@ -1,11 +1,11 @@
 # Sentinel Pipeline
 
 Python data pipeline for the Sentinel natural disaster tracker.
-Fetches from 5 APIs and upserts to Supabase daily via a systemd timer on the Raspberry Pi (jobpi).
+Fetches from 5 APIs and upserts to Supabase three times daily via a systemd timer on the Raspberry Pi (jobpi).
 
 ## Status
 All 5 fetchers complete and validated. pipeline.py and backfill.py working end-to-end.
-systemd timer deployed on the Raspberry Pi (jobpi), daily 6:30am IST / 01:00 UTC.
+systemd timer deployed on the Raspberry Pi (jobpi), three times daily at 09:00, 15:00, 21:00 UTC.
 - FIRMS → ~5,800 fire hotspot events (pipeline); ~97,245 events backfilled (30 days)
 - EONET → ~93 events (wildfires + severe storms)
 - GDACS → ~47 events (floods, cyclones, earthquakes)
@@ -59,14 +59,13 @@ PYTHONPATH=. python archive.py
 
 - Archives events older than 30 days
 - Archives aqi_readings older than 7 days
-- Uses INSERT OR REPLACE — safe to run multiple times
+- Uses INSERT OR REPLACE, safe to run multiple times
 - Does NOT delete from Supabase (cleanup is handled by pipeline.py)
 
-To set up automatic archival on Windows logon, run once (as Administrator):
-```powershell
-.\setup_task_scheduler.ps1
-```
-This creates a Windows Task Scheduler task named "Sentinel Archive".
+`pipeline.py` calls `archive.run()` directly, immediately before cleanup, on
+every invocation, so this does not need separate scheduling. The command
+above is for running it standalone. `setup_task_scheduler.ps1` (Windows
+Task Scheduler) predates that and is unused on the Pi.
 
 ## Cleanup (auto, runs inside pipeline.py)
 
@@ -87,6 +86,7 @@ This creates a Windows Task Scheduler task named "Sentinel Archive".
 - SUPABASE_SERVICE_KEY
 - FIRMS_MAP_KEY
 - OPENAQ_API_KEY
+- NOTIFY_WEBHOOK_URL (optional; failure and staleness alerts, see notify.py)
 
 ## Data Sources
 - FIRMS: fire hotspots (India bbox: 68.7,8.4,97.4,37.1)
@@ -136,8 +136,15 @@ created_at: timestamptz
 
 ## Key Rules
 - Every fetcher returns List[dict] matching Supabase schema exactly
-- IDs must be deterministic — built from source data, never random UUIDs
+- IDs must be deterministic, built from source data, never random UUIDs
 - Always upsert, never plain insert (conflict key: id column)
-- One fetcher must never crash the whole pipeline — wrap each in try/except
+- A fetcher must never crash the whole pipeline, but it must not swallow
+  top-level failures either: per-row/per-feature errors are caught and
+  skipped inside the fetcher, but a request or response-parse failure
+  propagates out of `fetch()` so `_run_fetcher()` can catch it and mark that
+  source failed for the run, without halting the others
 - Log clearly: source name, rows fetched, rows upserted, any errors
-- Never hardcode credentials — always read from environment variables
+- Never hardcode credentials, always read from environment variables
+- A run that fails, or where FIRMS/USGS/OpenAQ go stale, sends an alert via
+  notify.py if NOTIFY_WEBHOOK_URL is set; EONET/GDACS are event-driven and
+  are never alerted on row age, only on the fetch itself failing

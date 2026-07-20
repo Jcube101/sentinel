@@ -7,7 +7,7 @@
 
 **Real-time natural disaster tracker for India.**
 
-Sentinel fetches fire hotspots, earthquakes, floods, cyclones, and air quality readings from five public APIs and upserts them into Supabase every day. A frontend map visualises active events across India.
+Sentinel fetches fire hotspots, earthquakes, floods, cyclones, and air quality readings from five public APIs and upserts them into Supabase three times daily. A frontend map visualises active events across India, with an air quality panel showing current station readings alongside it.
 
 ## Live Demo
 https://sentinel-frontend-8hem.onrender.com
@@ -198,6 +198,7 @@ un-archived data, and the pipeline exits non-zero.
 | `SUPABASE_SERVICE_KEY` | Yes | Supabase service role key |
 | `FIRMS_MAP_KEY` | Yes | NASA FIRMS MAP key |
 | `OPENAQ_API_KEY` | Yes | OpenAQ API key |
+| `NOTIFY_WEBHOOK_URL` | No | Webhook that receives failure/staleness alerts; see Alerting below |
 
 See `pipeline/.env.example` for the pipeline and `frontend/.env.example` for the frontend.
 
@@ -222,8 +223,9 @@ npm run dev
 3. **Upsert** — `pipeline.py` bulk-upserts to Supabase in batches of 500 using deterministic `id` as conflict key
 4. **Archive**: `archive.py` copies old data to local SQLite before cleanup can age it out of Supabase; if archiving fails, cleanup is skipped for that run
 5. **Cleanup**: deletes stale rows at the end of every run, gated on a successful archive
-6. **Staleness check**: logs the newest row's age per source, and warns if a source that should be fresh has gone quiet
-7. **Schedule**: a systemd timer on the Raspberry Pi (jobpi) runs `pipeline.py` three times daily, at 09:00, 15:00, and 21:00 UTC
+6. **Staleness check**: logs the newest row's age per source, and alerts (see Alerting below) if a source expected to be fresh has gone quiet. FIRMS/USGS/OpenAQ are checked this way; EONET/GDACS are event-driven and are only alerted on if the fetch itself fails, not on row age, since a real quiet month and a broken fetcher look identical from row age alone
+7. **Alert on failure**: if the run fails outright, a separate systemd unit fires via `OnFailure=` and sends the same kind of alert, so a crash the process can't self-report still reaches you
+8. **Schedule**: a systemd timer on the Raspberry Pi (jobpi) runs `pipeline.py` three times daily, at 09:00, 15:00, and 21:00 UTC
 
 ---
 
@@ -253,10 +255,27 @@ WantedBy=timers.target
 Description=Sentinel Natural Disaster Pipeline
 After=network-online.target
 Wants=network-online.target
+OnFailure=sentinel-pipeline-alert.service
 
 [Service]
 Type=oneshot
 ExecStart=/home/jcube/projects/sentinel/pipeline/.venv/bin/python pipeline.py
+WorkingDirectory=/home/jcube/projects/sentinel/pipeline
+User=jcube
+Environment=PYTHONUNBUFFERED=1
+StandardOutput=journal
+StandardError=journal
+```
+
+`/etc/systemd/system/sentinel-pipeline-alert.service` (triggered by the
+`OnFailure=` above, see Alerting below):
+```ini
+[Unit]
+Description=Send a failure alert for sentinel-pipeline.service
+
+[Service]
+Type=oneshot
+ExecStart=/home/jcube/projects/sentinel/pipeline/.venv/bin/python notify_failure.py
 WorkingDirectory=/home/jcube/projects/sentinel/pipeline
 User=jcube
 Environment=PYTHONUNBUFFERED=1
@@ -322,11 +341,59 @@ Each run ends with a per-source staleness check. A `WARNING` line like:
 staleness: FIRMS newest row is 35 days, 10:18:27 old (threshold 2 days, 0:00:00)
 ```
 means that source's newest row in Supabase is older than expected for how
-often that API updates. This is the signal to go check whether the fetcher,
-its credentials, or the upstream API broke. An `INFO ... (ok)` line means the
-source is within its expected freshness window; thresholds are looser for
-EONET/GDACS since both are event-driven and can legitimately go quiet for
-weeks.
+often that API updates, and also fires an alert (see Alerting below). This
+only applies to FIRMS, USGS, and OpenAQ: `EONET`/`GDACS` log their row age at
+`INFO` regardless of how old it is and never alert on it, because both are
+event-driven and a real quiet month looks identical to a broken fetcher from
+row age alone; see LEARNINGS.md for the reasoning and the real historical
+gaps that set these thresholds.
+
+---
+
+## Alerting
+
+A failed run or a stale dense source (FIRMS, USGS, OpenAQ) sends an alert
+through `notify.py`: a POST of `{source, subject, body}` JSON to
+`NOTIFY_WEBHOOK_URL`, which can be an n8n webhook, a Slack incoming webhook,
+or anything else that accepts a POST. If `NOTIFY_WEBHOOK_URL` isn't set, the
+attempt is logged and skipped rather than raising, so a missing alert
+channel can't break the run it's trying to report on.
+
+Two paths call it:
+- **In-process**, from `_check_staleness()` inside `pipeline.py`, when a
+  dense source crosses its threshold or any source has zero rows on record.
+- **Out-of-process**, via `sentinel-pipeline.service`'s `OnFailure=` hook,
+  which runs `notify_failure.py` as a separate unit
+  (`sentinel-pipeline-alert.service`). This exists specifically to catch
+  failures the pipeline process can't self-report: an interpreter crash, an
+  OOM kill, anything that ends the process before its own code runs. It
+  gathers `systemctl show` output and the tail of `pipeline/logs/pipeline.log`
+  and sends one alert with no secrets in it.
+
+To test either path locally without a real webhook, point
+`NOTIFY_WEBHOOK_URL` at a local listener and trigger the condition:
+```bash
+# terminal 1: minimal receiver
+python3 -c "
+import http.server
+class H(http.server.BaseHTTPRequestHandler):
+    def do_POST(self):
+        print(self.rfile.read(int(self.headers['Content-Length'])))
+        self.send_response(200); self.end_headers()
+http.server.HTTPServer(('127.0.0.1', 8199), H).serve_forever()
+"
+
+# terminal 2: force a staleness alert without touching real data
+NOTIFY_WEBHOOK_URL=http://127.0.0.1:8199/ PYTHONPATH=. python3 -c "
+import pipeline
+from datetime import timedelta
+pipeline.DENSE_STALENESS_THRESHOLDS['FIRMS'] = timedelta(seconds=1)
+pipeline.run(dry_run=True)
+"
+
+# or the OnFailure path directly
+NOTIFY_WEBHOOK_URL=http://127.0.0.1:8199/ PYTHONPATH=. python3 notify_failure.py
+```
 
 ---
 

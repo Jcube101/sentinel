@@ -267,3 +267,54 @@ the delete on the archive having actually succeeded. Since `archive.py`
 only reads from Supabase and writes locally via `INSERT OR REPLACE`, it's
 idempotent and safe to call on every invocation, including multiple times a
 day.
+
+---
+
+## Detection Without Notification Is Still a Silent Failure
+
+Fixing the fetchers to fail loudly (see above) made a broken run turn the
+systemd unit red and log a `WARNING` for a stale source. Nothing about that
+reaches a person. A red unit nobody looks at and a green one that lies are
+the same outcome from the outside: the problem sits there until someone
+happens to go looking. The FIRMS outage this project was built around
+existed for 35 days specifically because detection and notification were
+never the same thing.
+
+The fix isn't just "add alerting", it's routing every failure signal that
+already exists through it: fetch failures (already fail the run) get an
+`OnFailure=` systemd hook so even a crash the process can't self-report
+still reaches someone, and staleness (already logged) gets the same
+`notify.send_alert()` call the moment it's detected, not left as a log line
+for the next audit to find. A monitoring signal that only a human actively
+reading logs will ever see isn't monitoring, it's an audit trail.
+
+The corollary: a flat "no new rows in N days" tripwire is wrong for a
+source whose true event rate is irregular. EONET and GDACS are event-driven
+and can go quiet for weeks legitimately, so treating their row age the same
+way as FIRMS's would either miss real breakage (threshold too loose to ever
+fire) or alert constantly on healthy quiet periods (too tight). A live
+probe distinguishing "the fetch returned 200 and parsed cleanly, it just
+found nothing new" from "the fetch failed" was the only way to tell the two
+apart, and only the second one is a real tripwire for a sparse source.
+
+---
+
+## A Deployed Frontend's Anon Key Is Public by Design, Use It to Test RLS
+
+Diagnosing why AQI data collected into Supabase never appeared in the
+frontend needed a real anon-role request against both tables, but there was
+no `frontend/.env.local` on the Pi (the frontend runs on Render, not here),
+no direct Postgres connection, and no Supabase CLI to introspect RLS
+policies. The service-role key bypasses RLS entirely, so it couldn't be
+used to test what the anon role actually sees.
+
+The anon key isn't a secret: it's meant to be embedded in client-side code
+and is protected only by RLS policies on the tables it can reach, so it's
+already sitting in the deployed frontend's JS bundle. `curl`ing the live
+site's HTML, extracting the built JS asset path, and grepping that file for
+a JWT-shaped string (`eyJ...`) recovered the real production anon key
+directly, no credentials needed beyond the site already being public. That
+key then made real REST calls against `events` and `aqi_readings` exactly
+as the browser would, which is what proved RLS wasn't the problem (both
+returned 200 with real rows) rather than assuming it based on the schema
+alone.

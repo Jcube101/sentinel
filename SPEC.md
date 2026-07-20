@@ -226,11 +226,57 @@ affect the others or the pipeline exit code.
 - Exit code is `1` if any fetcher, upsert, or archive failed, `0` on full
   success.
 - `_check_staleness()` runs at the end of every call, regardless of exit
-  code: it logs the newest row's age per source and warns when a source
-  exceeds its expected freshness window (2 days for FIRMS/OpenAQ, 30 for
-  USGS, 60 for the event-driven EONET/GDACS). This does not affect the exit
-  code. It's a log signal for whoever is watching `pipeline/logs/pipeline.log`,
-  not a hard failure.
+  code, and never affects it: staleness is a notification concern (see
+  Alerting below), not a hard failure.
+
+### Staleness thresholds: dense vs event-driven sources
+
+Thresholds are set from actual history in Supabase, not from guessing at
+each API's documented cadence:
+
+| Source | Classification | Threshold | Why |
+|--------|----------------|-----------|-----|
+| FIRMS | Dense | 2 days | Active essentially every UTC day in the observed history |
+| USGS | Dense | 7 days | Worst observed gap between active days (M4+, this bbox) in the last 50 rows was 7 days; old threshold was 30 |
+| OpenAQ (aqi_readings) | Dense | 48 hours | Documented hourly-per-station cadence |
+| EONET | Event-driven | not row-age-checked | Own history has a 28-day gap between active days with nothing wrong; a live probe found 0 events in the trailing 30 days but 178 in the trailing 180, confirming the current ~50-day gap is a real lull, not a broken fetcher |
+| GDACS | Event-driven | not row-age-checked | Median historical gap of 5 days between active days but with real multi-week quiet stretches; India-relevant events are inherently rare in this feed |
+
+For dense sources, `_check_staleness()` warns and calls `notify.send_alert()`
+when the newest row exceeds the threshold. For event-driven sources, the row
+age is still logged at `INFO` every run for visibility, but never triggers a
+`WARNING` or an alert, because a real quiet month and a silently broken
+fetcher produce an identical "no new rows" signal for a source whose true
+event rate is naturally sparse and irregular. The reliable tripwire for
+these two is whether the fetch itself succeeded, which already fails the run
+via `_run_fetcher()` and reaches `OnFailure=` (see Alerting below)
+regardless of source classification.
+
+Any source, dense or event-driven, with literally zero rows on record is
+still treated as a distinct failure and alerted on: never having ingested a
+single row is a meaningfully stronger signal than "went quiet after being
+active," and is a plausible real bootstrap or configuration failure rather
+than a normal lull.
+
+### Alerting
+
+A failed run and a dense-source staleness breach both notify through
+`notify.py`, which POSTs `{source, subject, body}` JSON to
+`NOTIFY_WEBHOOK_URL` if set (an n8n webhook, a Slack incoming webhook, or
+any endpoint that accepts a POST). If unset, `send_alert()` logs and returns
+`False` instead of raising, so a missing or broken alert channel can never
+itself break the run it's trying to report on.
+
+Two call sites:
+- `_check_staleness()` inside `pipeline.py`, in-process, for dense-source
+  staleness and the zero-rows-ever case.
+- `notify_failure.py`, a separate entry point invoked by a dedicated
+  `sentinel-pipeline-alert.service` unit via `sentinel-pipeline.service`'s
+  `OnFailure=` directive. This exists specifically to catch failures the
+  pipeline process cannot self-report (an interpreter crash, an OOM kill,
+  anything that ends the process before its own code runs), gathering
+  `systemctl show` output and the tail of the durable logfile into one alert
+  with no secrets in it.
 
 ### ID Formats
 
@@ -269,9 +315,19 @@ affect the others or the pipeline exit code.
 - Toggle by status (open/closed/all)
 - Days range selector (7/30/90)
 
-**AQI overlay (V2):**
-- Station markers with colour-coded AQI value
-- Tooltip showing parameter breakdown
+**AQI panel (shipped Jul 2026):**
+- `AqiPanel.tsx`, toggled from a button in the filter bar, reuses
+  `EventDetailPanel`'s exact slide-in construction (bottom sheet on mobile,
+  fixed panel on desktop), anchored left instead of right so the two panels
+  never collide when both are open
+- Queries `aqi_readings` directly via `useAqiReadings` (last 24h), grouped
+  by station, sorted worst-PM2.5-first
+- Latest PM2.5 per station with an indicative CPCB/EPA-style color band, an
+  up/down trend arrow computed from the oldest vs newest PM2.5 reading
+  already in the fetched window, and the other pollutants read at that
+  station
+- **Not yet built:** map overlay with color-coded station markers and a
+  hover tooltip, this panel is a list view, not a map layer
 
 **Stats bar:**
 - Total open events count
@@ -321,6 +377,7 @@ and is legacy/unused on the Pi.
 | `SUPABASE_SERVICE_KEY` | Service role key from Project Settings → API |
 | `FIRMS_MAP_KEY` | NASA FIRMS MAP key |
 | `OPENAQ_API_KEY` | OpenAQ v3 API key |
+| `NOTIFY_WEBHOOK_URL` | Optional. Failure/staleness alert webhook, see Alerting above |
 
 ---
 
@@ -341,6 +398,8 @@ and is legacy/unused on the Pi.
   sentinel-pipeline.service`) evicts entries within hours because other
   services on the Pi generate high journal volume. See README.md's Pi
   Deployment & Operations section for the full runbook.
+- Alerting: `sentinel-pipeline.service` has `OnFailure=sentinel-pipeline-alert.service`,
+  a separate oneshot unit that runs `notify_failure.py`. See Alerting above.
 
 **Frontend service:** Render
 - Type: Static Site

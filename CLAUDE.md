@@ -1,7 +1,7 @@
 # Sentinel Monorepo
 
 ## Structure
-- pipeline/ — Python pipeline, runs on the Raspberry Pi (jobpi) via systemd timer (daily 6:30am IST / 01:00 UTC)
+- pipeline/: Python pipeline, runs on the Raspberry Pi (jobpi) via systemd timer, three times daily (09:00, 15:00, 21:00 UTC)
 - frontend/ — Vite + React frontend, Render static site (live at sentinel-frontend-8hem.onrender.com)
 
 ## Rules
@@ -36,3 +36,6 @@ npm run dev
 - SentinelMap accepts an isLoading prop for a loading overlay
 - Dark theme: background #0a0a0f, accent #f97316 (amber), muted text #7070a0
 - Map tiles: OpenFreeMap dark style
+- useAqiReadings queries aqi_readings directly (last 24h); AqiPanel is the only consumer,
+  toggled from FilterBar, slides in from the left so it never collides with EventDetailPanel
+  on the right
