@@ -14,7 +14,7 @@
 
 ### Stack
 - Vite + React 19 + TypeScript
-- Tailwind CSS, MapLibre GL (react-map-gl v8), Supercluster, Recharts
+- Tailwind CSS, Leaflet (react-leaflet v5), Supercluster, Recharts
 - React Query (@tanstack/react-query) + @supabase/supabase-js
 - Lucide React for icons
 
@@ -35,7 +35,9 @@ npm run dev
 - Landing page uses 4 separate useNaturalEvents calls (one per category) for accurate stat counts
 - SentinelMap accepts an isLoading prop for a loading overlay
 - Dark theme: background #0a0a0f, accent #f97316 (amber), muted text #7070a0
-- Map tiles: OpenFreeMap dark style
+- Map tiles: CARTO dark raster. Leaflet renders raster tiles on the DOM, so the
+  map needs no WebGL and works in every browser (the earlier MapLibre map showed
+  a blank void when WebGL was unavailable)
 - useAqiReadings queries aqi_readings directly (last 24h); AqiPanel is the only consumer,
   toggled from FilterBar, slides in from the left so it never collides with EventDetailPanel
   on the right
