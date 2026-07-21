@@ -218,3 +218,6 @@ dist/
 
 # SQLite
 *.db
+
+# Local-only audit notes, not meant to be tracked
+AUDIT.md
