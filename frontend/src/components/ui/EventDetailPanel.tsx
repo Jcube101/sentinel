@@ -29,13 +29,13 @@ export default function EventDetailPanel({ event, onClose }: Props) {
     <>
       {/* Mobile backdrop */}
       <div
-        className="fixed inset-0 z-40 sm:hidden"
+        className="fixed inset-0 z-[1100] sm:hidden"
         style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}
         onClick={onClose}
       />
 
       <div
-        className="fixed z-50 overflow-y-auto
+        className="fixed z-[1200] overflow-y-auto
           bottom-0 left-0 right-0 rounded-t-2xl max-h-[60vh]
           sm:top-[56px] sm:right-0 sm:bottom-0 sm:left-auto sm:w-80 sm:rounded-none sm:max-h-none"
         style={{ backgroundColor: '#16161f', borderTop: '1px solid #2a2a3a', borderLeft: '1px solid #2a2a3a' }}

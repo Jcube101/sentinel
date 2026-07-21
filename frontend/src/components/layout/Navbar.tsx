@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 export default function Navbar() {
   return (
     <nav
-      className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 sm:px-6"
+      className="fixed top-0 left-0 right-0 z-[1300] flex items-center justify-between px-4 sm:px-6"
       style={{
         height: 56,
         backgroundColor: '#0a0a0f',
