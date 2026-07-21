@@ -19,6 +19,25 @@ interface ViewState {
   bounds: [number, number, number, number] | null
 }
 
+// MapLibre needs a working WebGL context. When one cannot be created (hardware
+// acceleration disabled, GPU driver blocklisted, WebGL turned off), the map
+// mounts nothing at all: no tiles, no controls, no attribution, just a blank
+// void that reads as "the map is gone". Probe once so we can show a real
+// message instead of that void.
+function webglAvailable(): boolean {
+  if (typeof document === 'undefined') return true
+  try {
+    const canvas = document.createElement('canvas')
+    return !!(
+      canvas.getContext('webgl2') ||
+      canvas.getContext('webgl') ||
+      canvas.getContext('experimental-webgl')
+    )
+  } catch {
+    return false
+  }
+}
+
 export default function SentinelMap({ events, onEventSelect, selectedEvent, isLoading }: Props) {
   const [viewState, setViewState] = useState<ViewState>({
     longitude: 82.8,
@@ -26,6 +45,8 @@ export default function SentinelMap({ events, onEventSelect, selectedEvent, isLo
     zoom: 4.2,
     bounds: null,
   })
+
+  const webglOk = useMemo(webglAvailable, [])
 
   const points = useMemo(
     () =>
@@ -67,6 +88,35 @@ export default function SentinelMap({ events, onEventSelect, selectedEvent, isLo
       bounds: [b[0][0], b[0][1], b[1][0], b[1][1]],
     }))
   }, [])
+
+  if (!webglOk) {
+    return (
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 10,
+          padding: 24,
+          textAlign: 'center',
+          background: '#0a0a0f',
+          color: '#7070a0',
+        }}
+      >
+        <div style={{ color: '#f97316', fontSize: 15, fontWeight: 600 }}>
+          Map unavailable
+        </div>
+        <div style={{ fontSize: 13, maxWidth: 380, lineHeight: 1.5 }}>
+          This map needs WebGL, which your browser could not start. Enable
+          hardware acceleration (or WebGL) and reload. The event list and stats
+          below still work without it.
+        </div>
+      </div>
+    )
+  }
 
   return (
     <>

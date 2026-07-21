@@ -5,6 +5,16 @@ services:
     rootDir: frontend
     buildCommand: npm install && npm run build
     staticPublishPath: dist
+    # SPA fallback: this is a client-routed single-page app (react-router).
+    # Without this, any direct hit or refresh on a client route such as
+    # /dashboard makes Render look for a file at dist/dashboard, not find
+    # one, and return its own 404. The rewrite serves index.html for any
+    # path that is not an existing static file, letting the router handle it.
+    # Existing files (assets, favicon) still take precedence over this rule.
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
     envVars:
       - key: VITE_SUPABASE_URL
         sync: false
