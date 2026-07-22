@@ -15,8 +15,15 @@ filter bar) shipped Jul 2026. Map overlay with color-coded station markers,
 cyclone tracks, and historical charts are still planned.
 See [frontend/ROADMAP.md](frontend/ROADMAP.md) for detail.
 
-## Phase 4 — Enhancements (FUTURE 💡)
-Alerts, public API, expanded coverage.
+## Phase 4 — Frontend UI / IA Revamp (PLANNED 📋)
+A fresh look and a real information architecture: CSS design tokens, multi-page
+IA (Home / Live Map / Insights / Event detail / About), a live "Active Threats"
+feed, client-side severity scoring, and a Recharts insights page. India-scoped,
+no pipeline or schema changes. Full execution spec (6 sub-steps, one-shottable)
+in [frontend/ROADMAP.md](frontend/ROADMAP.md) Phase 4.
+
+## Phase 5 — Enhancements (FUTURE 💡)
+Light mode, alerts/subscribe, public API, expanded coverage.
 
 ---
 
@@ -50,15 +57,6 @@ looks at this project.
   what 2.31.0 expects. Do this as a reviewed run, not unattended: the writes
   this pipeline depends on could break in a way that only shows up against
   real data.
-- **Stray n8n workflow `sentinel-firms`.** Left over from the Render era and
-  still active. Not readable through the current n8n MCP connector, so this
-  needs a manual look in the n8n UI: confirm whether it still does anything,
-  and retire it if it's defunct.
-- **`dating-profile-optimizer` API and UI units in an OOM restart loop**
-  (`status=9/KILL`). An external project on the same Pi, not a Sentinel
-  task. Recorded here only because it floods the shared journald and is the
-  reason `journalctl -u sentinel-pipeline.service` isn't reliable (see
-  README.md's Logs section and LEARNINGS.md).
 - **`FIRMS_MAP_KEY` was not rotated.** It's a free-tier key that was only
   ever exposed in local terminal output and journald, never committed to
   the repo. Deliberately left as-is; this is a recorded decision, not an

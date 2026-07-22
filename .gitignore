@@ -221,3 +221,6 @@ dist/
 
 # Local-only audit notes, not meant to be tracked
 AUDIT.md
+
+# Local-only revamp planning notes, not meant to be tracked
+REVAMP.md
