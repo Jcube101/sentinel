@@ -28,9 +28,9 @@ sentinel/
 │   └── render.yaml     (legacy Render cron config, unused; pipeline runs on the Pi)
 └── frontend/    — Vite + React map interface (live at sentinel-frontend-8hem.onrender.com)
     ├── src/
-    │   ├── lib/          — Supabase client, types
+    │   ├── lib/          — Supabase client, types, time/severity helpers
     │   ├── hooks/        — React Query data hooks
-    │   ├── pages/        — Landing, Dashboard
+    │   ├── pages/        — Landing (Home), LiveMap, Insights, EventDetail, About
     │   └── components/   — map, layout, ui
     ├── package.json
     └── render.yaml
@@ -96,8 +96,9 @@ sentinel/
 - **Raspberry Pi (jobpi)**: pipeline runs via a systemd timer pair, three times daily
 - **Render** — frontend static site host
 - **Vite + React 19 + TypeScript** — frontend
-- **Tailwind CSS + MapLibre GL + Recharts** — styling, map, charts
+- **Tailwind CSS + Leaflet + Recharts** — styling, map, charts
 - **React Query + Supabase client** — frontend data layer
+- **React Router** — Home / Live Map / Insights / Event detail / About
 
 ---
 

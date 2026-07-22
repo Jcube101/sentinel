@@ -30,11 +30,11 @@ sentinel/
 │   ├── config.py          — env vars + India bbox constants
 │   ├── requirements.txt
 │   └── render.yaml        — legacy Render cron config (unused; pipeline runs on the Pi)
-└── frontend/              — Vite + React + TypeScript dashboard
+└── frontend/              — Vite + React + TypeScript app
     ├── src/
-    │   ├── lib/            — Supabase client, types, constants
+    │   ├── lib/            — Supabase client, types, time/severity helpers
     │   ├── hooks/          — React Query data hooks
-    │   ├── pages/          — Landing, Dashboard
+    │   ├── pages/          — Landing (Home), LiveMap, Insights, EventDetail, About
     │   └── components/     — map, layout, ui
     ├── package.json
     └── render.yaml         — Render static site config
@@ -298,29 +298,46 @@ Two call sites:
 
 ## Frontend Spec
 
-**Stack:** Vite + React + TypeScript + MapLibre GL JS + Recharts
+**Stack:** Vite + React + TypeScript + Leaflet + Recharts + React Router
 
-**Design system:** Dark (#0a0a0f), amber accent (#f97316), Inter/DM Sans
+**Design system:** Dark (#0a0a0f), amber accent (#f97316), Inter — values live as
+CSS custom properties in `src/index.css` (`--bg`, `--surface`, `--border`,
+`--text`, `--muted`, `--accent`, `--cat-*` category hues, `--sev-*` severity
+ramp), aliased in `tailwind.config.js`.
+
+**Routes (Phase 4, Jul 2026):**
+| Route | Page | Purpose |
+|-------|------|---------|
+| `/` | Home (`Landing.tsx`) | Hero, live status line, Active Threats feed, category strip, mini-map preview |
+| `/map` | Live Map (`LiveMap.tsx`) | Full-bleed map + filters + detail panel + AQI panel |
+| `/insights` | Insights | Recharts analytics: events over time, severity distribution, regions, open/closed, AQI leaderboard |
+| `/event/:id` | Event detail | Single event, locator map, nearby events |
+| `/about` | About | Methodology, data sources, scope, disclaimer |
+| `/dashboard` | — | Redirects to `/map` (legacy bookmarks) |
 
 **Map:**
-- Base layer: MapLibre GL with dark OpenFreeMap tiles
-- Initial view: lon 82.8, lat 22.5, zoom 4.2
+- Base layer: Leaflet with CARTO dark raster tiles (renders as DOM `<img>` tiles, so it needs no WebGL — replaces an earlier MapLibre map that showed a blank void when WebGL was unavailable)
+- Initial view: lon 82.8, lat 22.5, zoom 4
 - Event markers: coloured by category (fire=#ef4444, flood=#3b82f6, cyclone=#8b5cf6, earthquake=#f59e0b)
 - Supercluster clustering for dense FIRMS hotspots
+- `SentinelMap` also supports a non-interactive mode (drag/zoom disabled) and a `center`/`zoom` override, used by the Home mini-map preview and the Event detail locator map
 - Click: opens event detail panel
 
-**Event detail panel:**
-- Bottom sheet on mobile, side panel on desktop
-- Event title, category badge, severity badge
+**Event detail panel / page:**
+- Bottom sheet on mobile, side panel on desktop (panel); full page at `/event/:id`
+- Event title, category badge, severity badge, relative-time line, severity meter (0-100, see `lib/severity.ts`)
 - Started/closed dates
 - Place name + coordinates
-- Source link
+- Source link + "View full page" link (panel only)
 - Description
+- Event detail page adds: locator map, nearby events (client-side, ~1° box, sorted by distance)
 
 **Filters:**
-- Toggle by category
+- Toggle by category (grouped, labeled segments: Category | Status | Window | AQI)
 - Toggle by status (open/closed/all)
 - Days range selector (7/30/90)
+- Clear-filters affordance when filters differ from defaults
+- Command palette (Ctrl-K or a search icon button) — searches loaded event titles/places, navigates to `/event/:id`
 
 **AQI panel (shipped Jul 2026):**
 - `AqiPanel.tsx`, toggled from a button in the filter bar, reuses
@@ -337,9 +354,25 @@ Two call sites:
   hover tooltip, this panel is a list view, not a map layer
 
 **Stats bar:**
-- Total open events count
-- Count by category (Recharts bar chart)
-- Last pipeline run timestamp
+- Count by category (plain counts, not a chart)
+- Worst current PM2.5 reading (station name + value)
+- Relative time since the most recently-started loaded event, as a proxy for
+  "last updated" — not an actual pipeline-run timestamp, there is no
+  `pipeline_runs` table
+
+**Insights page (Phase 4, Jul 2026):** `/insights`, Recharts, all derived from
+the existing `events`/`aqi_readings` queries over a 90-day window — no new
+tables:
+- Events by category over time (stacked area, daily buckets)
+- Severity distribution per category (bucketed by the normalized `severity`
+  label, not raw `severity_value` — that field's units aren't comparable
+  even within one category, e.g. USGS magnitude vs. GDACS alert-level numerics
+  for earthquakes)
+- Most-affected regions (top `place_name` by count; events with no
+  `place_name` — mostly raw FIRMS hotspots — are excluded rather than lumped
+  into an "Unknown" bucket that would dwarf every real place)
+- Open vs. closed ratio + median duration
+- AQI leaderboard (worst current PM2.5 stations)
 
 ---
 
@@ -425,7 +458,7 @@ Pi.
 
 - React 19 + TypeScript 6
 - Tailwind CSS 3
-- MapLibre GL JS + react-map-gl v8 + supercluster
+- Leaflet + react-leaflet v5 + supercluster
 - Supabase client (`@supabase/supabase-js`) + React Query (`@tanstack/react-query`)
 - React Router (`react-router-dom`)
 - Recharts

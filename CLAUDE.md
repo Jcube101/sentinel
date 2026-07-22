@@ -30,11 +30,25 @@ npm run dev
 - VITE_SUPABASE_URL
 - VITE_SUPABASE_ANON_KEY
 
+### Routes
+`/` Home, `/map` Live Map, `/insights` Insights, `/event/:id` Event detail,
+`/about` About — `/dashboard` redirects to `/map` for old bookmarks/links.
+Full IA history and ground rules in `frontend/ROADMAP.md` Phase 4.
+
 ### Key Patterns
 - Per-category query limits in useNaturalEvents: fire 2000, earthquake 1000, flood/cyclone 500
-- Landing page uses 4 separate useNaturalEvents calls (one per category) for accurate stat counts
-- SentinelMap accepts an isLoading prop for a loading overlay
-- Dark theme: background #0a0a0f, accent #f97316 (amber), muted text #7070a0
+- Home page uses 4 separate useNaturalEvents calls (one per category) for accurate stat counts,
+  and reuses that same combined data for the Active Threats feed and mini-map preview
+- SentinelMap accepts isLoading, interactive (disables drag/zoom for preview/locator use), and
+  optional center/zoom overrides
+- Design tokens live in `src/index.css` `:root` (`--bg`, `--surface`, `--border`, `--text`,
+  `--muted`, `--accent`, `--cat-*` category hues, `--sev-*` severity ramp) and are aliased in
+  `tailwind.config.js`. Tailwind can't apply opacity modifiers (e.g. `bg-accent/20`) to colors
+  sourced from CSS variables — translucent chip backgrounds use inline hex + alpha suffix
+  (`color + '33'`) instead, matching the pre-existing convention
+- `lib/time.ts` (relativeTime, formatDate) and `lib/severity.ts` (severityScore/severityBucket,
+  a 0-100 cross-category ranking blending each event's normalized `severity` label with
+  recency) are shared by ThreatFeed, EventDetailPanel, and the EventDetail page
 - Map tiles: CARTO dark raster. Leaflet renders raster tiles on the DOM, so the
   map needs no WebGL and works in every browser (the earlier MapLibre map showed
   a blank void when WebGL was unavailable)

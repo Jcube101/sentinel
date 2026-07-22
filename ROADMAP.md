@@ -15,12 +15,12 @@ filter bar) shipped Jul 2026. Map overlay with color-coded station markers,
 cyclone tracks, and historical charts are still planned.
 See [frontend/ROADMAP.md](frontend/ROADMAP.md) for detail.
 
-## Phase 4 — Frontend UI / IA Revamp (PLANNED 📋)
+## Phase 4 — Frontend UI / IA Revamp (COMPLETE ✅)
 A fresh look and a real information architecture: CSS design tokens, multi-page
 IA (Home / Live Map / Insights / Event detail / About), a live "Active Threats"
 feed, client-side severity scoring, and a Recharts insights page. India-scoped,
-no pipeline or schema changes. Full execution spec (6 sub-steps, one-shottable)
-in [frontend/ROADMAP.md](frontend/ROADMAP.md) Phase 4.
+no pipeline or schema changes. Full execution spec (6 sub-steps) in
+[frontend/ROADMAP.md](frontend/ROADMAP.md) Phase 4.
 
 ## Phase 5 — Enhancements (FUTURE 💡)
 Light mode, alerts/subscribe, public API, expanded coverage.
@@ -44,6 +44,8 @@ Light mode, alerts/subscribe, public API, expanded coverage.
 | Jul 2026 | Pipeline hardened: fail-loud fetchers, FIRMS overpass fix, archival wired in, rescheduled to 3x/day (09:00, 15:00, 21:00 UTC) |
 | Jul 2026 | Staleness thresholds recalibrated from real history (dense vs event-driven sources), failure and staleness alerting added, first AQI view shipped to the dashboard |
 | Jul 2026 | Alerting live end to end (n8n webhook to Gmail, tested for real from the Pi); Windows Task Scheduler archival fully retired, `setup_task_scheduler.ps1` removed |
+| Jul 2026 | Frontend map migrated from MapLibre (WebGL) to Leaflet (DOM tiles) so it works without WebGL |
+| Jul 2026 | Phase 4 UI/IA revamp shipped — new IA (Home/Live Map/Insights/Event detail/About), design tokens, live Active Threats feed, client-side severity scoring, Recharts insights page, command palette |
 
 ---
 
