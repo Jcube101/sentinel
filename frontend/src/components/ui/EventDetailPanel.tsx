@@ -1,22 +1,14 @@
+import { Link } from 'react-router-dom'
 import type { NaturalEvent } from '@/lib/types'
 import { CATEGORY_COLORS, CATEGORY_EMOJIS } from '@/lib/types'
+import { formatDate, relativeTime } from '@/lib/time'
+import { severityScore } from '@/lib/severity'
+import SeverityMeter from './SeverityMeter'
 import { X } from 'lucide-react'
 
 interface Props {
   event: NaturalEvent | null
   onClose: () => void
-}
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: 'UTC',
-    timeZoneName: 'short',
-  })
 }
 
 export default function EventDetailPanel({ event, onClose }: Props) {
@@ -28,17 +20,12 @@ export default function EventDetailPanel({ event, onClose }: Props) {
   return (
     <>
       {/* Mobile backdrop */}
-      <div
-        className="fixed inset-0 z-[1100] sm:hidden"
-        style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}
-        onClick={onClose}
-      />
+      <div className="fixed inset-0 z-[1100] sm:hidden bg-black/40" onClick={onClose} />
 
       <div
-        className="fixed z-[1200] overflow-y-auto
+        className="fixed z-[1200] overflow-y-auto bg-surface border-t border-l border-border
           bottom-0 left-0 right-0 rounded-t-2xl max-h-[60vh]
           sm:top-[56px] sm:right-0 sm:bottom-0 sm:left-auto sm:w-80 sm:rounded-none sm:max-h-none"
-        style={{ backgroundColor: '#16161f', borderTop: '1px solid #2a2a3a', borderLeft: '1px solid #2a2a3a' }}
       >
         <div className="p-5 space-y-4">
           {/* Header */}
@@ -48,7 +35,7 @@ export default function EventDetailPanel({ event, onClose }: Props) {
               <h3 className="font-semibold text-sm leading-snug truncate">{event.title}</h3>
             </div>
             <button onClick={onClose} className="flex-shrink-0 p-1 rounded hover:bg-white/10 transition-colors">
-              <X size={16} style={{ color: '#7070a0' }} />
+              <X size={16} className="text-muted" />
             </button>
           </div>
 
@@ -72,9 +59,12 @@ export default function EventDetailPanel({ event, onClose }: Props) {
                 {event.severity_value} {event.severity_unit}
               </span>
             )}
+            <span className="text-xs text-muted">{relativeTime(event.started_at)}</span>
           </div>
 
-          <div className="h-px" style={{ backgroundColor: '#2a2a3a' }} />
+          <SeverityMeter score={severityScore(event)} />
+
+          <div className="h-px bg-border" />
 
           {/* Details */}
           <dl className="space-y-2 text-sm">
@@ -85,17 +75,23 @@ export default function EventDetailPanel({ event, onClose }: Props) {
             <Row label="Location">{event.place_name ?? `${event.latitude.toFixed(3)}, ${event.longitude.toFixed(3)}`}</Row>
           </dl>
 
-          {event.source_url && (
-            <a
-              href={event.source_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-block text-sm font-medium mt-2 transition-opacity hover:opacity-80"
-              style={{ color: '#f97316' }}
-            >
-              View source &rarr;
-            </a>
-          )}
+          <div className="flex items-center justify-between gap-3">
+            {event.source_url ? (
+              <a
+                href={event.source_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm font-medium text-accent transition-opacity hover:opacity-80"
+              >
+                View source &rarr;
+              </a>
+            ) : (
+              <span />
+            )}
+            <Link to={`/event/${event.id}`} className="text-sm font-medium text-accent transition-opacity hover:opacity-80">
+              View full page &rarr;
+            </Link>
+          </div>
         </div>
       </div>
     </>
@@ -105,7 +101,7 @@ export default function EventDetailPanel({ event, onClose }: Props) {
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex justify-between gap-4">
-      <dt style={{ color: '#7070a0' }}>{label}</dt>
+      <dt className="text-muted">{label}</dt>
       <dd className="text-right">{children}</dd>
     </div>
   )

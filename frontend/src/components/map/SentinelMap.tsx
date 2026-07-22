@@ -4,12 +4,16 @@ import L from 'leaflet'
 import Supercluster from 'supercluster'
 import type { NaturalEvent } from '@/lib/types'
 import { CATEGORY_COLORS } from '@/lib/types'
+import MapLegend from './MapLegend'
 
 interface Props {
   events: NaturalEvent[]
   onEventSelect: (event: NaturalEvent | null) => void
   selectedEvent: NaturalEvent | null
   isLoading?: boolean
+  interactive?: boolean
+  center?: [number, number]
+  zoom?: number
 }
 
 // Dark raster basemap. Leaflet renders plain <img> tiles on the DOM, so unlike
@@ -115,7 +119,15 @@ function ClusterLayer({ events, onEventSelect, selectedEvent }: Omit<Props, 'isL
   )
 }
 
-export default function SentinelMap({ events, onEventSelect, selectedEvent, isLoading }: Props) {
+export default function SentinelMap({
+  events,
+  onEventSelect,
+  selectedEvent,
+  isLoading,
+  interactive = true,
+  center,
+  zoom,
+}: Props) {
   return (
     <>
       {isLoading && (
@@ -127,25 +139,43 @@ export default function SentinelMap({ events, onEventSelect, selectedEvent, isLo
             alignItems: 'center',
             justifyContent: 'center',
             background: 'rgba(10,10,15,0.7)',
-            color: '#7070a0',
-            fontSize: '14px',
             zIndex: 1000,
             pointerEvents: 'none',
           }}
         >
-          Loading events...
+          <div className="flex items-center gap-2 rounded-lg px-4 py-2 bg-surface border border-border">
+            <span className="h-2 w-2 rounded-full bg-accent animate-pulse" />
+            <span className="text-sm text-muted">Loading events&hellip;</span>
+          </div>
         </div>
       )}
+      {!isLoading && interactive && events.length === 0 && (
+        <div
+          style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, pointerEvents: 'none' }}
+        >
+          <div className="rounded-lg px-4 py-2 bg-surface border border-border">
+            <span className="text-sm text-muted">No events match your filters</span>
+          </div>
+        </div>
+      )}
+      {interactive && <MapLegend />}
       <MapContainer
-        center={INDIA_CENTER}
-        zoom={4}
+        center={center ?? INDIA_CENTER}
+        zoom={zoom ?? 4}
         minZoom={3}
         maxZoom={14}
         zoomControl={false}
+        dragging={interactive}
+        scrollWheelZoom={interactive}
+        doubleClickZoom={interactive}
+        touchZoom={interactive}
+        boxZoom={interactive}
+        keyboard={interactive}
+        attributionControl={interactive}
         style={{ width: '100%', height: '100%', background: '#0a0a0f' }}
       >
         <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} />
-        <ZoomControl position="topright" />
+        {interactive && <ZoomControl position="topright" />}
         <ClusterLayer events={events} onEventSelect={onEventSelect} selectedEvent={selectedEvent} />
       </MapContainer>
     </>
