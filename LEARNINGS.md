@@ -174,15 +174,20 @@ off fires on the next boot, instead of being silently skipped.
 
 ## A UTC `OnCalendar` Shows Up in Local Time in `systemctl list-timers`
 
-The timer is pinned with `OnCalendar=*-*-* 01:00:00 UTC` to match the old
-Render cron. But `systemctl status` and `systemctl list-timers` print the
-next trigger in the **system's local timezone** — IST on the Pi — so the
-schedule reads `06:30:00 IST` even though the unit file says `01:00:00 UTC`.
+*(Historical — the timer was later rescheduled to three times daily at
+09:00, 15:00, 21:00 UTC; see the FIRMS overpass note below for why. The
+UTC-vs-IST display reasoning below still applies to the current schedule.)*
 
-This looks wrong at a glance but is correct: 01:00 UTC *is* 06:30 IST. Don't
-"fix" the unit file to say `06:30` — pin the schedule in UTC and let systemd
-handle the display conversion. If in doubt, check `date -u` against the
-listed trigger time.
+The timer was originally pinned with `OnCalendar=*-*-* 01:00:00 UTC` to
+match the old Render cron. But `systemctl status` and `systemctl
+list-timers` print the next trigger in the **system's local timezone** —
+IST on the Pi — so the schedule read `06:30:00 IST` even though the unit
+file said `01:00:00 UTC`.
+
+This looked wrong at a glance but was correct: 01:00 UTC *is* 06:30 IST.
+Don't "fix" the unit file to show local time — pin the schedule in UTC and
+let systemd handle the display conversion. If in doubt, check `date -u`
+against the listed trigger time.
 
 ---
 
