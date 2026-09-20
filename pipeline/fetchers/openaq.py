@@ -12,7 +12,18 @@ logger = logging.getLogger(__name__)
 LOCATIONS_ENDPOINT = "https://api.openaq.org/v3/locations"
 SENSORS_ENDPOINT = "https://api.openaq.org/v3/locations/{location_id}/sensors"
 WANTED_PARAMS = {"pm25", "pm10", "no2", "so2", "o3"}
-CUTOFF_HOURS = 24
+
+# OpenAQ's India feed (mostly CPCB) lands in batches that routinely lag 48-72h
+# behind real time, so a 24h cutoff discards every live station. 96h keeps the
+# window comfortably wider than the observed lag while still rejecting the
+# thousands of stations that went dark years ago.
+CUTOFF_HOURS = 96
+
+# Locations to pull sensors for, highest-recency first. Each one costs an HTTP
+# call plus a rate-limit sleep, so this bounds the run time.
+MAX_LOCATIONS = 120
+LOCATIONS_PAGE_SIZE = 1000
+MAX_LOCATION_PAGES = 10
 
 
 def _headers() -> dict:
@@ -51,18 +62,52 @@ def _is_fresh(recorded_at: str | None) -> bool:
         return False
 
 
+def _last_seen(loc: dict) -> datetime | None:
+    stamp = (loc.get("datetimeLast") or {}).get("utc")
+    if not stamp:
+        return None
+    try:
+        dt = dateutil_parser.parse(stamp)
+        return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt
+    except Exception:
+        return None
+
+
 def _fetch_locations() -> list[dict]:
-    # Propagates on failure — a broken locations endpoint must fail the run,
-    # not silently return zero rows. Individual sensor lookups (below) stay
-    # resilient per-location since OpenAQ's sensor endpoint rate-limits.
-    resp = requests.get(
-        LOCATIONS_ENDPOINT,
-        headers=_headers(),
-        params={"countries_id": 9, "limit": 50, "page": 1},
-        timeout=30,
+    """Return India's most recently-reporting locations, freshest first.
+
+    OpenAQ returns locations ordered by id, and India's low ids are stations
+    that stopped reporting years ago — paging only the first 50 yielded nothing
+    that passed the freshness filter. So page the whole country, then rank by
+    datetimeLast and keep the live head of the list.
+
+    Propagates on failure — a broken locations endpoint must fail the run,
+    not silently return zero rows. Individual sensor lookups (below) stay
+    resilient per-location since OpenAQ's sensor endpoint rate-limits.
+    """
+    locations: list[dict] = []
+    for page in range(1, MAX_LOCATION_PAGES + 1):
+        resp = requests.get(
+            LOCATIONS_ENDPOINT,
+            headers=_headers(),
+            params={"countries_id": 9, "limit": LOCATIONS_PAGE_SIZE, "page": page},
+            timeout=60,
+        )
+        resp.raise_for_status()
+        batch = resp.json().get("results", [])
+        locations.extend(batch)
+        if len(batch) < LOCATIONS_PAGE_SIZE:
+            break
+
+    cutoff = datetime.now(tz=timezone.utc) - timedelta(hours=CUTOFF_HOURS)
+    recent = [loc for loc in locations if (_last_seen(loc) or datetime.min.replace(tzinfo=timezone.utc)) >= cutoff]
+    recent.sort(key=_last_seen, reverse=True)
+
+    logger.info(
+        "OpenAQ: %d locations total, %d reported within %dh",
+        len(locations), len(recent), CUTOFF_HOURS,
     )
-    resp.raise_for_status()
-    return resp.json().get("results", [])
+    return recent[:MAX_LOCATIONS]
 
 
 def _fetch_sensors(location_id: int) -> list[dict]:
@@ -80,9 +125,9 @@ def _fetch_sensors(location_id: int) -> list[dict]:
 
 
 def fetch() -> list[dict]:
-    logger.info("OpenAQ: fetching locations (country=IN, limit=50)")
+    logger.info("OpenAQ: fetching locations (country=IN)")
     locations = _fetch_locations()
-    logger.info("OpenAQ: received %d locations", len(locations))
+    logger.info("OpenAQ: selected %d locations to poll", len(locations))
 
     readings = []
     skipped_bbox = 0
