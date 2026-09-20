@@ -14,9 +14,10 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-!frontend/src/lib/
-lib64/
+# Anchored: these are setuptools build dirs at the repo root. Unanchored, lib/
+# would match any directory of that name at any depth, including source.
+/lib/
+/lib64/
 parts/
 sdist/
 var/
