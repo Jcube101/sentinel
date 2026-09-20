@@ -216,8 +216,16 @@ dist/
 .env.local
 .env.*.local
 
-# SQLite
-*.db
+# TypeScript / Vite build artifacts
+*.tsbuildinfo
+.vite/
+
+# Per-machine Claude Code settings, not shared with collaborators
+.claude/settings.local.json
+
+# OS cruft
+.DS_Store
+Thumbs.db
 
 # Local-only audit notes, not meant to be tracked
 AUDIT.md
