@@ -1,16 +1,13 @@
 import csv
 import io
 import logging
-import time
 from datetime import datetime, timezone
 
-import requests
 
+from fetchers.http import get_with_retry
 from config import FIRMS_MAP_KEY, INDIA_BBOX_FIRMS
 
 logger = logging.getLogger(__name__)
-
-RETRY_BACKOFF_SECONDS = (5, 15)
 
 ENDPOINT = (
     "https://firms.modaps.eosdis.nasa.gov/api/area/csv"
@@ -40,35 +37,13 @@ def _parse_datetime(acq_date: str, acq_time: str) -> str:
     return dt.replace(tzinfo=timezone.utc).isoformat()
 
 
-def _get_with_retry(url: str) -> requests.Response:
-    """GET with retries on timeout/connection errors only.
-
-    2 retries with exponential backoff (~5s, ~15s), same 30s per-attempt
-    timeout throughout. 4xx/5xx responses are not retried here — they
-    surface via resp.raise_for_status() in the caller.
-    """
-    attempts = len(RETRY_BACKOFF_SECONDS) + 1
-    for attempt in range(1, attempts + 1):
-        try:
-            return requests.get(url, timeout=30)
-        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as exc:
-            if attempt == attempts:
-                raise
-            delay = RETRY_BACKOFF_SECONDS[attempt - 1]
-            logger.warning(
-                "FIRMS: request failed (attempt %d/%d) — %s | retrying in %ds",
-                attempt, attempts, exc, delay,
-            )
-            time.sleep(delay)
-
-
 def _fetch_url(url: str) -> list[dict]:
     """Fetch and parse one FIRMS CSV URL into event dicts.
 
     Request and parse failures propagate to the caller — a broken endpoint
     or key must fail the run, not silently return zero rows.
     """
-    resp = _get_with_retry(url)
+    resp = get_with_retry("FIRMS", url)
     resp.raise_for_status()
     reader = csv.DictReader(io.StringIO(resp.text))
     rows = list(reader)

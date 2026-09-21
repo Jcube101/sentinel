@@ -1,8 +1,8 @@
 import logging
 from datetime import datetime, timedelta, timezone
 
-import requests
 
+from fetchers.http import get_with_retry
 from config import INDIA_BBOX_USGS
 
 logger = logging.getLogger(__name__)
@@ -60,7 +60,7 @@ def fetch(start_date: str | None = None, end_date: str | None = None) -> list[di
 
     # Request/parse failures propagate — a broken endpoint must fail the run,
     # not silently return zero rows.
-    resp = requests.get(ENDPOINT, params=params, timeout=30)
+    resp = get_with_retry("USGS", ENDPOINT, params=params)
     resp.raise_for_status()
     data = resp.json()
 

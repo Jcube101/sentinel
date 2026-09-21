@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 import requests
 from dateutil import parser as dateutil_parser
 
+from fetchers.http import get_with_retry
 from config import INDIA_BBOX, OPENAQ_API_KEY
 
 logger = logging.getLogger(__name__)
@@ -87,7 +88,8 @@ def _fetch_locations() -> list[dict]:
     """
     locations: list[dict] = []
     for page in range(1, MAX_LOCATION_PAGES + 1):
-        resp = requests.get(
+        resp = get_with_retry(
+            "OpenAQ",
             LOCATIONS_ENDPOINT,
             headers=_headers(),
             params={"countries_id": 9, "limit": LOCATIONS_PAGE_SIZE, "page": page},

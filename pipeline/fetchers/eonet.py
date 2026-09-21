@@ -1,9 +1,9 @@
 import logging
 from datetime import timezone
 
-import requests
 from dateutil import parser as dateutil_parser
 
+from fetchers.http import get_with_retry
 from config import INDIA_BBOX_FIRMS
 
 logger = logging.getLogger(__name__)
@@ -83,7 +83,7 @@ def fetch(start_date: str | None = None, end_date: str | None = None) -> list[di
 
     # Request/parse failures propagate — a broken endpoint must fail the run,
     # not silently return zero rows.
-    resp = requests.get(ENDPOINT, params=params, timeout=30)
+    resp = get_with_retry("EONET", ENDPOINT, params=params)
     resp.raise_for_status()
     data = resp.json()
 
