@@ -6,6 +6,7 @@ import time
 from datetime import datetime, timedelta, timezone
 from logging.handlers import RotatingFileHandler
 
+import requests
 from dateutil import parser as dateutil_parser
 from supabase import Client, create_client
 
@@ -76,12 +77,25 @@ def _dedup(rows: list) -> list:
     return list(seen.values())
 
 
+# Sources whose timeouts (after the fetcher's own retries) are logged as a
+# warning instead of failing the run. GDACS is event-driven, already exempt
+# from staleness alerts, and its API has had multi-hour outages where it
+# hangs rather than erroring. HTTP/parse errors still fail the run.
+SOFT_TIMEOUT_SOURCES = {"GDACS"}
+
+
 def _run_fetcher(name: str, module) -> tuple[list, bool]:
     """Call module.fetch(), return (results, success)."""
     try:
         results = module.fetch()
         logger.info("%s: fetched %d rows", name, len(results))
         return results, True
+    except requests.exceptions.Timeout as exc:
+        if name not in SOFT_TIMEOUT_SOURCES:
+            logger.error("%s: fetcher raised an exception — %s", name, exc)
+            return [], False
+        logger.warning("%s: timed out, skipping this run (not a failure) — %s", name, exc)
+        return [], True
     except Exception as exc:
         logger.error("%s: fetcher raised an exception — %s", name, exc)
         return [], False
