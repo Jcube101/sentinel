@@ -110,6 +110,15 @@ def validate(cfg: dict) -> None:
     if not isinstance(excluded, list) or not all(isinstance(d, str) for d in excluded):
         raise ConfigError(f"severity.toml: fire.excluded_district_ids must be a list of ids, got {excluded!r}")
     _number(cfg, "fire.static_mask.neighbour_cells", minimum=0, maximum=5, integer=True)
+    types = _get(cfg, "fire.static_mask.mask_types")
+    if not isinstance(types, list) or not all(isinstance(t, int) and 0 <= t <= 3 for t in types):
+        raise ConfigError(f"severity.toml: fire.static_mask.mask_types must be FIRMS types 0-3, got {types!r}")
+    _number(cfg, "fire.static_mask.cell_deg", minimum=0.0005, maximum=0.05)
+    _number(cfg, "fire.static_mask.min_detections", minimum=1, integer=True)
+    years = _get(cfg, "fire.baseline.years")
+    if not isinstance(years, list) or not years or not all(isinstance(y, int) for y in years):
+        raise ConfigError(f"severity.toml: fire.baseline.years must be a list of years, got {years!r}")
+    _number(cfg, "fire.baseline.smooth_weeks", minimum=0, maximum=4, integer=True)
     _number(cfg, "fire.level_2_min_ratio", minimum=1)
     _number(cfg, "fire.level_3_min_ratio", minimum=1)
     _ascending(cfg, "fire.level_2_min_ratio", "fire.level_3_min_ratio")

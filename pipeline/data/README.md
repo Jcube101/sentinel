@@ -31,3 +31,27 @@ India's 735 districts with their state, used to place fire events
 - **Licences:** ODbL 1.0 (derived database, shared under ODbL) and
   CC BY 2.5 IN. Attribution: "Contains geoBoundaries data (ODbL 1.0) and
   DataMeet / ECI state boundaries (CC BY 2.5 IN)".
+
+## static_heat_cells.json
+
+The static heat-source mask: ~450 m grid cells where the FIRMS archive saw
+volcano (type 1), static land-source (type 2: steel plants, refineries,
+gas flares, coal-seam fires) or offshore (type 3) detections. The live
+NRT feed has no type column, so `fire.py` drops live hotspots in or next
+to these cells before clustering.
+
+- **Built by** `tools/build_fire_baseline.py` from the VIIRS NOAA-20
+  standard-processing archive (2024-2025) pulled by
+  `tools/pull_firms_archive.py`; parameters in severity.toml
+  `[fire.static_mask]`.
+- **Source:** NASA FIRMS. Acknowledgement: "We acknowledge the use of data
+  from NASA's Fire Information for Resource Management System (FIRMS),
+  part of NASA's Earth Science Data and Information System (ESDIS)."
+
+## fire_baseline.csv
+
+The seasonal norm: mean daily fire events per state (plus "India") per
+calendar week, from the same archive, counted exactly like live
+fire_events. Also uploaded to the fire_baseline table (migration 004).
+Built by `tools/build_fire_baseline.py`; parameters in severity.toml
+`[fire.baseline]`. Source and acknowledgement as above (NASA FIRMS).

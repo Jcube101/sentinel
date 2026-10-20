@@ -133,6 +133,7 @@ and the Windows scheduled task has been disabled.
   (last_success_at = last good fetch, newest_observation_at, last_new_data_at)
 - fire_events: FIRMS hotspots clustered per UTC day, with district/state (fire.py);
   views fire_district_daily, fire_state_daily
+- fire_baseline: seasonal norm, mean daily fire events per state per week (baseline.py)
 - desk_items: severity desk, one row per item with a 1-4 level (desk.py)
 - desk_item_snapshots: one row per desk item per run
 
@@ -142,6 +143,19 @@ hotspots, minus the static heat-source mask (data/static_heat_cells.json,
 built in step 5), are clustered per UTC day (1.5 km single linkage) and
 placed in a district (data/india_districts.geojson). Each run rebuilds
 today and yesterday in fire_events and keeps 14 days.
+
+## Fire baseline (one-off)
+The static mask and the seasonal norm come from the FIRMS VIIRS NOAA-20 SP
+archive, 2024-2025 (~147 five-day requests, ~1,300 FIRMS transactions,
+paced on the key's transaction count; raw CSV kept outside the repo):
+```bash
+PYTHONPATH=. .venv/bin/python tools/pull_firms_archive.py --start 2024-01-01 \
+    --end 2025-12-31 --cache-dir /home/jcube/projects/sentinel-data/firms_sp
+PYTHONPATH=. .venv/bin/python tools/build_fire_baseline.py \
+    --cache-dir /home/jcube/projects/sentinel-data/firms_sp --upload
+```
+Outputs data/static_heat_cells.json, data/fire_baseline.csv and the
+fire_baseline table (migration 004). Rerun only to change years or parameters.
 
 ## Severity desk
 `desk.py` runs after the events / aqi_readings writes: quakes (USGS, within

@@ -139,12 +139,18 @@ Notes that apply across steps:
 - Existing `events.severity` labels (low/medium/high/extreme) are left unchanged.
 - **TODO (About page, separate frontend task):** credit geoBoundaries (India outline and
   district boundaries, ODbL 1.0, source LGD via Pathways Data) and DataMeet / Election
-  Commission of India (state boundaries, CC BY 2.5 IN). See pipeline/data/README.md.
+  Commission of India (state boundaries, CC BY 2.5 IN); the FIRMS acknowledgement covers the
+  baseline and mask. See pipeline/data/README.md.
 
 ## Follow-ups (not scheduled)
 - **Fresher air source:** evaluate the data.gov.in CPCB real-time AQI feed as a source for
   `air:IN`. CPCB data reaches OpenAQ ~2.5 days late, so the air level runs on data up to
   72 h old (`air.fresh_within_hours`). Needs a free data.gov.in API key.
+- **Live vs archive fire counts:** the baseline uses the reprocessed FIRMS product (SP), the
+  live feed is near-real-time (NRT). If NRT detects systematically more or fewer hotspots,
+  every `ratio_to_norm` shifts. Only one partial day overlapped in Oct 2026 and FIRMS timed
+  out on it; once SP covers Jul-Sep 2026 (about 3 months after the fact), compare it with
+  the NRT hotspots kept in `sentinel_archive.db` and scale the norm if needed.
 
 ## Non-goals
 - No frontend changes in this task — UI redesign is separate (Situation Report direction A).

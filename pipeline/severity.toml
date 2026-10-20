@@ -126,8 +126,22 @@ level_4_min_population = 100000
 [fire.static_mask]
 # Hotspots in a static heat-source cell (steel plants, refineries, gas
 # flares), or within this many cells of one, are dropped before clustering.
-# Mask file: data/static_heat_cells.json, built from the archive in step 5.
+# Mask file: data/static_heat_cells.json (tools/build_fire_baseline.py).
 neighbour_cells = 1
+# Build: FIRMS archive detections of these types mark a cell static:
+# 1 volcano (Barren Island), 2 other static land source (industry, gas
+# flares, coal-seam fires), 3 offshore (platforms). The live NRT feed has
+# no type column, hence the mask.
+mask_types = [1, 2, 3]
+cell_deg = 0.004       # ~450 m cells
+min_detections = 2     # static detections a cell needs over the archive years
+
+[fire.baseline]
+# Seasonal norm: mean daily fire events per state per calendar week, from
+# the VIIRS NOAA-20 SP archive, counted exactly like live fire_events.
+# Week = (day of year - 1) // 7 + 1, days 358-366 fold into week 52.
+years = [2024, 2025]
+smooth_weeks = 1       # norm for week w averages weeks w-1 .. w+1
 
 [fire.lifecycle]
 # Spec: opens at level 2+, escalates on any level increase, closes after
