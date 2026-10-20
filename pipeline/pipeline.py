@@ -12,6 +12,7 @@ from supabase import Client, create_client
 
 import archive
 import notify
+import runs
 from config import LONG_RETENTION_DAYS, SHORT_RETENTION_DAYS, SUPABASE_SERVICE_KEY, SUPABASE_URL
 from fetchers import eonet, firms, gdacs, openaq, usgs
 
@@ -19,22 +20,27 @@ from fetchers import eonet, firms, gdacs, openaq, usgs
 # flood it), so a once- or thrice-daily job's logs are gone before anyone can
 # read them. A rotating file next to the pipeline is the durable log.
 LOG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
-os.makedirs(LOG_DIR, exist_ok=True)
 LOG_FILE = os.path.join(LOG_DIR, "pipeline.log")
 
-_formatter = logging.Formatter(
-    fmt="%(asctime)s %(levelname)s %(name)s: %(message)s",
-    datefmt="%Y-%m-%dT%H:%M:%S",
-)
-_file_handler = RotatingFileHandler(LOG_FILE, maxBytes=5 * 1024 * 1024, backupCount=7)
-_file_handler.setFormatter(_formatter)
-_stream_handler = logging.StreamHandler()
-_stream_handler.setFormatter(_formatter)
-
-# force=True: wins over any basicConfig a module we import (e.g. archive.py)
-# already ran at import time, regardless of import order.
-logging.basicConfig(level=logging.INFO, handlers=[_stream_handler, _file_handler], force=True)
 logger = logging.getLogger(__name__)
+
+
+def _setup_logging() -> None:
+    # Called from __main__ only, so importing this module (the tests do)
+    # never writes to the live log file.
+    os.makedirs(LOG_DIR, exist_ok=True)
+    formatter = logging.Formatter(
+        fmt="%(asctime)s %(levelname)s %(name)s: %(message)s",
+        datefmt="%Y-%m-%dT%H:%M:%S",
+    )
+    file_handler = RotatingFileHandler(LOG_FILE, maxBytes=5 * 1024 * 1024, backupCount=7)
+    file_handler.setFormatter(formatter)
+    stream_handler = logging.StreamHandler()
+    stream_handler.setFormatter(formatter)
+    # force=True: wins over any basicConfig a module we import (e.g. archive.py)
+    # already ran at import time, regardless of import order.
+    logging.basicConfig(level=logging.INFO, handlers=[stream_handler, file_handler], force=True)
+
 
 EVENTS_TABLE = "events"
 AQI_TABLE = "aqi_readings"
@@ -83,22 +89,42 @@ def _dedup(rows: list) -> list:
 # hangs rather than erroring. HTTP/parse errors still fail the run.
 SOFT_TIMEOUT_SOURCES = {"GDACS"}
 
+FETCHERS = (
+    ("FIRMS", firms),
+    ("EONET", eonet),
+    ("GDACS", gdacs),
+    ("USGS", usgs),
+    ("OpenAQ", openaq),
+)
+EVENT_SOURCES = ("FIRMS", "EONET", "GDACS", "USGS")
 
-def _run_fetcher(name: str, module) -> tuple[list, bool]:
-    """Call module.fetch(), return (results, success)."""
+
+def _run_fetcher(name: str, module) -> runs.FetchResult:
+    """Call module.fetch() and classify the outcome. Never raises.
+
+    result.ok is False when the source should fail the run; result.status
+    (ok | empty | timeout | error) feeds the per-source freshness record.
+    """
+    t0 = time.monotonic()
+    rows, error, timed_out = [], None, False
     try:
-        results = module.fetch()
-        logger.info("%s: fetched %d rows", name, len(results))
-        return results, True
+        rows = module.fetch()
+        logger.info("%s: fetched %d rows", name, len(rows))
     except requests.exceptions.Timeout as exc:
-        if name not in SOFT_TIMEOUT_SOURCES:
+        error, timed_out = exc, True
+        if name in SOFT_TIMEOUT_SOURCES:
+            logger.warning("%s: timed out, skipping this run (not a failure) — %s", name, exc)
+        else:
             logger.error("%s: fetcher raised an exception — %s", name, exc)
-            return [], False
-        logger.warning("%s: timed out, skipping this run (not a failure) — %s", name, exc)
-        return [], True
     except Exception as exc:
+        error = exc
         logger.error("%s: fetcher raised an exception — %s", name, exc)
-        return [], False
+    ok, status = runs.classify(name, rows, error, timed_out, name in SOFT_TIMEOUT_SOURCES)
+    return runs.FetchResult(
+        name=name, rows=rows, ok=ok, status=status,
+        error=str(error) if error is not None else None,
+        duration_s=time.monotonic() - t0,
+    )
 
 
 def _upsert(supabase, table: str, rows: list, conflict_key: str) -> int:
@@ -223,31 +249,58 @@ def _check_staleness(supabase, fetch_results: dict) -> None:
         logger.info("staleness: aqi_readings newest row is %s old (ok)", age)
 
 
+def _log_dry_run_freshness(supabase, results: dict) -> None:
+    """Dry run: log what the freshness record would say, write nothing."""
+    try:
+        previous = runs.read_previous(supabase)
+    except Exception as exc:
+        logger.warning("dry-run: could not read source freshness (is migration 001 applied?) — %s", exc)
+        previous = {}
+    written = {name: True for name in results}
+    _, summary = runs.source_updates(results, written, previous, None, datetime.now(tz=timezone.utc))
+    for sid, s in summary.items():
+        logger.info(
+            "dry-run: %s freshness would be status=%s rows=%d new_data=%s newest=%s",
+            sid, s["status"], s["rows"], s["new_data"], s["newest_observation_at"],
+        )
+
+
 def run(dry_run: bool = False):
     start = time.monotonic()
+    started_at = datetime.now(tz=timezone.utc)
     supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
-    # --- Run fetchers ---
-    firms_rows,  firms_ok  = _run_fetcher("FIRMS",  firms)
-    eonet_rows,  eonet_ok  = _run_fetcher("EONET",  eonet)
-    gdacs_rows,  gdacs_ok  = _run_fetcher("GDACS",  gdacs)
-    usgs_rows,   usgs_ok   = _run_fetcher("USGS",   usgs)
-    openaq_rows, openaq_ok = _run_fetcher("OpenAQ", openaq)
+    # Run record + source freshness (runs.py). A failure here fails the run,
+    # so it alerts, but never stops the events / aqi_readings writes.
+    runs_ok = True
 
-    fetch_results = {
-        "FIRMS": firms_ok, "EONET": eonet_ok, "GDACS": gdacs_ok,
-        "USGS": usgs_ok, "OpenAQ": openaq_ok,
-    }
+    # --- Run record: id is the edition number ---
+    run_id = None
+    if dry_run:
+        logger.info("dry-run: skipping run record")
+    else:
+        try:
+            run_id = runs.start_run(supabase, started_at)
+            logger.info("runs: started edition %d", run_id)
+        except Exception as exc:
+            logger.error("runs: could not create run record — %s", exc)
+            runs_ok = False
+
+    # --- Run fetchers ---
+    results = {name: _run_fetcher(name, module) for name, module in FETCHERS}
+    fetch_results = {name: result.ok for name, result in results.items()}
     any_failure = not all(fetch_results.values())
 
     # --- Write events ---
-    all_events = _dedup(firms_rows + eonet_rows + gdacs_rows + usgs_rows)
+    all_events = _dedup([row for name in EVENT_SOURCES for row in results[name].rows])
+    events_written = False
     if dry_run:
         logger.info("dry-run: skipping events upsert (%d rows would be written)", len(all_events))
         events_upserted = 0
     else:
         try:
             events_upserted = _upsert(supabase, EVENTS_TABLE, all_events, "id")
+            events_written = True
             logger.info("events: upserted %d rows", events_upserted)
         except Exception as exc:
             logger.error("events: upsert failed — %s", exc)
@@ -255,26 +308,47 @@ def run(dry_run: bool = False):
             any_failure = True
 
     # --- Write AQI readings ---
+    openaq_rows = results["OpenAQ"].rows
+    aqi_written = False
     if dry_run:
         logger.info("dry-run: skipping aqi_readings upsert (%d rows would be written)", len(openaq_rows))
         aqi_upserted = 0
     else:
         try:
             aqi_upserted = _upsert(supabase, AQI_TABLE, openaq_rows, "location_id,parameter,recorded_at")
+            aqi_written = True
             logger.info("aqi_readings: upserted %d rows", aqi_upserted)
         except Exception as exc:
             logger.error("aqi_readings: upsert failed — %s", exc)
             aqi_upserted = 0
             any_failure = True
 
+    # --- Source freshness (last good fetch, newest observation, new data) ---
+    sources_summary = None
+    if dry_run:
+        _log_dry_run_freshness(supabase, results)
+    else:
+        written = {name: aqi_written if name == "OpenAQ" else events_written for name in results}
+        try:
+            sources_summary = runs.record_sources(
+                supabase, run_id, results, written, datetime.now(tz=timezone.utc)
+            )
+            logger.info(
+                "runs: recorded freshness (new data from: %s)",
+                ", ".join(sid for sid, s in sources_summary.items() if s["new_data"]) or "none",
+            )
+        except Exception as exc:
+            logger.error("runs: could not record source freshness — %s", exc)
+            runs_ok = False
+
     duration = time.monotonic() - start
 
     print("")
     print("=== Sentinel Pipeline Run ===" + (" (DRY RUN)" if dry_run else ""))
-    print(f"  FIRMS:   {len(firms_rows)} events")
-    print(f"  EONET:   {len(eonet_rows)} events")
-    print(f"  GDACS:   {len(gdacs_rows)} events")
-    print(f"  USGS:    {len(usgs_rows)} earthquakes")
+    print(f"  FIRMS:   {len(results['FIRMS'].rows)} events")
+    print(f"  EONET:   {len(results['EONET'].rows)} events")
+    print(f"  GDACS:   {len(results['GDACS'].rows)} events")
+    print(f"  USGS:    {len(results['USGS'].rows)} earthquakes")
     print(f"  OpenAQ:  {len(openaq_rows)} readings")
     print(f"  Total events upserted:       {events_upserted}")
     print(f"  Total AQI readings upserted: {aqi_upserted}")
@@ -306,7 +380,23 @@ def run(dry_run: bool = False):
 
     _check_staleness(supabase, fetch_results)
 
-    return 1 if any_failure else 0
+    # --- Close the run record ---
+    if run_id is not None:
+        try:
+            runs.finish_run(
+                supabase, run_id,
+                status="failed" if (any_failure or not runs_ok) else "ok",
+                finished_at=datetime.now(tz=timezone.utc),
+                duration_s=time.monotonic() - start,
+                events_upserted=events_upserted,
+                aqi_upserted=aqi_upserted,
+                sources=sources_summary,
+            )
+        except Exception as exc:
+            logger.error("runs: could not close run record %d — %s", run_id, exc)
+            runs_ok = False
+
+    return 1 if (any_failure or not runs_ok) else 0
 
 
 if __name__ == "__main__":
@@ -317,4 +407,5 @@ if __name__ == "__main__":
         help="Run fetchers and report counts only; skip Supabase writes and cleanup",
     )
     args = parser.parse_args()
+    _setup_logging()
     sys.exit(run(dry_run=args.dry_run))

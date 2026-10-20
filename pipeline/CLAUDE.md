@@ -125,6 +125,15 @@ and the Windows scheduled task has been disabled.
 ## Supabase Tables
 - events: all disaster events
 - aqi_readings: air quality readings
+- pipeline_runs: one row per non-dry run; id is the edition number (runs.py)
+- sources: one row per source, plus freshness columns written every run
+  (last_success_at = last good fetch, newest_observation_at, last_new_data_at)
+
+## Migrations
+Schema changes are numbered SQL files in `migrations/`. There is no DB URL or
+psql on the Pi: Job pastes each file into the Supabase SQL editor. Write them
+idempotent, with the Data API grants above, and merge code that needs a
+migration only after it has been applied.
 
 ## Schema — events table
 id: text (primary key, deterministic)
