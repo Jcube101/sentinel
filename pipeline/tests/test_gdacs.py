@@ -2,6 +2,8 @@
 
 The HTTP layer is replaced with a fake, so these tests make no network calls.
 """
+from datetime import datetime, timedelta, timezone
+
 import pytest
 
 from fetchers import gdacs
@@ -10,21 +12,26 @@ IN_INDIA = [78.0, 22.0]       # lon, lat
 IN_INDONESIA = [110.0, -7.0]
 
 
-def _feature(eventid, eventtype="FL", coords=IN_INDIA, alertlevel="Green"):
-    return {
-        "geometry": {"type": "Point", "coordinates": coords},
-        "properties": {
-            "eventtype": eventtype,
-            "eventid": eventid,
-            "alertlevel": alertlevel,
-            "eventname": f"{eventtype} {eventid}",
-            "fromdate": "2026-10-01T00:00:00",
-            "todate": "2026-10-02T00:00:00",
-            "isfinal": False,
-            "country": "India",
-            "url": {"report": "https://www.gdacs.org/report"},
-        },
+def _gdacs_time(days_ago):
+    # GDACS sends naive UTC timestamps
+    return (datetime.now(timezone.utc) - timedelta(days=days_ago)).strftime("%Y-%m-%dT%H:%M:%S")
+
+
+def _feature(eventid, eventtype="FL", coords=IN_INDIA, alertlevel="Green",
+             started_days_ago=5, iscurrent="true"):
+    props = {
+        "eventtype": eventtype,
+        "eventid": eventid,
+        "alertlevel": alertlevel,
+        "eventname": f"{eventtype} {eventid}",
+        "fromdate": _gdacs_time(started_days_ago),
+        "todate": _gdacs_time(started_days_ago - 1),
+        "country": "India",
+        "url": {"report": "https://www.gdacs.org/report"},
     }
+    if iscurrent is not None:
+        props["iscurrent"] = iscurrent
+    return {"geometry": {"type": "Point", "coordinates": coords}, "properties": props}
 
 
 class FakeResponse:
@@ -118,3 +125,49 @@ def test_page_guard_stops_runaway_paging(fake_api, monkeypatch):
     fake_api["pages"] = [_full_page(i * 100 + 1) for i in range(10)]
     gdacs.fetch()
     assert fake_api["requested"] == [1, 2, 3]
+
+
+def _only_event(fake_api, **feature_kwargs):
+    fake_api["pages"] = [FakeResponse(200, [_feature(1, **feature_kwargs)])]
+    (event,) = gdacs.fetch()
+    return event
+
+
+def test_iscurrent_false_closes_event(fake_api):
+    event = _only_event(fake_api, iscurrent="false")
+    assert event["status"] == "closed"
+    assert event["closed_at"] == gdacs._parse_dt(event["raw"]["todate"])
+
+
+def test_iscurrent_true_keeps_event_open(fake_api):
+    event = _only_event(fake_api, iscurrent="true")
+    assert (event["status"], event["closed_at"]) == ("open", None)
+
+
+def test_iscurrent_accepts_json_booleans(fake_api):
+    assert _only_event(fake_api, iscurrent=False)["status"] == "closed"
+
+
+def test_without_iscurrent_falls_back_to_isfinal_and_todate(fake_api):
+    feature = _feature(1, iscurrent=None)
+    feature["properties"]["isfinal"] = True  # todate is in the past
+    fake_api["pages"] = [FakeResponse(200, [feature])]
+    assert gdacs.fetch()[0]["status"] == "closed"
+
+    fake_api["pages"] = [FakeResponse(200, [_feature(1, iscurrent=None)])]
+    assert gdacs.fetch()[0]["status"] == "open"
+
+
+def test_skips_events_that_started_before_retention_window(fake_api):
+    fake_api["pages"] = [FakeResponse(200, [
+        _feature(1, started_days_ago=gdacs.SHORT_RETENTION_DAYS + 1),
+        _feature(2, started_days_ago=gdacs.SHORT_RETENTION_DAYS - 1),
+    ])]
+    assert [e["id"] for e in gdacs.fetch()] == ["GDACS-FL-2"]
+
+
+def test_unparseable_start_date_is_not_skipped(fake_api):
+    feature = _feature(1)
+    feature["properties"]["fromdate"] = "not a date"
+    fake_api["pages"] = [FakeResponse(200, [feature])]
+    assert [e["id"] for e in gdacs.fetch()] == ["GDACS-FL-1"]

@@ -12,7 +12,7 @@ from supabase import Client, create_client
 
 import archive
 import notify
-from config import SUPABASE_SERVICE_KEY, SUPABASE_URL
+from config import LONG_RETENTION_DAYS, SHORT_RETENTION_DAYS, SUPABASE_SERVICE_KEY, SUPABASE_URL
 from fetchers import eonet, firms, gdacs, openaq, usgs
 
 # journald on this host evicts entries after a few hours (unrelated services
@@ -113,8 +113,8 @@ def _upsert(supabase, table: str, rows: list, conflict_key: str) -> int:
 
 def _cleanup(supabase) -> None:
     now = datetime.now(tz=timezone.utc)
-    cutoff_60 = (now - timedelta(days=60)).isoformat()
-    cutoff_365 = (now - timedelta(days=365)).isoformat()
+    cutoff_60 = (now - timedelta(days=SHORT_RETENTION_DAYS)).isoformat()
+    cutoff_365 = (now - timedelta(days=LONG_RETENTION_DAYS)).isoformat()
     cutoff_7 = (now - timedelta(days=7)).isoformat()
 
     try:

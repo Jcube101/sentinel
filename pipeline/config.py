@@ -8,6 +8,12 @@ SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "").strip()
 FIRMS_MAP_KEY = os.getenv("FIRMS_MAP_KEY")
 OPENAQ_API_KEY = os.getenv("OPENAQ_API_KEY")
 
+# Days an event stays in Supabase, by started_at, before pipeline._cleanup()
+# deletes it (the local SQLite archive keeps it). Fetchers that can return
+# older rows skip them, so they aren't written only to be deleted again.
+SHORT_RETENTION_DAYS = 60   # FIRMS, GDACS
+LONG_RETENTION_DAYS = 365   # EONET, USGS
+
 # India bounding box
 INDIA_BBOX = {
     "west": 68.7,

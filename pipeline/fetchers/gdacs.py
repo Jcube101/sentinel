@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from dateutil import parser as dateutil_parser
 
 from fetchers.http import get_with_retry
-from config import INDIA_BBOX
+from config import INDIA_BBOX, SHORT_RETENTION_DAYS
 
 logger = logging.getLogger(__name__)
 
@@ -49,19 +49,31 @@ def _build_params(start_date: str | None = None, end_date: str | None = None) ->
     }
 
 
-def _parse_dt(value: str | None) -> str | None:
+def _to_datetime(value: str | None) -> datetime | None:
     if not value:
         return None
     try:
         dt = dateutil_parser.parse(value)
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
-        return dt.isoformat()
     except Exception:
-        return value
+        return None
+    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+
+
+def _parse_dt(value: str | None) -> str | None:
+    dt = _to_datetime(value)
+    if dt is None:
+        return value or None
+    return dt.isoformat()
 
 
 def _is_closed(props: dict) -> bool:
+    # GDACS marks a finished event with iscurrent = "false" (a string).
+    # The search API never sends isfinal, so the isfinal/todate check below
+    # is only a fallback for a response without iscurrent.
+    iscurrent = props.get("iscurrent")
+    if iscurrent is not None:
+        return str(iscurrent).strip().lower() == "false"
+
     isfinal = props.get("isfinal", False)
     todate_raw = props.get("todate")
     if not isfinal or not todate_raw:
@@ -107,6 +119,11 @@ def fetch(start_date: str | None = None, end_date: str | None = None) -> list[di
     features = _fetch_features(params)
     logger.info("GDACS: received %d features", len(features))
 
+    # The 90-day query returns events that started before the retention
+    # window; _cleanup() would delete them right after they were written.
+    retention_cutoff = datetime.now(timezone.utc) - timedelta(days=SHORT_RETENTION_DAYS)
+    skipped_old = 0
+
     events = {}
     for feature in features:
         try:
@@ -138,6 +155,11 @@ def fetch(start_date: str | None = None, end_date: str | None = None) -> list[di
             if category is None:
                 logger.debug("GDACS: skipping %s-%s — unmapped eventtype", eventtype, eventid)
                 continue
+            started = _to_datetime(props.get("fromdate"))
+            if started is not None and started < retention_cutoff:
+                skipped_old += 1
+                continue
+
             severity = SEVERITY_MAP.get(alertlevel, "low")
             status = "closed" if _is_closed(props) else "open"
 
@@ -182,7 +204,10 @@ def fetch(start_date: str | None = None, end_date: str | None = None) -> list[di
                 feature.get("properties", {}).get("eventid"),
             )
 
-    logger.info("GDACS: transformed %d events", len(events))
+    logger.info(
+        "GDACS: transformed %d events (skipped %d that started more than %d days ago)",
+        len(events), skipped_old, SHORT_RETENTION_DAYS,
+    )
     return list(events.values())
 
 
