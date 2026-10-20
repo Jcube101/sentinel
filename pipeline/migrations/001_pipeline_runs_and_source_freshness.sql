@@ -41,8 +41,8 @@ create policy "pipeline_runs readable by everyone"
   using (true);
 
 -- Data API grants for tables created after 30 Oct 2026 (pipeline/CLAUDE.md).
+-- Read-only for the public key; only the service role (the pipeline) writes.
 grant select on public.pipeline_runs to anon;
-grant select, insert, update, delete on public.pipeline_runs to authenticated;
 grant select, insert, update, delete on public.pipeline_runs to service_role;
 -- The pipeline inserts with the service key; make sure it can draw ids.
 do $$

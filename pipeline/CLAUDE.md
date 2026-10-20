@@ -41,13 +41,15 @@ New tables created in the `public` schema after October 30, 2026 require
 explicit grants before supabase-js or the REST API can access them.
 Existing tables (events, aqi_readings, sources, categories) are unaffected.
 
-When adding a new table, run this in the Supabase SQL editor:
+When adding a new table, include these grants in its migration:
 
   grant select on public.your_table to anon;
-  grant select, insert, update, delete on public.your_table to authenticated;
   grant select, insert, update, delete on public.your_table to service_role;
 
 Without these, the API returns "permission denied" on the new table.
+anon and authenticated are read-only: never grant them insert/update/delete.
+Only the service role (the pipeline) writes. Also enable RLS with a select
+policy, as in migrations/001.
 
 ## Tests
 
