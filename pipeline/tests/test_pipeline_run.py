@@ -176,3 +176,27 @@ def test_desk_import_failure_only_fails_that_stage(harness, monkeypatch):
     assert len(_ops(harness.db, "events", "upsert")) == 1
     assert len(_ops(harness.db, "aqi_readings", "upsert")) == 1
     assert harness.db.rows("pipeline_runs")[0]["status"] == "failed"
+
+
+def test_air_failure_only_fails_that_stage(harness, monkeypatch):
+    import air
+    monkeypatch.setattr(air, "run_air", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("boom")))
+    harness.fetchers["USGS"] = _fetcher([_quake_row()])
+    assert harness.run() == 1
+    assert len(_ops(harness.db, "events", "upsert")) == 1
+    assert len(harness.db.rows("desk_items")) == 1  # the quake desk stage still ran
+    assert harness.db.rows("pipeline_runs")[0]["status"] == "failed"
+
+
+def test_openaq_extras_reach_the_air_stage(harness, monkeypatch):
+    import air
+    seen = {}
+
+    def fake_run_air(supabase, run_id, results, now, write=True):
+        seen["locations"] = results["OpenAQ"].extras["locations"]
+        return {"level": None, "reason": None, "source_good": True, "change": None, "requests": 0, "stations": 0}
+
+    monkeypatch.setattr(air, "run_air", fake_run_air)
+    harness.fetchers["OpenAQ"] = SimpleNamespace(fetch_detailed=lambda: ([], {"locations": [{"id": 7}]}))
+    assert harness.run() == 0
+    assert seen["locations"] == [{"id": 7}]

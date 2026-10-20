@@ -140,6 +140,10 @@ and the Windows scheduled task has been disabled.
 from `gdacs.fetch_detailed()`) become desk items with a level, a reason and
 open / escalate / close rules; a failed source leaves its items "last-known".
 India's outline is `data/india_outline.geojson` (see data/README.md).
+`air.py` adds one national air-quality item (`air:IN`) from 24 h means at
+CPCB / AirNow monitors: ~36 OpenAQ listing requests plus up to
+`air.max_history_requests` history requests per run, paced on OpenAQ's
+rate-limit headers (adds ~3 min to a run). Its band is approximate.
 
 ## Migrations
 Schema changes are numbered SQL files in `migrations/`. There is no DB URL or

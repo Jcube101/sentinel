@@ -45,11 +45,30 @@ red = 4
 open_min_level = 1
 
 [air]
-# National air-quality item. Bands are CPCB National AQI breakpoints applied
-# to a 24 h mean of OpenAQ readings, so the result is marked approximate.
+# National air-quality item (air.py). Bands are CPCB National AQI
+# breakpoints applied to 24 h means of OpenAQ hourly data, so the result is
+# marked approximate. A city's value is the mean over its stations.
 # Spec: poor -> 1, very poor -> 2, severe in N cities -> 3 or 4.
 level_3_min_severe_cities = 1
 level_4_min_severe_cities = 3
+# Reference-grade monitors only; low-cost sensors (AirGradient, Clarity)
+# read high in humid air. Add them here to trade accuracy for freshness.
+providers = ["CPCB", "AirNow"]
+# Ignore sensors whose newest reading is older than this (CPCB data lands
+# on OpenAQ 2-3 days late).
+max_data_age_hours = 96
+# A station's 24 h mean needs at least this many hourly values (CPCB: 16 of 24).
+min_hours_for_mean = 16
+# Only cities with a station whose latest value is at least this fraction
+# of the "poor" threshold get their 24 h history fetched (one request per
+# sensor, worst cities first, at most max_history_requests per run).
+prefilter_fraction = 0.5
+max_history_requests = 150
+# Big cities: sample this many stations per pollutant, spread from cleanest
+# to dirtiest, so Delhi's 39 stations don't use the whole request budget.
+max_stations_per_city = 8
+# Station names CPCB counts as the same city.
+city_aliases = { "New Delhi" = "Delhi" }
 
 [air.pm25]
 # µg/m³, 24 h mean. A band starts above this value.
@@ -61,6 +80,11 @@ severe_above = 250
 poor_above = 250
 very_poor_above = 350
 severe_above = 430
+
+[air.lifecycle]
+# Opens when any city is Poor or worse; closes when none is (on a good
+# assessment). If OpenAQ fails it stays open as last-known.
+open_min_level = 1
 
 [fire]
 # Hotspot filter and clustering.

@@ -111,8 +111,10 @@ affect current output); all thresholds in **one** config file, `pipeline/severit
    last-attempt / last-good-fetch / last-error / row-count on `sources`.
 2. **Desk items + snapshots** for quakes, floods and cyclones: `desk_items`,
    `desk_item_snapshots`, levels, open/escalate/close rules, "last-known" when a source fails.
-3. **Air-quality item** (national, approximate CPCB band from 24 h means; station → city
-   via GeoNames cities15000, CC BY 4.0).
+3. **Air-quality item** (national, `air:IN`): reference monitors only (CPCB, AirNow), city
+   taken from CPCB's own station names ("R K Puram, Delhi - DPCC"), 24 h means from OpenAQ
+   hourly data for cities near "Poor" (request budget in `severity.toml`), CPCB breakpoints,
+   marked approximate (`figures.approximate` + "approx. CPCB band" in the reason).
 4. **Fire clustering + district rollup** into `fire_events` (nominal + high confidence,
    ~1.5 km single-linkage clusters, district/state by point-in-polygon; adds `shapely`).
    The **static heat-source mask** (below) is applied **before clustering**.
@@ -135,8 +137,8 @@ Notes that apply across steps:
   counters advance only when a source's data actually changes.
 - Desk item ids are deterministic (`earthquake:USGS-…`, `flood:GDACS-FL-…`, `cyclone:GDACS-TC-…`, `fire:<state>`, `air:IN`).
 - Existing `events.severity` labels (low/medium/high/extreme) are left unchanged.
-- **TODO (About page, separate frontend task):** credit geoBoundaries (district boundaries,
-  ODbL 1.0, source LGD via Pathways Data) and GeoNames (CC BY 4.0).
+- **TODO (About page, separate frontend task):** credit geoBoundaries (India outline and
+  district boundaries, ODbL 1.0, source LGD via Pathways Data).
 
 ## Non-goals
 - No frontend changes in this task — UI redesign is separate (Situation Report direction A).

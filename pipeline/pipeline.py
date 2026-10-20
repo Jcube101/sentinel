@@ -363,6 +363,23 @@ def run(dry_run: bool = False):
     else:
         logger.error("desk: skipped, no run record to attach snapshots to")
 
+    # --- National air-quality item (air.py): extra OpenAQ requests, own stage ---
+    if dry_run or run_id is not None:
+        try:
+            import air
+
+            summary = air.run_air(supabase, run_id, results, datetime.now(tz=timezone.utc), write=not dry_run)
+            logger.info(
+                "%sair: level %s (%s), change: %s, %d OpenAQ requests, %d stations",
+                "dry-run: " if dry_run else "", summary["level"], summary["reason"] or "nothing Poor or worse",
+                summary["change"] or "none", summary["requests"], summary["stations"],
+            )
+            if not summary["source_good"]:
+                logger.warning("air: assessment incomplete, item kept as last-known")
+        except Exception as exc:
+            logger.error("air: failed — %s", exc)
+            runs_ok = False
+
     duration = time.monotonic() - start
 
     print("")

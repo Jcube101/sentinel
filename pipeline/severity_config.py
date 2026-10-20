@@ -82,6 +82,18 @@ def validate(cfg: dict) -> None:
     _number(cfg, "air.level_3_min_severe_cities", minimum=1, integer=True)
     _number(cfg, "air.level_4_min_severe_cities", minimum=1, integer=True)
     _ascending(cfg, "air.level_3_min_severe_cities", "air.level_4_min_severe_cities", strict=False)
+    providers = _get(cfg, "air.providers")
+    if not isinstance(providers, list) or not providers or not all(isinstance(p, str) for p in providers):
+        raise ConfigError(f"severity.toml: air.providers must be a non-empty list of names, got {providers!r}")
+    _number(cfg, "air.max_data_age_hours", minimum=1)
+    _number(cfg, "air.min_hours_for_mean", minimum=1, maximum=24, integer=True)
+    _number(cfg, "air.prefilter_fraction", minimum=0, maximum=1)
+    _number(cfg, "air.max_history_requests", minimum=0, integer=True)
+    _number(cfg, "air.max_stations_per_city", minimum=1, integer=True)
+    aliases = cfg["air"].get("city_aliases", {})
+    if not isinstance(aliases, dict) or not all(isinstance(v, str) for v in aliases.values()):
+        raise ConfigError(f"severity.toml: air.city_aliases must map names to names, got {aliases!r}")
+    _number(cfg, "air.lifecycle.open_min_level", minimum=1, maximum=4, integer=True)
 
     confidence = _get(cfg, "fire.confidence")
     if not isinstance(confidence, list) or not confidence or not set(confidence) <= CONFIDENCE_CODES:

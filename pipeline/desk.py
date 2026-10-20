@@ -326,6 +326,15 @@ def load_items(supabase, categories: set[str], candidate_ids: list[str]) -> dict
     return by_id
 
 
+def store(supabase, items: list[dict], snapshots: list[dict]) -> None:
+    """Upsert items, then their snapshots (which reference them)."""
+    for start in range(0, len(items), BATCH_SIZE):
+        supabase.table(ITEMS_TABLE).upsert(items[start:start + BATCH_SIZE], on_conflict="id").execute()
+    for start in range(0, len(snapshots), BATCH_SIZE):
+        supabase.table(SNAPSHOTS_TABLE).upsert(
+            snapshots[start:start + BATCH_SIZE], on_conflict="run_id,item_id").execute()
+
+
 def run_desk(supabase, run_id: int | None, results: dict, now: datetime, *,
              write: bool = True, cfg: dict | None = None, km_from_india=None) -> dict:
     """Build, reconcile and (if write) store desk items. Returns a summary.
@@ -368,11 +377,7 @@ def run_desk(supabase, run_id: int | None, results: dict, now: datetime, *,
     items, snapshots = q_items + g_items, q_snaps + g_snaps
 
     if write:
-        for start in range(0, len(items), BATCH_SIZE):
-            supabase.table(ITEMS_TABLE).upsert(items[start:start + BATCH_SIZE], on_conflict="id").execute()
-        for start in range(0, len(snapshots), BATCH_SIZE):
-            supabase.table(SNAPSHOTS_TABLE).upsert(
-                snapshots[start:start + BATCH_SIZE], on_conflict="run_id,item_id").execute()
+        store(supabase, items, snapshots)
 
     open_items = [i for i in items if i["status"] == "open"]
     return {

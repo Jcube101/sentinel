@@ -75,7 +75,12 @@ def _last_seen(loc: dict) -> datetime | None:
 
 
 def _fetch_locations() -> list[dict]:
-    """Return India's most recently-reporting locations, freshest first.
+    """Return the locations to poll: the live head of _fetch_recent_locations()."""
+    return _fetch_recent_locations()[:MAX_LOCATIONS]
+
+
+def _fetch_recent_locations() -> list[dict]:
+    """Return every India location that reported within CUTOFF_HOURS, freshest first.
 
     OpenAQ returns locations ordered by id, and India's low ids are stations
     that stopped reporting years ago — paging only the first 50 yielded nothing
@@ -109,7 +114,7 @@ def _fetch_locations() -> list[dict]:
         "OpenAQ: %d locations total, %d reported within %dh",
         len(locations), len(recent), CUTOFF_HOURS,
     )
-    return recent[:MAX_LOCATIONS]
+    return recent
 
 
 def _fetch_sensors(location_id: int) -> list[dict]:
@@ -127,8 +132,20 @@ def _fetch_sensors(location_id: int) -> list[dict]:
 
 
 def fetch() -> list[dict]:
+    """Rows for the aqi_readings table."""
+    return fetch_detailed()[0]
+
+
+def fetch_detailed() -> tuple[list[dict], dict]:
+    """(aqi_readings rows, {"locations": [...]}) from one fetch.
+
+    locations is every India location that reported within CUTOFF_HOURS,
+    with its sensor ids, for the national air-quality desk item (air.py).
+    The readings rows still come from the first MAX_LOCATIONS of them.
+    """
     logger.info("OpenAQ: fetching locations (country=IN)")
-    locations = _fetch_locations()
+    recent = _fetch_recent_locations()
+    locations = recent[:MAX_LOCATIONS]
     logger.info("OpenAQ: selected %d locations to poll", len(locations))
 
     readings = []
@@ -188,7 +205,7 @@ def fetch() -> list[dict]:
     if skipped_bbox:
         logger.info("OpenAQ: skipped %d locations outside India bbox", skipped_bbox)
     logger.info("OpenAQ: returning %d aqi readings", len(readings))
-    return readings
+    return readings, {"locations": recent}
 
 
 if __name__ == "__main__":
