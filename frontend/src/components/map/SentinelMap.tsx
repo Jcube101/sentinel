@@ -16,12 +16,20 @@ interface Props {
   zoom?: number
 }
 
-// Dark raster basemap. Leaflet renders plain <img> tiles on the DOM, so unlike
-// the previous MapLibre/WebGL map this works in every browser, including ones
-// with hardware acceleration or WebGL disabled.
-const TILE_URL = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+// Dark raster basemap: Esri Dark Gray Canvas, which needs no API key (CARTO's
+// dark_all tiles started requiring one). Leaflet renders plain <img> tiles on
+// the DOM, so unlike the previous MapLibre/WebGL map this works in every
+// browser, including ones with hardware acceleration or WebGL disabled.
+// Esri tile paths are {z}/{y}/{x} (row before column), unlike most XYZ servers.
+// The base layer only carries country names; city labels come from the
+// Reference layer, stacked above it by zIndex inside Leaflet's tile pane so it
+// stays below the marker pane. index.css darkens the whole tile pane.
+const TILE_URL =
+  'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}'
+const LABELS_URL =
+  'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}'
 const TILE_ATTRIBUTION =
-  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+  'Esri, HERE, Garmin, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, and the GIS user community'
 
 const INDIA_CENTER: [number, number] = [22.5, 82.8]
 
@@ -174,7 +182,8 @@ export default function SentinelMap({
         attributionControl={interactive}
         style={{ width: '100%', height: '100%', background: '#0a0a0f' }}
       >
-        <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} />
+        <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} zIndex={1} />
+        <TileLayer url={LABELS_URL} zIndex={2} />
         {interactive && <ZoomControl position="topright" />}
         <ClusterLayer events={events} onEventSelect={onEventSelect} selectedEvent={selectedEvent} />
       </MapContainer>

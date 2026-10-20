@@ -43,3 +43,13 @@ body {
 .marker-pulse {
   animation: pulse-ring 2s infinite;
 }
+
+/* Esri's Dark Gray Canvas is much lighter than the CARTO Dark Matter tiles the
+   UI was designed around, so darken the basemap (both tile layers) back to
+   that near-black. Only the tile pane is filtered: markers and clusters live
+   in .leaflet-marker-pane, and the legend and AQI panel sit outside the map.
+   0.4 brings Esri's #3f3f41 land to ~#0f0f10 (CARTO was #090909) while keeping
+   street lines and labels readable at zoom 14; 0.35 starts losing them. */
+.leaflet-tile-pane {
+  filter: brightness(0.4) contrast(1.1);
+}

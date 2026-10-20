@@ -316,7 +316,7 @@ ramp), aliased in `tailwind.config.js`.
 | `/dashboard` | — | Redirects to `/map` (legacy bookmarks) |
 
 **Map:**
-- Base layer: Leaflet with CARTO dark raster tiles (renders as DOM `<img>` tiles, so it needs no WebGL — replaces an earlier MapLibre map that showed a blank void when WebGL was unavailable)
+- Base layer: Leaflet with Esri Dark Gray Canvas raster tiles plus its Reference label layer, no API key, darkened via a CSS filter on the tile pane (renders as DOM `<img>` tiles, so it needs no WebGL — replaces an earlier MapLibre map that showed a blank void when WebGL was unavailable)
 - Initial view: lon 82.8, lat 22.5, zoom 4
 - Event markers: coloured by category (fire=#ef4444, flood=#3b82f6, cyclone=#8b5cf6, earthquake=#f59e0b)
 - Supercluster clustering for dense FIRMS hotspots

@@ -49,7 +49,10 @@ Full IA history and ground rules in `frontend/ROADMAP.md` Phase 4.
 - `lib/time.ts` (relativeTime, formatDate) and `lib/severity.ts` (severityScore/severityBucket,
   a 0-100 cross-category ranking blending each event's normalized `severity` label with
   recency) are shared by ThreatFeed, EventDetailPanel, and the EventDetail page
-- Map tiles: CARTO dark raster. Leaflet renders raster tiles on the DOM, so the
+- Map tiles: Esri Dark Gray Canvas raster, no API key (base + Reference label layer,
+  `{z}/{y}/{x}` order), darkened to the old CARTO Dark Matter look by a
+  `.leaflet-tile-pane` filter in `index.css`. CARTO's dark_all now needs a key and
+  watermarks every keyless tile. Leaflet renders raster tiles on the DOM, so the
   map needs no WebGL and works in every browser (the earlier MapLibre map showed
   a blank void when WebGL was unavailable)
 - useAqiReadings queries aqi_readings directly (last 24h); AqiPanel is the only consumer,
