@@ -8,7 +8,8 @@ class FakeSupabase:
         self.tables = {name: [dict(r) for r in rows] for name, rows in (tables or {}).items()}
         self.missing = set(missing)  # tables that "don't exist yet" (migration not applied)
         # Tables whose upserts are stored (others are only recorded in calls)
-        self.upsert_keys = {"desk_items": ("id",), "desk_item_snapshots": ("run_id", "item_id")}
+        self.upsert_keys = {"desk_items": ("id",), "desk_item_snapshots": ("run_id", "item_id"),
+                            "fire_events": ("id",)}
         self.calls = []              # (table, op, payload)
         self._next_id = {}
 
@@ -44,6 +45,14 @@ class _Query:
         self.filters.append((col, lambda v, value=value: v == value))
         return self
 
+    def delete(self):
+        self.op = "delete"
+        return self
+
+    def lt(self, col, value):
+        self.filters.append((col, lambda v, value=value: v is not None and v < value))
+        return self
+
     def in_(self, col, values):
         values = set(values)
         self.filters.append((col, lambda v: v in values))
@@ -74,6 +83,10 @@ class _Query:
                     by_key[tuple(r[k] for k in key)] = dict(r)
                 rows[:] = list(by_key.values())
             return SimpleNamespace(data=[dict(r) for r in self.payload])
+        if self.op == "delete":
+            gone = [r for r in rows if self._matches(r)]
+            rows[:] = [r for r in rows if not self._matches(r)]
+            return SimpleNamespace(data=gone)
         if self.op == "update":
             hit = [r for r in rows if self._matches(r)]
             for r in hit:

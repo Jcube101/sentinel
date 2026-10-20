@@ -344,6 +344,28 @@ def run(dry_run: bool = False):
             logger.error("runs: could not record source freshness — %s", exc)
             runs_ok = False
 
+    # --- Fire events: hotspots clustered and placed in districts (fire.py) ---
+    if dry_run or run_id is not None:
+        try:
+            import fire  # needs shapely; a broken import fails only this stage
+
+            summary = fire.run_fire(supabase, run_id, results, datetime.now(tz=timezone.utc), write=not dry_run)
+            if "skipped" in summary:
+                logger.warning("fire: skipped — %s", summary["skipped"])
+            else:
+                logger.info(
+                    "%sfire: %d hotspots (%d masked as static) -> %d fire events in %d districts, %d states "
+                    "for %s; %d superseded rows removed; top: %s",
+                    "dry-run: " if dry_run else "", summary["hotspots"], summary["masked"],
+                    summary["fire_events"], summary["districts"], summary["states"],
+                    ", ".join(summary["dates"]), summary["superseded"], "; ".join(summary["top_districts"]),
+                )
+        except Exception as exc:
+            logger.error("fire: failed — %s", exc)
+            runs_ok = False
+    else:
+        logger.error("fire: skipped, no run record")
+
     # --- Severity desk: levels, open/close rules, per-run snapshots (desk.py) ---
     if dry_run or run_id is not None:
         try:

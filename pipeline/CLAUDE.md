@@ -131,8 +131,17 @@ and the Windows scheduled task has been disabled.
 - pipeline_runs: one row per non-dry run; id is the edition number (runs.py)
 - sources: one row per source, plus freshness columns written every run
   (last_success_at = last good fetch, newest_observation_at, last_new_data_at)
+- fire_events: FIRMS hotspots clustered per UTC day, with district/state (fire.py);
+  views fire_district_daily, fire_state_daily
 - desk_items: severity desk, one row per item with a 1-4 level (desk.py)
 - desk_item_snapshots: one row per desk item per run
+
+## Fire events
+`fire.py` runs first of the severity stages: nominal/high-confidence FIRMS
+hotspots, minus the static heat-source mask (data/static_heat_cells.json,
+built in step 5), are clustered per UTC day (1.5 km single linkage) and
+placed in a district (data/india_districts.geojson). Each run rebuilds
+today and yesterday in fire_events and keeps 14 days.
 
 ## Severity desk
 `desk.py` runs after the events / aqi_readings writes: quakes (USGS, within

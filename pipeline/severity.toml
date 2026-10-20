@@ -95,7 +95,10 @@ open_min_level = 1
 [fire]
 # Hotspot filter and clustering.
 confidence = ["n", "h"]  # VIIRS confidence: l(ow), n(ominal), h(igh)
-cluster_km = 1.5         # hotspots this close join one fire event
+cluster_km = 1.5         # hotspots this close (same UTC day) join one fire event
+# fire_events keeps this many days; older days are deleted (the events
+# table still has 60 days of hotspots to rebuild from).
+events_retention_days = 14
 # One desk item per state, levelled on ratio to the state's seasonal norm
 # (mean daily fire events for that calendar week, 2024-2025 baseline).
 # Ratio below level_2 = Level 1 ("at norm").
@@ -113,6 +116,12 @@ gdacs_wildfire_level = 3
 level_4_min_frp_mw = 100
 level_4_near_km = 10
 level_4_min_population = 100000
+
+[fire.static_mask]
+# Hotspots in a static heat-source cell (steel plants, refineries, gas
+# flares), or within this many cells of one, are dropped before clustering.
+# Mask file: data/static_heat_cells.json, built from the archive in step 5.
+neighbour_cells = 1
 
 [fire.lifecycle]
 # Spec: opens at level 2+, escalates on any level increase, closes after

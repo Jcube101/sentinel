@@ -105,6 +105,8 @@ def validate(cfg: dict) -> None:
             f"got {confidence!r}"
         )
     _number(cfg, "fire.cluster_km", minimum=0.1)
+    _number(cfg, "fire.events_retention_days", minimum=2, integer=True)
+    _number(cfg, "fire.static_mask.neighbour_cells", minimum=0, maximum=5, integer=True)
     _number(cfg, "fire.level_2_min_ratio", minimum=1)
     _number(cfg, "fire.level_3_min_ratio", minimum=1)
     _ascending(cfg, "fire.level_2_min_ratio", "fire.level_3_min_ratio")

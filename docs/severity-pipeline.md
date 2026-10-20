@@ -138,7 +138,8 @@ Notes that apply across steps:
 - Desk item ids are deterministic (`earthquake:USGS-…`, `flood:GDACS-FL-…`, `cyclone:GDACS-TC-…`, `fire:<state>`, `air:IN`).
 - Existing `events.severity` labels (low/medium/high/extreme) are left unchanged.
 - **TODO (About page, separate frontend task):** credit geoBoundaries (India outline and
-  district boundaries, ODbL 1.0, source LGD via Pathways Data).
+  district boundaries, ODbL 1.0, source LGD via Pathways Data) and DataMeet / Election
+  Commission of India (state boundaries, CC BY 2.5 IN). See pipeline/data/README.md.
 
 ## Non-goals
 - No frontend changes in this task — UI redesign is separate (Situation Report direction A).
