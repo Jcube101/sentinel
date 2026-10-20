@@ -86,6 +86,9 @@ def validate(cfg: dict) -> None:
     if not isinstance(providers, list) or not providers or not all(isinstance(p, str) for p in providers):
         raise ConfigError(f"severity.toml: air.providers must be a non-empty list of names, got {providers!r}")
     _number(cfg, "air.max_data_age_hours", minimum=1)
+    _number(cfg, "air.fresh_within_hours", minimum=1)
+    _ascending(cfg, "air.fresh_within_hours", "air.max_data_age_hours", strict=False)
+    _number(cfg, "air.min_fresh_cities", minimum=1, integer=True)
     _number(cfg, "air.min_hours_for_mean", minimum=1, maximum=24, integer=True)
     _number(cfg, "air.prefilter_fraction", minimum=0, maximum=1)
     _number(cfg, "air.max_history_requests", minimum=0, integer=True)

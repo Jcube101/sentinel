@@ -143,7 +143,10 @@ India's outline is `data/india_outline.geojson` (see data/README.md).
 `air.py` adds one national air-quality item (`air:IN`) from 24 h means at
 CPCB / AirNow monitors: ~36 OpenAQ listing requests plus up to
 `air.max_history_requests` history requests per run, paced on OpenAQ's
-rate-limit headers (adds ~3 min to a run). Its band is approximate.
+rate-limit headers (adds ~3 min to a run). Its band is approximate. Only
+stations whose data is newer than `air.fresh_within_hours` count; with fewer
+than `air.min_fresh_cities` fresh cities the item stays last-known and the
+history requests are skipped.
 
 ## Migrations
 Schema changes are numbered SQL files in `migrations/`. There is no DB URL or

@@ -30,6 +30,9 @@ EARTHQUAKE, FLOOD, CYCLONE = "earthquake", "flood", "cyclone"
 GDACS_CATEGORIES = {"FL": FLOOD, "TC": CYCLONE}
 GDACS_COLOUR_RANK = {"Green": 1, "Orange": 2, "Red": 3}
 
+# Appended to an item's reason while it is kept as last-known, with why.
+LAST_KNOWN_SEP = " · last known: "
+
 ITEM_COLUMNS = (
     "id", "category", "source", "source_ref", "title", "place_name", "latitude", "longitude",
     "severity_level", "severity_reason", "peak_level", "status", "opened_at", "escalated_at",
@@ -241,7 +244,7 @@ def _snapshot(row: dict, run_id: int, now: datetime, change: str | None, new_dat
 
 def reconcile(existing: dict[str, dict], candidates: list[Candidate], *, categories: set[str],
               source_good: bool, open_min_level: int, expired, now: datetime,
-              run_id: int) -> tuple[list[dict], list[dict]]:
+              run_id: int, last_known_note: str | None = None) -> tuple[list[dict], list[dict]]:
     """Apply the open / escalate / close rules for one source's categories.
 
     existing:    stored items by id (open ones, plus any candidate ids)
@@ -249,6 +252,8 @@ def reconcile(existing: dict[str, dict], candidates: list[Candidate], *, categor
                  source failed (a quake 48 h on)
     source_good: this run's fetch for the source succeeded; when it didn't,
                  open items without a candidate stay open as last-known
+    last_known_note: why, appended to a last-known item's reason
+                 ("... · last known: OpenAQ fetch failed this run")
 
     Returns (desk_items rows to upsert, snapshot rows).
     """
@@ -306,6 +311,9 @@ def reconcile(existing: dict[str, dict], candidates: list[Candidate], *, categor
             change = "closed"
         else:
             row = _row({**old, "last_known": True, "last_run_id": run_id, "updated_at": now_iso})
+            if last_known_note:
+                base = (old.get("severity_reason") or "").split(LAST_KNOWN_SEP)[0]
+                row["severity_reason"] = f"{base}{LAST_KNOWN_SEP}{last_known_note}"
             change = None
         items.append(row)
         snapshots.append(_snapshot(row, run_id, now, change, new_data=False))

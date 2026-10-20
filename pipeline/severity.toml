@@ -57,6 +57,12 @@ providers = ["CPCB", "AirNow"]
 # Ignore sensors whose newest reading is older than this (CPCB data lands
 # on OpenAQ 2-3 days late).
 max_data_age_hours = 96
+# Freshness for the level: only stations whose 24 h window ends within this
+# many hours count toward city bands; older ones stay in figures, flagged
+# stale. With fewer than min_fresh_cities fresh cities there is no new
+# level: air:IN stays last-known and its reason says so.
+fresh_within_hours = 36
+min_fresh_cities = 10
 # A station's 24 h mean needs at least this many hourly values (CPCB: 16 of 24).
 min_hours_for_mean = 16
 # Only cities with a station whose latest value is at least this fraction

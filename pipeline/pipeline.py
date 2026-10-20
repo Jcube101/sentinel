@@ -369,13 +369,18 @@ def run(dry_run: bool = False):
             import air
 
             summary = air.run_air(supabase, run_id, results, datetime.now(tz=timezone.utc), write=not dry_run)
-            logger.info(
-                "%sair: level %s (%s), change: %s, %d OpenAQ requests, %d stations",
-                "dry-run: " if dry_run else "", summary["level"], summary["reason"] or "nothing Poor or worse",
-                summary["change"] or "none", summary["requests"], summary["stations"],
-            )
-            if not summary["source_good"]:
-                logger.warning("air: assessment incomplete, item kept as last-known")
+            prefix = "dry-run: " if dry_run else ""
+            if summary["source_good"]:
+                logger.info(
+                    "%sair: level %s (%s), change: %s, %d OpenAQ requests, %d stations, %d fresh cities",
+                    prefix, summary["level"], summary["reason"] or "nothing Poor or worse",
+                    summary["change"] or "none", summary["requests"], summary["stations"], summary["fresh_cities"],
+                )
+            else:
+                logger.warning(
+                    "%sair: no new level (%s); any open item kept as last-known, %d OpenAQ requests",
+                    prefix, summary["note"], summary["requests"],
+                )
         except Exception as exc:
             logger.error("air: failed — %s", exc)
             runs_ok = False

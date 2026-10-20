@@ -11,7 +11,9 @@ from severity_config import load
 from tests.fakes import FakeSupabase
 
 NOW = datetime(2026, 10, 20, 15, 0, tzinfo=timezone.utc)
-CFG = load()
+REAL_CFG = load()
+CFG = copy.deepcopy(REAL_CFG)
+CFG["air"]["min_fresh_cities"] = 1  # most tests use a handful of cities
 ALIASES = {"New Delhi": "Delhi"}
 
 
@@ -276,3 +278,80 @@ def test_assess_records_each_citys_data_time():
     data_to = {c["city"]: c["data_to"] for c in figures["cities"]}
     assert data_to == {"Delhi": (NOW - timedelta(hours=30)).isoformat(),
                        "Lucknow": (NOW - timedelta(hours=2)).isoformat()}
+
+
+# --- freshness cutoff and quorum ---------------------------------------------------------------
+
+def test_repo_config_freshness_values():
+    assert (REAL_CFG["air"]["fresh_within_hours"], REAL_CFG["air"]["min_fresh_cities"]) == (36, 10)
+
+
+def test_stale_station_listed_but_not_counted():
+    stale_age = CFG["air"]["fresh_within_hours"] + 14
+    figures, _ = _assess({11: (300, 2), 31: (300, stale_age)}, {11: [300] * 24, 31: [300] * 24},
+                         stations=[STATIONS[0], STATIONS[2]])
+    assert figures["counts"] == {"severe": 1, "very_poor": 0, "poor": 0}
+    assert [c["city"] for c in figures["cities"]] == ["Delhi"]
+    assert [(r["city"], r["stale"]) for r in figures["station_means"]] == [("Delhi", False), ("Lucknow", True)]
+    assert figures["fresh_cities"] == 1 and figures["data_as_of"] == (NOW - timedelta(hours=2)).isoformat()
+
+
+def test_stale_station_in_fresh_city_is_flagged_and_excluded_from_mean():
+    station_b = dict(STATIONS[1])
+    figures, _ = _assess({11: (300, 2), 21: (100, 60)}, {11: [300] * 24, 21: [100] * 24},
+                         stations=[STATIONS[0], station_b])
+    (delhi,) = figures["cities"]
+    assert delhi["pm25_24h"] == 300.0 and delhi["stations"] == 1 and delhi["stale_stations"] == 1
+
+
+def test_fresh_requests_come_before_stale_under_the_cap():
+    cfg = copy.deepcopy(CFG)
+    cfg["air"]["max_history_requests"] = 1
+    _, client = _assess({11: (100, 2), 31: (400, 60)}, {11: [100] * 24, 31: [400] * 24},
+                        cfg=cfg, stations=[STATIONS[0], STATIONS[2]])
+    assert client.history_calls == [11]
+
+
+def test_quorum_not_met_fetches_no_history():
+    cfg = copy.deepcopy(CFG)
+    cfg["air"]["min_fresh_cities"] = 2
+    figures, client = _assess({11: (300, 2), 31: (300, 60)}, {11: [300] * 24, 31: [300] * 24},
+                              cfg=cfg, stations=[STATIONS[0], STATIONS[2]])
+    assert figures["quorum_met"] is False and figures["fresh_cities"] == 1
+    assert client.history_calls == [] and figures["counts"] == {"severe": 0, "very_poor": 0, "poor": 0}
+
+
+def test_run_air_quorum_failure_keeps_level_and_says_why(monkeypatch):
+    db = FakeSupabase()
+    monkeypatch.setattr(air, "reference_stations", lambda locations, cfg: STATIONS[:1])
+    dirty = lambda: FakeOpenAQ({11: (300, 1)}, {11: [300] * 24})
+
+    air.run_air(db, 1, _results(), NOW, cfg=CFG, client=dirty())
+    opened = db.rows("desk_items")[0]
+    assert opened["severity_level"] == 3
+
+    strict = copy.deepcopy(CFG)
+    strict["air"]["min_fresh_cities"] = 10
+    for run_id in (2, 3):  # twice: the note must not pile up
+        s = air.run_air(db, run_id, _results(), NOW + timedelta(hours=6 * run_id), cfg=strict, client=dirty())
+        item = db.rows("desk_items")[0]
+        assert s["source_good"] is False and s["change"] is None
+        assert item["status"] == "open" and item["last_known"] is True and item["severity_level"] == 3
+        assert item["severity_reason"] == (
+            opened["severity_reason"] + " · last known: only 1 city has data from the last 36 h (need 10)")
+
+    air.run_air(db, 4, _results(), NOW + timedelta(hours=30), cfg=CFG, client=dirty())
+    item = db.rows("desk_items")[0]
+    assert item["last_known"] is False and "last known" not in item["severity_reason"]
+    snaps = db.rows("desk_item_snapshots")
+    assert [s["last_known"] for s in snaps] == [False, True, True, False]
+    assert "last known: only 1 city" in snaps[1]["severity_reason"]
+
+
+def test_run_air_fetch_failure_note(monkeypatch):
+    db = FakeSupabase()
+    monkeypatch.setattr(air, "reference_stations", lambda locations, cfg: STATIONS[:1])
+    air.run_air(db, 1, _results(), NOW, cfg=CFG, client=FakeOpenAQ({11: (300, 1)}, {11: [300] * 24}))
+    s = air.run_air(db, 2, _results("error"), NOW, cfg=CFG, client=FakeOpenAQ({}, {}))
+    assert s["note"] == "OpenAQ fetch failed this run" and s["requests"] == 0
+    assert db.rows("desk_items")[0]["severity_reason"].endswith(" · last known: OpenAQ fetch failed this run")

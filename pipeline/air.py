@@ -188,9 +188,19 @@ def mean_24h(client: OpenAQ, sensor_id: int, until: datetime, min_hours: int) ->
 # --- assessment -----------------------------------------------------------------------
 
 def assess(stations: list[dict], client: OpenAQ, cfg: dict, now: datetime) -> dict:
-    """City bands from 24 h means. Returns the figures for the air item."""
+    """City bands from 24 h means. Returns the figures for the air item.
+
+    A station is fresh when its 24 h window (which ends at its newest
+    reading) ends within fresh_within_hours. Only fresh stations count
+    toward city bands and the level; stale ones are listed in
+    figures["station_means"] with stale=True, budget permitting. With fewer
+    than min_fresh_cities fresh cities, no history is fetched and
+    quorum_met is False: the item keeps its last-known level.
+    """
     air = cfg["air"]
     max_age = timedelta(hours=air["max_data_age_hours"])
+    fresh_within = timedelta(hours=air["fresh_within_hours"])
+    by_id = {st["location_id"]: st for st in stations}
     wanted = {sid for st in stations for ids in st["sensors"].values() for sid in ids}
     latest = latest_values(client, wanted) if wanted else {}
 
@@ -198,52 +208,86 @@ def assess(stations: list[dict], client: OpenAQ, cfg: dict, now: datetime) -> di
     current = {}  # (location_id, pollutant) -> (sensor_id, value, when)
     for st in stations:
         for pollutant, ids in st["sensors"].items():
-            fresh = [(sid, *latest[sid]) for sid in ids if sid in latest and now - latest[sid][1] <= max_age]
-            if fresh:
-                current[(st["location_id"], pollutant)] = max(fresh, key=lambda t: t[2])
+            recent = [(sid, *latest[sid]) for sid in ids if sid in latest and now - latest[sid][1] <= max_age]
+            if recent:
+                current[(st["location_id"], pollutant)] = max(recent, key=lambda t: t[2])
+
+    def is_fresh(when: datetime) -> bool:
+        return now - when <= fresh_within
 
     by_city = defaultdict(list)
     for st in stations:
         if any((st["location_id"], p) in current for p in PARAMETER_IDS):
             by_city[st["city"]].append(st)
+    fresh_cities = {by_id[loc]["city"] for (loc, _), (_, _, when) in current.items() if is_fresh(when)}
 
-    # Which (city, pollutant) pairs need 24 h history: any station's latest
-    # value at or above prefilter_fraction x the "poor" threshold.
-    jobs = []  # (priority, city, pollutant, sensor_id, until)
+    figures = {
+        "approximate": True,
+        "method": ("24 h mean of OpenAQ hourly PM2.5/PM10 at reference monitors ("
+                   + ", ".join(air["providers"]) + "), CPCB AQI breakpoints"),
+        "fresh_within_hours": air["fresh_within_hours"],
+        "min_fresh_cities": air["min_fresh_cities"],
+        "fresh_cities": len(fresh_cities),
+        "quorum_met": len(fresh_cities) >= air["min_fresh_cities"],
+        "cities_reporting": len(by_city),
+        "stations_reporting": len({loc for loc, _ in current}),
+        "counts": {b: 0 for b in BANDS},
+        "cities": [],
+        "station_means": [],
+        "data_as_of": None,
+        "oldest_data": None,
+        "cities_assessed": 0,
+        "history_requests": 0,
+        "history_wanted": 0,
+        "history_failed": 0,
+        "capped": False,
+    }
+    if not figures["quorum_met"]:
+        return figures  # no level from this data: skip the history requests
+
+    # Which (city, pollutant) groups need 24 h history: a station's latest
+    # value at or above prefilter_fraction x "poor". Fresh groups first,
+    # worst first; stale ones only fill whatever budget is left.
+    jobs = []  # (fresh, ratio, city, pollutant, location_id, sensor_id, until)
     for city, members in by_city.items():
         for pollutant in PARAMETER_IDS:
-            readings = [current[(st["location_id"], pollutant)] for st in members
-                        if (st["location_id"], pollutant) in current]
-            if not readings:
-                continue
-            peak = max(v for _, v, _ in readings)
-            if peak < air["prefilter_fraction"] * air[pollutant]["poor_above"]:
-                continue
-            ratio = peak / air[pollutant]["poor_above"]
-            reporting = [current[(st["location_id"], pollutant)] for st in members
-                         if (st["location_id"], pollutant) in current]
-            for sid, _, when in spread_sample(reporting, air["max_stations_per_city"], key=lambda r: r[1]):
-                jobs.append((ratio, city, pollutant, sid, when))
-    jobs.sort(key=lambda j: -j[0])
-    wanted_requests = len(jobs)
-    capped = wanted_requests > air["max_history_requests"]
+            reporting = [(st["location_id"], *current[(st["location_id"], pollutant)])
+                         for st in members if (st["location_id"], pollutant) in current]
+            for fresh in (True, False):
+                group = [r for r in reporting if is_fresh(r[3]) == fresh]
+                if not group:
+                    continue
+                peak = max(r[2] for r in group)
+                if peak < air["prefilter_fraction"] * air[pollutant]["poor_above"]:
+                    continue
+                ratio = peak / air[pollutant]["poor_above"]
+                for loc, sid, _, when in spread_sample(group, air["max_stations_per_city"], key=lambda r: r[2]):
+                    jobs.append((fresh, ratio, city, pollutant, loc, sid, when))
+    jobs.sort(key=lambda j: (not j[0], -j[1]))
+    figures["history_wanted"] = len(jobs)
+    figures["capped"] = len(jobs) > air["max_history_requests"]
     jobs = jobs[:air["max_history_requests"]]
 
-    means = defaultdict(list)  # (city, pollutant) -> [24 h means]
-    used_until = []
+    means = defaultdict(list)  # (city, pollutant) -> [fresh 24 h means]
     city_until = defaultdict(list)
-    failed = 0
-    for _, city, pollutant, sid, until in jobs:
+    stale_count = defaultdict(int)
+    station_means = []
+    for fresh, _, city, pollutant, loc, sid, until in jobs:
         try:
             m = mean_24h(client, sid, until, air["min_hours_for_mean"])
         except Exception as exc:
-            failed += 1
+            figures["history_failed"] += 1
             logger.warning("air: 24 h history failed for sensor %s — %s", sid, exc)
             continue
-        if m is not None:
+        if m is None:
+            continue
+        station_means.append({"station": by_id[loc]["name"], "city": city, "pollutant": pollutant,
+                              "mean_24h": round(m, 1), "data_to": until.isoformat(), "stale": not fresh})
+        if fresh:
             means[(city, pollutant)].append(m)
-            used_until.append(until)
             city_until[city].append(until)
+        else:
+            stale_count[city] += 1
 
     cities = []
     for city in by_city:
@@ -256,28 +300,25 @@ def assess(stations: list[dict], client: OpenAQ, cfg: dict, now: datetime) -> di
                 "pm25_24h": round(values["pm25"], 1) if values["pm25"] is not None else None,
                 "pm10_24h": round(values["pm10"], 1) if values["pm10"] is not None else None,
                 "stations": max(len(means[(city, p)]) for p in PARAMETER_IDS),
+                "stale_stations": stale_count[city],
                 "data_to": max(city_until[city]).isoformat(),
             })
     cities.sort(key=lambda c: (BANDS.index(c["band"]), -max(
         (c["pm25_24h"] or 0) / cfg["air"]["pm25"]["poor_above"],
         (c["pm10_24h"] or 0) / cfg["air"]["pm10"]["poor_above"])))
+    station_means.sort(key=lambda r: (r["stale"], r["city"], r["pollutant"]))
+    fresh_until = [t for ts in city_until.values() for t in ts]
 
-    return {
-        "approximate": True,
-        "method": ("24 h mean of OpenAQ hourly PM2.5/PM10 at reference monitors ("
-                   + ", ".join(air["providers"]) + "), CPCB AQI breakpoints"),
-        "counts": {b: sum(1 for c in cities if c["band"] == b) for b in BANDS},
-        "cities": cities[:30],
-        "data_as_of": max(used_until).isoformat() if used_until else None,
-        "oldest_data": min(used_until).isoformat() if used_until else None,
-        "cities_reporting": len(by_city),
-        "cities_assessed": len({city for _, city, _, _, _ in jobs}),
-        "stations_reporting": len({loc for loc, _ in current}),
-        "history_requests": len(jobs),
-        "history_wanted": wanted_requests,
-        "history_failed": failed,
-        "capped": capped,
-    }
+    figures.update(
+        counts={b: sum(1 for c in cities if c["band"] == b) for b in BANDS},
+        cities=cities[:30],
+        station_means=station_means,
+        data_as_of=max(fresh_until).isoformat() if fresh_until else None,
+        oldest_data=min(fresh_until).isoformat() if fresh_until else None,
+        cities_assessed=len({city for _, _, city, _, _, _, _ in jobs}),
+        history_requests=len(jobs),
+    )
+    return figures
 
 
 def _names(cities: list[dict], limit: int = 3) -> str:
@@ -321,24 +362,35 @@ def candidate(figures: dict, cfg: dict) -> desk.Candidate | None:
 
 def run_air(supabase, run_id: int | None, results: dict, now: datetime, *, write: bool = True,
             cfg: dict | None = None, client: OpenAQ | None = None) -> dict:
-    """Assess, reconcile and (if write) store the national air item."""
+    """Assess, reconcile and (if write) store the national air item.
+
+    No new level (item kept last-known, reason says why) when the OpenAQ
+    fetch failed, the assessment failed, too few cities have fresh data, or
+    every history request failed.
+    """
     cfg = cfg or desk.severity_config.load()
+    air = cfg["air"]
     fetched = results["OpenAQ"]
-    source_good = fetched.status == "ok"
-    figures, cand = None, None
-    if source_good:
+    figures, cand, note = None, None, None
+    if fetched.status != "ok":
+        note = "OpenAQ fetch failed this run"
+    else:
         stations = reference_stations(fetched.extras.get("locations", []), cfg)
         client = client or OpenAQ()
         try:
             figures = assess(stations, client, cfg, now)
-        except Exception as exc:  # the listing or most of the history failed: keep last-known
+        except Exception as exc:
             logger.error("air: assessment failed — %s", exc)
-            source_good = False
+            note = "air assessment failed this run"
         else:
-            if figures["history_requests"] and figures["history_failed"] == figures["history_requests"]:
-                source_good = False
-            elif not figures["stations_reporting"]:
-                source_good = False
+            if not figures["stations_reporting"]:
+                note = "no reference monitors reporting"
+            elif not figures["quorum_met"]:
+                n = figures["fresh_cities"]
+                note = (f"only {n} {'city has' if n == 1 else 'cities have'} data from the last "
+                        f"{air['fresh_within_hours']} h (need {air['min_fresh_cities']})")
+            elif figures["history_requests"] and figures["history_failed"] == figures["history_requests"]:
+                note = "OpenAQ history requests failed this run"
             else:
                 cand = candidate(figures, cfg)
 
@@ -350,17 +402,19 @@ def run_air(supabase, run_id: int | None, results: dict, now: datetime, *, write
         logger.warning("dry-run: could not read desk items — %s", exc)
         existing = {}
     items, snapshots = desk.reconcile(
-        existing, [cand] if cand else [], categories={"air"}, source_good=source_good,
-        open_min_level=cfg["air"]["lifecycle"]["open_min_level"],
-        expired=lambda item: False, now=now, run_id=run_id)
+        existing, [cand] if cand else [], categories={"air"}, source_good=note is None,
+        open_min_level=air["lifecycle"]["open_min_level"],
+        expired=lambda item: False, now=now, run_id=run_id, last_known_note=note)
     if write:
         desk.store(supabase, items, snapshots)
     return {
         "level": cand.level if cand else None,
         "reason": cand.reason if cand else None,
-        "source_good": source_good,
+        "source_good": note is None,
+        "note": note,
         "change": snapshots[0]["change"] if snapshots else None,
         "requests": client.requests if client else 0,
         "counts": figures["counts"] if figures else None,
         "stations": figures["stations_reporting"] if figures else 0,
+        "fresh_cities": figures["fresh_cities"] if figures else 0,
     }
