@@ -1,0 +1,78 @@
+# Sentinel severity thresholds. Every value here is a DRAFT: tune freely.
+# Spec: docs/severity-pipeline.md. Loaded and checked by severity_config.py,
+# so a retune needs no code change; `python -m pytest` catches a broken file.
+#
+# Levels (one shared scale for every desk item):
+#   1 Minor · 2 Elevated · 3 High · 4 Severe
+
+[watching]
+# An item is "watching" when its key figure is within this fraction of the
+# next level's threshold (0.05 = within 5%)...
+margin = 0.05
+# ...or has risen for this many consecutive source updates toward it.
+# Counts new source data, not pipeline runs: FIRMS publishes about twice a
+# day, so its 02:30 IST run usually repeats the 20:30 IST data.
+rising_updates = 3
+
+[quake]
+# USGS magnitude at which each level starts. Below level 2 = Level 1.
+level_2_min_magnitude = 5.0
+level_3_min_magnitude = 6.0
+level_4_min_magnitude = 7.0
+# Scope: quakes within this distance of India's boundary...
+india_buffer_km = 100
+# ...plus quakes at or above this magnitude anywhere in the USGS search box.
+anywhere_min_magnitude = 6.0
+
+[gdacs]
+# Floods and cyclones: GDACS alert colour -> level.
+green = 1
+green_rising = 2
+orange = 3
+red = 4
+
+[air]
+# National air-quality item. Bands are CPCB National AQI breakpoints applied
+# to a 24 h mean of OpenAQ readings, so the result is marked approximate.
+# Spec: poor -> 1, very poor -> 2, severe in N cities -> 3 or 4.
+level_3_min_severe_cities = 1
+level_4_min_severe_cities = 3
+
+[air.pm25]
+# µg/m³, 24 h mean. A band starts above this value.
+poor_above = 90
+very_poor_above = 120
+severe_above = 250
+
+[air.pm10]
+poor_above = 250
+very_poor_above = 350
+severe_above = 430
+
+[fire]
+# Hotspot filter and clustering.
+confidence = ["n", "h"]  # VIIRS confidence: l(ow), n(ominal), h(igh)
+cluster_km = 1.5         # hotspots this close join one fire event
+# One desk item per state, levelled on ratio to the state's seasonal norm
+# (mean daily fire events for that calendar week, 2024-2025 baseline).
+# Ratio below level_2 = Level 1 ("at norm").
+level_2_min_ratio = 1.25
+level_3_min_ratio = 2.0
+# The ratio only counts once the state has at least this many fire events;
+# below it the state stays Level 1 however high the ratio. Stops a state
+# that averages 0.3 fires/day reading 10x norm on a 3-fire day.
+min_fire_events = 10
+# Level 3 "forest fire": an active GDACS wildfire alert in the state.
+gdacs_wildfire_level = 3
+# Level 4: a fire event with max FRP at or above this, within level_4_near_km
+# of a place with at least level_4_min_population people.
+# Not in the spec; first guesses.
+level_4_min_frp_mw = 100
+level_4_near_km = 10
+level_4_min_population = 100000
+
+[fire.lifecycle]
+# Spec: opens at level 2+, escalates on any level increase, closes after
+# this many hours at Level 1 or with no detections.
+open_min_level = 2
+close_after_hours = 48

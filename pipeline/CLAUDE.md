@@ -49,6 +49,20 @@ When adding a new table, run this in the Supabase SQL editor:
 
 Without these, the API returns "permission denied" on the new table.
 
+## Tests
+
+Offline tests (no network, no credentials), from pipeline/:
+```bash
+.venv/bin/pip install -r requirements-dev.txt   # once; pytest is dev-only
+.venv/bin/python -m pytest
+```
+
+## Severity thresholds
+
+All severity thresholds live in `severity.toml` (drafts, tune freely); never
+hard-code them. `severity_config.load()` reads and checks it. Design and
+build plan: `docs/severity-pipeline.md` at the repo root.
+
 ## Backfill
 
 Run historical load (from pipeline/ directory):
