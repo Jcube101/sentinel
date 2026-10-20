@@ -10,12 +10,22 @@ logger = logging.getLogger(__name__)
 
 ENDPOINT = "https://www.gdacs.org/gdacsapi/api/events/geteventlist/SEARCH"
 
-# DR and unknown types map to None → excluded from results
+# The API returns at most 100 features per page, whatever pageSize asks for,
+# and `country=IND` also matches Indonesia, so one page held only ~4 of the
+# ~13 India events in the 90-day window. fetch() pages until a short page or
+# a 204 (no content). MAX_PAGES is a runaway guard: 90 days is ~6 pages.
+PAGE_SIZE = 100
+MAX_PAGES = 50
+
+# DR, WF and unknown types map to None → excluded from results.
+# WF (wildfire) is kept out of `events`: EONET already carries the same
+# GDACS wildfire alerts (same ids), so they would show twice on the map.
+# The severity stage uses GDACS WF alerts only as the forest-fire trigger.
 CATEGORY_MAP = {
     "EQ": "earthquake",
     "TC": "cyclone",
     "FL": "flood",
-    "WF": "fire",
+    "WF": None,
     "DR": None,
 }
 
@@ -65,22 +75,39 @@ def _is_closed(props: dict) -> bool:
         return False
 
 
+def _fetch_features(params: dict) -> list[dict]:
+    """Fetch every page of results for params.
+
+    Request/parse failures on any page propagate — a broken endpoint must
+    fail the run, not silently return a partial or empty list.
+    """
+    features: list[dict] = []
+    for page in range(1, MAX_PAGES + 1):
+        resp = get_with_retry(
+            "GDACS", ENDPOINT, params={**params, "pageSize": PAGE_SIZE, "pageNumber": page}
+        )
+        if resp.status_code == 204:  # past the last page (or no events at all)
+            break
+        resp.raise_for_status()
+        page_features = resp.json().get("features", [])
+        features.extend(page_features)
+        if len(page_features) < PAGE_SIZE:
+            break
+    else:
+        logger.warning("GDACS: stopped after %d pages, results may be truncated", MAX_PAGES)
+    return features
+
+
 def fetch(start_date: str | None = None, end_date: str | None = None) -> list[dict]:
     params = _build_params(start_date, end_date)
     logger.info(
         "GDACS: fetching events from=%s to=%s", params["fromDate"], params["toDate"]
     )
 
-    # Request/parse failures propagate — a broken endpoint must fail the run,
-    # not silently return zero rows.
-    resp = get_with_retry("GDACS", ENDPOINT, params=params)
-    resp.raise_for_status()
-    data = resp.json()
-
-    features = data.get("features", [])
+    features = _fetch_features(params)
     logger.info("GDACS: received %d features", len(features))
 
-    events = []
+    events = {}
     for feature in features:
         try:
             props = feature.get("properties", {})
@@ -120,8 +147,11 @@ def fetch(start_date: str | None = None, end_date: str | None = None) -> list[di
             except (TypeError, ValueError):
                 severity_value = None
 
-            events.append({
-                "id": f"GDACS-{eventtype}-{eventid}",
+            # Keyed by id: results can shift between page requests, so an
+            # event may arrive twice; the later copy wins.
+            event_id = f"GDACS-{eventtype}-{eventid}"
+            events[event_id] = {
+                "id": event_id,
                 "external_id": str(eventid),
                 "source": "GDACS",
                 "category": category,
@@ -144,7 +174,7 @@ def fetch(start_date: str | None = None, end_date: str | None = None) -> list[di
                 "geometry": geometry,
                 "source_url": props.get("url", {}).get("report") or "https://www.gdacs.org/",
                 "raw": props,
-            })
+            }
         except Exception as exc:
             logger.warning(
                 "GDACS: skipping feature due to error — %s | eventid=%s",
@@ -153,7 +183,7 @@ def fetch(start_date: str | None = None, end_date: str | None = None) -> list[di
             )
 
     logger.info("GDACS: transformed %d events", len(events))
-    return events
+    return list(events.values())
 
 
 if __name__ == "__main__":

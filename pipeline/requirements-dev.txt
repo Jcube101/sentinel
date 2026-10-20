@@ -1,0 +1,3 @@
+# Dev/test only — the systemd service needs just requirements.txt.
+-r requirements.txt
+pytest==9.1.1
