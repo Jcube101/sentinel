@@ -36,6 +36,18 @@ due to the relative import of `config`.
   Mitigated with `time.sleep(0.5)` between requests and limit=50 locations.
 - aqi_readings upsert requires a unique constraint on (location_id, parameter, recorded_at).
   Run this SQL in Supabase once: `ALTER TABLE aqi_readings ADD CONSTRAINT aqi_readings_location_param_time_key UNIQUE (location_id, parameter, recorded_at);`
+### Supabase Data API grants (from October 30, 2026)
+New tables created in the `public` schema after October 30, 2026 require
+explicit grants before supabase-js or the REST API can access them.
+Existing tables (events, aqi_readings, sources, categories) are unaffected.
+
+When adding a new table, run this in the Supabase SQL editor:
+
+  grant select on public.your_table to anon;
+  grant select, insert, update, delete on public.your_table to authenticated;
+  grant select, insert, update, delete on public.your_table to service_role;
+
+Without these, the API returns "permission denied" on the new table.
 
 ## Backfill
 
