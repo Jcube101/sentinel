@@ -194,7 +194,8 @@ def test_openaq_extras_reach_the_air_stage(harness, monkeypatch):
 
     def fake_run_air(supabase, run_id, results, now, write=True):
         seen["locations"] = results["OpenAQ"].extras["locations"]
-        return {"level": None, "reason": None, "source_good": True, "change": None, "requests": 0, "stations": 0}
+        return {"level": None, "reason": None, "source_good": True, "note": None, "change": None,
+                "requests": 0, "counts": None, "stations": 0, "fresh_cities": 0}
 
     monkeypatch.setattr(air, "run_air", fake_run_air)
     harness.fetchers["OpenAQ"] = SimpleNamespace(fetch_detailed=lambda: ([], {"locations": [{"id": 7}]}))
