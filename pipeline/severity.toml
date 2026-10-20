@@ -60,8 +60,9 @@ max_data_age_hours = 96
 # Freshness for the level: only stations whose 24 h window ends within this
 # many hours count toward city bands; older ones stay in figures, flagged
 # stale. With fewer than min_fresh_cities fresh cities there is no new
-# level: air:IN stays last-known and its reason says so.
-fresh_within_hours = 36
+# level: air:IN stays last-known and its reason says so. CPCB data reaches
+# OpenAQ ~2.5 days late, so 36 h left only 2 fresh cities (Oct 2026).
+fresh_within_hours = 72
 min_fresh_cities = 10
 # A station's 24 h mean needs at least this many hourly values (CPCB: 16 of 24).
 min_hours_for_mean = 16
@@ -99,6 +100,11 @@ cluster_km = 1.5         # hotspots this close (same UTC day) join one fire even
 # fire_events keeps this many days; older days are deleted (the events
 # table still has 60 days of hotspots to rebuild from).
 events_retention_days = 14
+# Districts left out of fire roll-ups entirely (no fire_events rows). They
+# stay in India's outline for the quake scope.
+#   76128533B2782141712775 = "Gilgit-Baltistan / PoK": Pakistan-administered,
+#   inside India's official boundary, filed under Ladakh in the source.
+excluded_district_ids = ["76128533B2782141712775"]
 # One desk item per state, levelled on ratio to the state's seasonal norm
 # (mean daily fire events for that calendar week, 2024-2025 baseline).
 # Ratio below level_2 = Level 1 ("at norm").

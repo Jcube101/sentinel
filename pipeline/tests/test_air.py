@@ -283,11 +283,11 @@ def test_assess_records_each_citys_data_time():
 # --- freshness cutoff and quorum ---------------------------------------------------------------
 
 def test_repo_config_freshness_values():
-    assert (REAL_CFG["air"]["fresh_within_hours"], REAL_CFG["air"]["min_fresh_cities"]) == (36, 10)
+    assert (REAL_CFG["air"]["fresh_within_hours"], REAL_CFG["air"]["min_fresh_cities"]) == (72, 10)
 
 
 def test_stale_station_listed_but_not_counted():
-    stale_age = CFG["air"]["fresh_within_hours"] + 14
+    stale_age = CFG["air"]["fresh_within_hours"] + 6
     figures, _ = _assess({11: (300, 2), 31: (300, stale_age)}, {11: [300] * 24, 31: [300] * 24},
                          stations=[STATIONS[0], STATIONS[2]])
     assert figures["counts"] == {"severe": 1, "very_poor": 0, "poor": 0}
@@ -298,7 +298,7 @@ def test_stale_station_listed_but_not_counted():
 
 def test_stale_station_in_fresh_city_is_flagged_and_excluded_from_mean():
     station_b = dict(STATIONS[1])
-    figures, _ = _assess({11: (300, 2), 21: (100, 60)}, {11: [300] * 24, 21: [100] * 24},
+    figures, _ = _assess({11: (300, 2), 21: (100, 80)}, {11: [300] * 24, 21: [100] * 24},
                          stations=[STATIONS[0], station_b])
     (delhi,) = figures["cities"]
     assert delhi["pm25_24h"] == 300.0 and delhi["stations"] == 1 and delhi["stale_stations"] == 1
@@ -307,7 +307,7 @@ def test_stale_station_in_fresh_city_is_flagged_and_excluded_from_mean():
 def test_fresh_requests_come_before_stale_under_the_cap():
     cfg = copy.deepcopy(CFG)
     cfg["air"]["max_history_requests"] = 1
-    _, client = _assess({11: (100, 2), 31: (400, 60)}, {11: [100] * 24, 31: [400] * 24},
+    _, client = _assess({11: (100, 2), 31: (400, 80)}, {11: [100] * 24, 31: [400] * 24},
                         cfg=cfg, stations=[STATIONS[0], STATIONS[2]])
     assert client.history_calls == [11]
 
@@ -315,7 +315,7 @@ def test_fresh_requests_come_before_stale_under_the_cap():
 def test_quorum_not_met_fetches_no_history():
     cfg = copy.deepcopy(CFG)
     cfg["air"]["min_fresh_cities"] = 2
-    figures, client = _assess({11: (300, 2), 31: (300, 60)}, {11: [300] * 24, 31: [300] * 24},
+    figures, client = _assess({11: (300, 2), 31: (300, 80)}, {11: [300] * 24, 31: [300] * 24},
                               cfg=cfg, stations=[STATIONS[0], STATIONS[2]])
     assert figures["quorum_met"] is False and figures["fresh_cities"] == 1
     assert client.history_calls == [] and figures["counts"] == {"severe": 0, "very_poor": 0, "poor": 0}
@@ -338,7 +338,7 @@ def test_run_air_quorum_failure_keeps_level_and_says_why(monkeypatch):
         assert s["source_good"] is False and s["change"] is None
         assert item["status"] == "open" and item["last_known"] is True and item["severity_level"] == 3
         assert item["severity_reason"] == (
-            opened["severity_reason"] + " · last known: only 1 city has data from the last 36 h (need 10)")
+            opened["severity_reason"] + " · last known: only 1 city has data from the last 72 h (need 10)")
 
     air.run_air(db, 4, _results(), NOW + timedelta(hours=30), cfg=CFG, client=dirty())
     item = db.rows("desk_items")[0]

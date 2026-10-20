@@ -64,6 +64,7 @@ def _broken(cfg, dotted, value):
         ("fire.lifecycle", KeyError, "missing fire.lifecycle.open_min_level"),
         ("quake.lifecycle", KeyError, "missing quake.lifecycle.open_min_level"),
         ("gdacs.lifecycle", KeyError, "missing gdacs.lifecycle.open_min_level"),
+        ("fire.excluded_district_ids", "76128533B2782141712775", "fire.excluded_district_ids must be a list"),
     ],
 )
 def test_rejects_bad_values(cfg, dotted, value, message):

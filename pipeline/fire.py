@@ -10,7 +10,7 @@ FIRMS window (today and yesterday, UTC):
   3. single-linkage clusters: hotspots within fire.cluster_km of each
      other join one fire event
   4. district and state of each event's centroid; events outside India's
-     districts are dropped
+     districts, or in fire.excluded_district_ids, are dropped
   5. replace that day's rows in fire_events
 
 Schema: migrations/003_fire_events.sql. Thresholds: severity.toml [fire].
@@ -181,7 +181,9 @@ class Districts:
 
 def build_events(spots: list[Hotspot], cfg: dict, districts: Districts, run_id: int | None,
                  now: datetime) -> list[dict]:
-    """Cluster each acq_date's hotspots into fire_events rows (India only)."""
+    """Cluster each acq_date's hotspots into fire_events rows (India only,
+    minus fire.excluded_district_ids)."""
+    excluded = set(cfg["fire"]["excluded_district_ids"])
     by_date = defaultdict(list)
     for s in spots:
         by_date[s.acq_date].append(s)
@@ -191,7 +193,7 @@ def build_events(spots: list[Hotspot], cfg: dict, districts: Districts, run_id: 
         groups = [[day[i] for i in g] for g in cluster([(s.lat, s.lon) for s in day], cfg["fire"]["cluster_km"])]
         centroids = [(sum(s.lat for s in g) / len(g), sum(s.lon for s in g) / len(g)) for g in groups]
         for group, (lat, lon), place in zip(groups, centroids, districts.locate(centroids)):
-            if place is None:
+            if place is None or place["id"] in excluded:
                 continue
             # Anchor the id on the earliest hotspot, so it survives later
             # passes adding hotspots to the same fire.

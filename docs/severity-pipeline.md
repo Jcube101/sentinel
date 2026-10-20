@@ -141,6 +141,11 @@ Notes that apply across steps:
   district boundaries, ODbL 1.0, source LGD via Pathways Data) and DataMeet / Election
   Commission of India (state boundaries, CC BY 2.5 IN). See pipeline/data/README.md.
 
+## Follow-ups (not scheduled)
+- **Fresher air source:** evaluate the data.gov.in CPCB real-time AQI feed as a source for
+  `air:IN`. CPCB data reaches OpenAQ ~2.5 days late, so the air level runs on data up to
+  72 h old (`air.fresh_within_hours`). Needs a free data.gov.in API key.
+
 ## Non-goals
 - No frontend changes in this task — UI redesign is separate (Situation Report direction A).
 - Not changing the schedule (09:00 / 15:00 / 21:00 UTC = 14:30 / 20:30 / 02:30 IST).

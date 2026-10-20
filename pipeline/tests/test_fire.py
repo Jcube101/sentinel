@@ -217,3 +217,17 @@ def test_real_district_file_places_known_fires():
     assert [(p["name"], p["state"]) if p else None for p in places] == [
         ("Amritsar", "Punjab"), ("Tarn Taran", "Punjab"), ("Guna", "Madhya Pradesh"), ("New Delhi", "Delhi"),
         ("Dhanbad", "Jharkhand"), ("Gilgit-Baltistan / PoK", "Ladakh"), None]
+
+
+def test_excluded_districts_get_no_fire_events():
+    cfg = copy.deepcopy(CFG)
+    cfg["fire"]["excluded_district_ids"] = ["D2"]
+    spots = fire.hotspots([_row(31.5, 74.5), _row(29.5, 76.5, acq_time="0815")], cfg)
+    assert [r["district"] for r in fire.build_events(spots, cfg, DISTRICTS, 1, NOW)] == ["Amritsar"]
+
+
+def test_repo_config_excludes_gilgit_baltistan_pok():
+    (gb,) = [p for p in fire.Districts.india().props if p["name"] == "Gilgit-Baltistan / PoK"]
+    assert gb["id"] in CFG["fire"]["excluded_district_ids"]
+    spots = fire.hotspots([_row(35.92, 74.31)], CFG)
+    assert fire.build_events(spots, CFG, fire.Districts.india(), 1, NOW) == []

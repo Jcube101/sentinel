@@ -106,6 +106,9 @@ def validate(cfg: dict) -> None:
         )
     _number(cfg, "fire.cluster_km", minimum=0.1)
     _number(cfg, "fire.events_retention_days", minimum=2, integer=True)
+    excluded = _get(cfg, "fire.excluded_district_ids")
+    if not isinstance(excluded, list) or not all(isinstance(d, str) for d in excluded):
+        raise ConfigError(f"severity.toml: fire.excluded_district_ids must be a list of ids, got {excluded!r}")
     _number(cfg, "fire.static_mask.neighbour_cells", minimum=0, maximum=5, integer=True)
     _number(cfg, "fire.level_2_min_ratio", minimum=1)
     _number(cfg, "fire.level_3_min_ratio", minimum=1)
