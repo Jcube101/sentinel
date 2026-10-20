@@ -133,7 +133,7 @@ Notes that apply across steps:
 - **"Rising for 3 updates" counts new source data, not runs.** FIRMS publishes twice a day
   in practice (the 02:30 IST run always repeats the 20:30 run's FIRMS data), so trend
   counters advance only when a source's data actually changes.
-- Desk item ids are deterministic (`quake:USGS-…`, `flood:GDACS-FL-…`, `fire:<state>`, `air:IN`).
+- Desk item ids are deterministic (`earthquake:USGS-…`, `flood:GDACS-FL-…`, `cyclone:GDACS-TC-…`, `fire:<state>`, `air:IN`).
 - Existing `events.severity` labels (low/medium/high/extreme) are left unchanged.
 - **TODO (About page, separate frontend task):** credit geoBoundaries (district boundaries,
   ODbL 1.0, source LGD via Pathways Data) and GeoNames (CC BY 4.0).

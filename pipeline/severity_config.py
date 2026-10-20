@@ -65,11 +65,14 @@ def validate(cfg: dict) -> None:
     _ascending(cfg, *quake_levels)
     _number(cfg, "quake.india_buffer_km", minimum=0)
     _number(cfg, "quake.anywhere_min_magnitude", minimum=0)
+    _number(cfg, "quake.lifecycle.open_min_level", minimum=1, maximum=4, integer=True)
+    _number(cfg, "quake.lifecycle.close_after_hours", minimum=1)
 
     gdacs_levels = [f"gdacs.{k}" for k in ("green", "green_rising", "orange", "red")]
     for key in gdacs_levels:
         _number(cfg, key, minimum=1, maximum=4, integer=True)
     _ascending(cfg, *gdacs_levels, strict=False)
+    _number(cfg, "gdacs.lifecycle.open_min_level", minimum=1, maximum=4, integer=True)
 
     for pollutant in ("pm25", "pm10"):
         bands = [f"air.{pollutant}.{b}_above" for b in ("poor", "very_poor", "severe")]

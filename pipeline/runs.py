@@ -11,7 +11,7 @@ Schema: migrations/001_pipeline_runs_and_source_freshness.sql.
 """
 import logging
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
 from dateutil import parser as dateutil_parser
@@ -50,6 +50,7 @@ class FetchResult:
     status: str           # ok | empty | timeout | error
     error: str | None
     duration_s: float
+    extras: dict = field(default_factory=dict)  # fetch_detailed() side data, e.g. GDACS alerts
 
 
 def classify(name: str, rows: list, error: Exception | None, timed_out: bool, soft_timeout: bool) -> tuple[bool, str]:

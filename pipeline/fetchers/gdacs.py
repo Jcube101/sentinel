@@ -110,7 +110,73 @@ def _fetch_features(params: dict) -> list[dict]:
     return features
 
 
+# Event types the severity desk reads from GDACS alerts (EQ comes from USGS).
+ALERT_TYPES = {"FL", "TC", "WF", "EQ"}
+
+
+def _float(value) -> float | None:
+    try:
+        return float(value) if value is not None and value != "" else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _affects_india(props: dict) -> bool:
+    countries = props.get("affectedcountries") or []
+    if countries:
+        return any((c or {}).get("iso3") == "IND" for c in countries)
+    return props.get("iso3") == "IND"
+
+
+def _to_alert(feature: dict) -> dict | None:
+    """One GDACS event as the severity desk sees it, or None if not for India.
+
+    Unlike the events rows, alerts are not cut to the India bbox or the
+    retention window: a cyclone in the Arabian Sea heading for Gujarat, or a
+    flood that started 70 days ago and is still current, still counts.
+    """
+    props = feature.get("properties") or {}
+    eventtype = props.get("eventtype")
+    if eventtype not in ALERT_TYPES or not _affects_india(props):
+        return None
+    coords = (feature.get("geometry") or {}).get("coordinates") or [None, None]
+    severity = props.get("severitydata") or {}
+    return {
+        "id": f"GDACS-{eventtype}-{props.get('eventid')}",
+        "eventtype": eventtype,
+        "eventid": props.get("eventid"),
+        "name": props.get("name") or props.get("eventname") or f"{eventtype} event {props.get('eventid')}",
+        "alertlevel": props.get("alertlevel"),
+        "alertscore": _float(props.get("alertscore")),
+        "episodeid": props.get("episodeid"),
+        "episodealertlevel": props.get("episodealertlevel") or props.get("alertlevel"),
+        "episodealertscore": _float(props.get("episodealertscore")),
+        "severity": _float(severity.get("severity")),
+        "severity_text": (severity.get("severitytext") or "").strip() or None,
+        "severity_unit": severity.get("severityunit") or None,
+        "iscurrent": not _is_closed(props),
+        "fromdate": _parse_dt(props.get("fromdate")),
+        "todate": _parse_dt(props.get("todate")),
+        "datemodified": _parse_dt(props.get("datemodified")),
+        "latitude": _float(coords[1]) if len(coords) > 1 else None,
+        "longitude": _float(coords[0]),
+        "countries": [c.get("iso3") for c in props.get("affectedcountries") or [] if c and c.get("iso3")],
+        "country_names": [c.get("countryname") for c in props.get("affectedcountries") or [] if c and c.get("countryname")],
+        "url": (props.get("url") or {}).get("report") or "https://www.gdacs.org/",
+    }
+
+
 def fetch(start_date: str | None = None, end_date: str | None = None) -> list[dict]:
+    """Rows for the events table."""
+    return fetch_detailed(start_date, end_date)[0]
+
+
+def fetch_detailed(start_date: str | None = None, end_date: str | None = None) -> tuple[list[dict], dict]:
+    """(events rows, {"alerts": [...]}) from one paged fetch.
+
+    alerts holds every India-affecting FL/TC/WF/EQ event (see _to_alert) for
+    the severity desk; the events rows are unchanged by it.
+    """
     params = _build_params(start_date, end_date)
     logger.info(
         "GDACS: fetching events from=%s to=%s", params["fromDate"], params["toDate"]
@@ -118,6 +184,16 @@ def fetch(start_date: str | None = None, end_date: str | None = None) -> list[di
 
     features = _fetch_features(params)
     logger.info("GDACS: received %d features", len(features))
+
+    alerts = {}
+    for feature in features:
+        try:
+            alert = _to_alert(feature)
+        except Exception as exc:
+            logger.warning("GDACS: skipping alert due to error — %s", exc)
+            continue
+        if alert is not None:
+            alerts[alert["id"]] = alert
 
     # The 90-day query returns events that started before the retention
     # window; _cleanup() would delete them right after they were written.
@@ -205,10 +281,10 @@ def fetch(start_date: str | None = None, end_date: str | None = None) -> list[di
             )
 
     logger.info(
-        "GDACS: transformed %d events (skipped %d that started more than %d days ago)",
-        len(events), skipped_old, SHORT_RETENTION_DAYS,
+        "GDACS: transformed %d events (skipped %d that started more than %d days ago), %d India alerts",
+        len(events), skipped_old, SHORT_RETENTION_DAYS, len(alerts),
     )
-    return list(events.values())
+    return list(events.values()), {"alerts": list(alerts.values())}
 
 
 if __name__ == "__main__":

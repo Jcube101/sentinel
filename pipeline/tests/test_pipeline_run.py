@@ -3,6 +3,7 @@
 The point: the run record and freshness stage must never stop the existing
 events / aqi_readings writes, and its failures must still fail the run.
 """
+import sys
 from datetime import datetime, timezone
 from types import SimpleNamespace
 
@@ -123,3 +124,55 @@ def test_dry_run_writes_nothing(harness):
     assert harness.run(dry_run=True) == 0
     writes = [c for c in harness.db.calls if c[1] != "select"]
     assert writes == []
+
+
+def _quake_row(qid="us1", mag=5.1):
+    return {"id": f"USGS-{qid}", "started_at": NOW_ISO, "latitude": 28.6, "longitude": 77.2,
+            "severity_value": mag, "place_name": "Delhi, India",
+            "geometry": {"coordinates": [77.2, 28.6, 10]}, "raw": {"mag": mag, "place": "Delhi, India"}}
+
+
+def test_desk_items_written_with_run_id(harness):
+    harness.fetchers["USGS"] = _fetcher([_quake_row()])
+    assert harness.run() == 0
+    (item,) = harness.db.rows("desk_items")
+    assert item["id"] == "earthquake:USGS-us1" and item["severity_level"] == 2 and item["first_run_id"] == 1
+    (snap,) = harness.db.rows("desk_item_snapshots")
+    assert (snap["run_id"], snap["change"]) == (1, "opened")
+
+
+def test_desk_failure_fails_run_but_keeps_data_writes(harness):
+    harness.fetchers["USGS"] = _fetcher([_quake_row()])
+    harness.db.missing = {"desk_items"}
+    assert harness.run() == 1
+    assert len(_ops(harness.db, "events", "upsert")) == 1
+    assert len(_ops(harness.db, "aqi_readings", "upsert")) == 1
+    assert harness.db.rows("pipeline_runs")[0]["status"] == "failed"
+
+
+def test_dry_run_before_migration_002_is_ok(harness):
+    harness.fetchers["USGS"] = _fetcher([_quake_row()])
+    harness.db.missing = {"desk_items", "desk_item_snapshots"}
+    assert harness.run(dry_run=True) == 0
+
+
+def test_gdacs_extras_reach_the_desk(harness):
+    alert = {"id": "GDACS-TC-9", "eventtype": "TC", "eventid": 9, "name": "Tropical Cyclone NINE",
+             "alertlevel": "Red", "alertscore": 3.0, "episodeid": 4, "episodealertlevel": "Red",
+             "episodealertscore": 3.0, "severity": 180.0, "severity_text": "Very severe", "severity_unit": "km/h",
+             "iscurrent": True, "fromdate": NOW_ISO, "todate": NOW_ISO, "datemodified": NOW_ISO,
+             "latitude": 18.0, "longitude": 88.0, "countries": ["IND"], "country_names": ["India"], "url": "u"}
+    harness.fetchers["GDACS"] = SimpleNamespace(fetch_detailed=lambda: ([], {"alerts": [alert]}))
+    assert harness.run() == 0
+    (item,) = harness.db.rows("desk_items")
+    assert (item["id"], item["severity_level"], item["severity_reason"]) == (
+        "cyclone:GDACS-TC-9", 4, "GDACS Red alert")
+
+
+def test_desk_import_failure_only_fails_that_stage(harness, monkeypatch):
+    # e.g. shapely missing from the live venv
+    monkeypatch.setitem(sys.modules, "desk", None)
+    assert harness.run() == 1
+    assert len(_ops(harness.db, "events", "upsert")) == 1
+    assert len(_ops(harness.db, "aqi_readings", "upsert")) == 1
+    assert harness.db.rows("pipeline_runs")[0]["status"] == "failed"

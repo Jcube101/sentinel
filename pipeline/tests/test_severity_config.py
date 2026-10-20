@@ -62,6 +62,8 @@ def _broken(cfg, dotted, value):
         ("fire.confidence", ["x"], "fire.confidence"),
         ("fire.min_fire_events", KeyError, "missing fire.min_fire_events"),
         ("fire.lifecycle", KeyError, "missing fire.lifecycle.open_min_level"),
+        ("quake.lifecycle", KeyError, "missing quake.lifecycle.open_min_level"),
+        ("gdacs.lifecycle", KeyError, "missing gdacs.lifecycle.open_min_level"),
     ],
 )
 def test_rejects_bad_values(cfg, dotted, value, message):

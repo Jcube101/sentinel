@@ -109,6 +109,7 @@ and the Windows scheduled task has been disabled.
 - requests
 - python-dotenv
 - python-dateutil
+- shapely (+ numpy): India outline / district geometry for the severity desk
 
 ## Environment Variables
 - SUPABASE_URL
@@ -130,6 +131,15 @@ and the Windows scheduled task has been disabled.
 - pipeline_runs: one row per non-dry run; id is the edition number (runs.py)
 - sources: one row per source, plus freshness columns written every run
   (last_success_at = last good fetch, newest_observation_at, last_new_data_at)
+- desk_items: severity desk, one row per item with a 1-4 level (desk.py)
+- desk_item_snapshots: one row per desk item per run
+
+## Severity desk
+`desk.py` runs after the events / aqi_readings writes: quakes (USGS, within
+100 km of India or M6+ in the box), floods and cyclones (GDACS India alerts
+from `gdacs.fetch_detailed()`) become desk items with a level, a reason and
+open / escalate / close rules; a failed source leaves its items "last-known".
+India's outline is `data/india_outline.geojson` (see data/README.md).
 
 ## Migrations
 Schema changes are numbered SQL files in `migrations/`. There is no DB URL or

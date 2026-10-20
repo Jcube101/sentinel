@@ -106,9 +106,11 @@ def _run_fetcher(name: str, module) -> runs.FetchResult:
     (ok | empty | timeout | error) feeds the per-source freshness record.
     """
     t0 = time.monotonic()
-    rows, error, timed_out = [], None, False
+    rows, extras, error, timed_out = [], {}, None, False
     try:
-        rows = module.fetch()
+        # fetch_detailed() = (rows, side data for later stages), when a fetcher has it
+        fetch_detailed = getattr(module, "fetch_detailed", None)
+        rows, extras = fetch_detailed() if fetch_detailed else (module.fetch(), {})
         logger.info("%s: fetched %d rows", name, len(rows))
     except requests.exceptions.Timeout as exc:
         error, timed_out = exc, True
@@ -124,6 +126,7 @@ def _run_fetcher(name: str, module) -> runs.FetchResult:
         name=name, rows=rows, ok=ok, status=status,
         error=str(error) if error is not None else None,
         duration_s=time.monotonic() - t0,
+        extras=extras,
     )
 
 
@@ -340,6 +343,25 @@ def run(dry_run: bool = False):
         except Exception as exc:
             logger.error("runs: could not record source freshness — %s", exc)
             runs_ok = False
+
+    # --- Severity desk: levels, open/close rules, per-run snapshots (desk.py) ---
+    if dry_run or run_id is not None:
+        try:
+            # Imported here: desk needs shapely, and a broken import must only
+            # fail this stage, never the events / aqi_readings writes above.
+            import desk
+
+            summary = desk.run_desk(supabase, run_id, results, datetime.now(tz=timezone.utc), write=not dry_run)
+            logger.info(
+                "%sdesk: %d open (max level %s, %d last-known), changes: %s",
+                "dry-run: " if dry_run else "", summary["open"], summary["max_level"],
+                summary["last_known"], summary["changes"] or "none",
+            )
+        except Exception as exc:
+            logger.error("desk: failed — %s", exc)
+            runs_ok = False
+    else:
+        logger.error("desk: skipped, no run record to attach snapshots to")
 
     duration = time.monotonic() - start
 

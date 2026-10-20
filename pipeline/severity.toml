@@ -22,14 +22,27 @@ level_4_min_magnitude = 7.0
 # Scope: quakes within this distance of India's boundary...
 india_buffer_km = 100
 # ...plus quakes at or above this magnitude anywhere in the USGS search box.
+# "India" is data/india_outline.geojson (India's official boundary).
 anywhere_min_magnitude = 6.0
 
+[quake.lifecycle]
+# Any in-scope quake opens an item; it closes this many hours after the quake.
+open_min_level = 1
+close_after_hours = 48
+
 [gdacs]
-# Floods and cyclones: GDACS alert colour -> level.
+# Floods and cyclones: alert colour of GDACS's current episode -> level.
+# "Green + rising": a Green event whose episode alert score went up when
+# GDACS published its latest episode.
 green = 1
 green_rising = 2
 orange = 3
 red = 4
+
+[gdacs.lifecycle]
+# Items close when GDACS marks the event finished (iscurrent = false) or
+# stops listing it; if the GDACS fetch fails they stay open as last-known.
+open_min_level = 1
 
 [air]
 # National air-quality item. Bands are CPCB National AQI breakpoints applied
