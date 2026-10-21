@@ -150,11 +150,18 @@ def _source_note(category: str, results: dict, stage: dict | None) -> str | None
     return None if stage["source_good"] else stage["note"]
 
 
+def _strength(item: dict) -> float:
+    """Tie-break between open items at the same level: how far past its rule
+    the item is (fire: ratio to norm, quakes: magnitude), never a raw count."""
+    figures = item.get("figures") or {}
+    return figures.get("ratio_to_norm") or figures.get("magnitude") or 0
+
+
 def category_status(category: str, open_items: list[dict], *, results: dict, stage: dict | None, cfg: dict,
                     watching: int, run_id: int | None, now: datetime) -> dict:
     key, source_id, _ = CATEGORY_SOURCES[category]
     note = _source_note(category, results, stage)
-    ranked = sorted(open_items, key=lambda i: (-i["severity_level"], i["title"]))
+    ranked = sorted(open_items, key=lambda i: (-i["severity_level"], -_strength(i), i["title"]))
     if ranked:
         summary = ranked[0]["title"] + (f" (+{len(ranked) - 1} more)" if len(ranked) > 1 else "")
     else:

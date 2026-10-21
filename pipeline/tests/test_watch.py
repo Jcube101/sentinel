@@ -127,6 +127,15 @@ def test_open_items_lead_with_the_highest_level():
     assert s["summary"] == "Forest fire in Uttarakhand (+2 more)"
 
 
+def test_same_level_items_lead_with_the_strongest_not_the_title():
+    items = [_item("fire:mp", "fire", 2, "Fire activity in 27 Madhya Pradesh districts"),
+             _item("fire:pb", "fire", 2, "Fire activity in 9 Punjab districts"),
+             _item("fire:up", "fire", 2, "Fire activity in 31 Uttar Pradesh districts")]
+    for item, ratio in zip(items, (4.05, 6.3, 2.79)):
+        item["figures"] = {"ratio_to_norm": ratio}
+    assert _status("fire", items)["summary"] == "Fire activity in 9 Punjab districts (+2 more)"
+
+
 def test_failed_source_or_stage_is_last_known():
     stages = copy.deepcopy(STAGES)
     stages["desk"]["sources_good"]["earthquake"] = False
