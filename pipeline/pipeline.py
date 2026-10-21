@@ -345,11 +345,13 @@ def run(dry_run: bool = False):
             runs_ok = False
 
     # --- Fire events: hotspots clustered and placed in districts (fire.py) ---
+    fire_rows = None
     if dry_run or run_id is not None:
         try:
             import fire  # needs shapely; a broken import fails only this stage
 
             summary = fire.run_fire(supabase, run_id, results, datetime.now(tz=timezone.utc), write=not dry_run)
+            fire_rows = summary.get("rows")
             if "skipped" in summary:
                 logger.warning("fire: skipped — %s", summary["skipped"])
             else:
@@ -365,6 +367,29 @@ def run(dry_run: bool = False):
             runs_ok = False
     else:
         logger.error("fire: skipped, no run record")
+
+    # --- Fire desk items: one per state, level from ratio to norm (fire_desk.py) ---
+    if dry_run or run_id is not None:
+        try:
+            import fire_desk
+
+            summary = fire_desk.run_fire_desk(
+                supabase, run_id, results, datetime.now(tz=timezone.utc), rows=fire_rows, write=not dry_run)
+            prefix = "dry-run: " if dry_run else ""
+            if summary["source_good"]:
+                logger.info(
+                    "%sfire desk: %s assessed, %d states; open: %s; changes: %s; top ratios: %s%s",
+                    prefix, summary["day"], summary["assessed"], ", ".join(summary["open"]) or "none",
+                    summary["changes"] or "none", "; ".join(summary["top_ratios"]) or "none",
+                    f"; {summary['unmatched_alerts']} GDACS wildfire alert(s) outside India's districts"
+                    if summary["unmatched_alerts"] else "",
+                )
+            else:
+                logger.warning("%sfire desk: no new levels (%s); open items kept as last-known: %s",
+                               prefix, summary["note"], ", ".join(summary["open"]) or "none")
+        except Exception as exc:
+            logger.error("fire desk: failed — %s", exc)
+            runs_ok = False
 
     # --- Severity desk: levels, open/close rules, per-run snapshots (desk.py) ---
     if dry_run or run_id is not None:

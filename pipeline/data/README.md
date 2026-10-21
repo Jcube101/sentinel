@@ -55,3 +55,17 @@ calendar week, from the same archive, counted exactly like live
 fire_events. Also uploaded to the fire_baseline table (migration 004).
 Built by `tools/build_fire_baseline.py`; parameters in severity.toml
 `[fire.baseline]`. Source and acknowledgement as above (NASA FIRMS).
+
+## india_places.csv
+
+Populated places in India with 15,000+ people (3,739 places, 526 with
+100,000+), used by the Level 4 fire rule: a large fire within
+`fire.level_4_near_km` of a place of `fire.level_4_min_population` people
+(`fire_desk.py`).
+
+- **Built by** `tools/build_places.py`: GeoNames `cities15000`, country IN,
+  feature class P, minus city sections (PPLX) and historical, abandoned or
+  destroyed places. Population is GeoNames' figure (often census 2011).
+- **Source:** [GeoNames](https://www.geonames.org), downloaded 21 Oct 2026.
+- **Licence:** CC BY 4.0. Attribution: "Contains GeoNames data (CC BY 4.0)".
+  The credit on the frontend's About page is a TODO (docs/severity-pipeline.md).

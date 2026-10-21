@@ -212,3 +212,31 @@ def test_fire_failure_only_fails_that_stage(harness, monkeypatch):
     assert len(_ops(harness.db, "aqi_readings", "upsert")) == 1
     assert len(harness.db.rows("desk_items")) == 1  # later stages still ran
     assert harness.db.rows("pipeline_runs")[0]["status"] == "failed"
+
+
+def test_fire_desk_failure_only_fails_that_stage(harness, monkeypatch):
+    import fire_desk
+    monkeypatch.setattr(fire_desk, "run_fire_desk", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("boom")))
+    harness.fetchers["USGS"] = _fetcher([_quake_row()])
+    assert harness.run() == 1
+    assert len(_ops(harness.db, "events", "upsert")) == 1
+    assert len(harness.db.rows("desk_items")) == 1  # the quake desk stage still ran
+    assert harness.db.rows("pipeline_runs")[0]["status"] == "failed"
+
+
+def test_fire_stage_rows_reach_the_fire_desk(harness, monkeypatch):
+    import fire
+    import fire_desk
+    seen = {}
+    monkeypatch.setattr(fire, "run_fire", lambda *a, **k: {
+        "rows": ["fire event"], "dates": [], "hotspots": 0, "masked": 0, "mask_cells": 0, "fire_events": 0,
+        "districts": 0, "states": 0, "superseded": 0, "top_districts": []})
+
+    def fake_run_fire_desk(supabase, run_id, results, now, rows=None, write=True):
+        seen["rows"], seen["run_id"] = rows, run_id
+        return {"day": "2026-10-20", "source_good": True, "note": None, "assessed": 0, "open": [],
+                "max_level": None, "changes": {}, "top_ratios": [], "unmatched_alerts": 0}
+
+    monkeypatch.setattr(fire_desk, "run_fire_desk", fake_run_fire_desk)
+    assert harness.run() == 0
+    assert seen == {"rows": ["fire event"], "run_id": 1}

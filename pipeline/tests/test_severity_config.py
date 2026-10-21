@@ -25,6 +25,7 @@ def test_matches_spec_drafts(cfg):
     assert (cfg["fire"]["level_2_min_ratio"], cfg["fire"]["level_3_min_ratio"]) == (1.25, 2.0)
     assert cfg["fire"]["confidence"] == ["n", "h"]
     assert cfg["fire"]["lifecycle"] == {"open_min_level": 2, "close_after_hours": 48}
+    assert (cfg["fire"]["min_fire_events"], cfg["fire"]["calibration_cap"]) == (10, 2)  # Job, 21 Oct 2026
     assert (cfg["air"]["level_3_min_severe_cities"], cfg["air"]["level_4_min_severe_cities"]) == (1, 3)
     assert cfg["watching"]["rising_updates"] == 3
 
@@ -65,6 +66,9 @@ def _broken(cfg, dotted, value):
         ("quake.lifecycle", KeyError, "missing quake.lifecycle.open_min_level"),
         ("gdacs.lifecycle", KeyError, "missing gdacs.lifecycle.open_min_level"),
         ("fire.excluded_district_ids", "76128533B2782141712775", "fire.excluded_district_ids must be a list"),
+        ("fire.calibration_cap", 0, ">= 1"),
+        ("fire.calibration_cap", 5, "<= 4"),
+        ("fire.calibration_cap", KeyError, "missing fire.calibration_cap"),
     ],
 )
 def test_rejects_bad_values(cfg, dotted, value, message):

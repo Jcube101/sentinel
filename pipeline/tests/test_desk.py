@@ -211,6 +211,17 @@ def test_closed_item_reopens():
     assert row["status"] == "open" and row["closed_at"] is None and snap["change"] == "reopened"
 
 
+def test_closes_rule_closes_an_item_that_still_has_a_candidate():
+    old = _stored_item()
+    args = dict(categories={"earthquake"}, source_good=True, open_min_level=1, expired=lambda item: False,
+                now=NOW, run_id=2)
+    (row,), (snap,) = desk.reconcile({old["id"]: old}, [_cand(level=1)], closes=lambda c, item: True, **args)
+    assert row["status"] == "closed" and row["closed_at"] == NOW.isoformat() and snap["change"] == "closed"
+    assert row["severity_reason"] == "level 1"  # closes with this run's data, not the stored item's
+    (row,), (snap,) = desk.reconcile({old["id"]: old}, [_cand(level=1)], closes=lambda c, item: False, **args)
+    assert row["status"] == "open" and snap["change"] is None
+
+
 def test_already_closed_items_are_not_resnapshotted():
     old = _stored_item(status="closed")
     assert _reconcile({old["id"]: old}, []) == ([], [])

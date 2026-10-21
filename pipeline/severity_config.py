@@ -127,5 +127,6 @@ def validate(cfg: dict) -> None:
     _number(cfg, "fire.level_4_min_frp_mw", minimum=0)
     _number(cfg, "fire.level_4_near_km", minimum=0)
     _number(cfg, "fire.level_4_min_population", minimum=0, integer=True)
+    _number(cfg, "fire.calibration_cap", minimum=1, maximum=4, integer=True)
     _number(cfg, "fire.lifecycle.open_min_level", minimum=1, maximum=4, integer=True)
     _number(cfg, "fire.lifecycle.close_after_hours", minimum=1)

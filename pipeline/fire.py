@@ -267,6 +267,7 @@ def run_fire(supabase, run_id: int | None, results: dict, now: datetime, *, writ
         per_district[(r["district"], r["state"])] += 1
     top = sorted(per_district.items(), key=lambda kv: -kv[1])[:5]
     return {
+        "rows": rows,  # for the fire desk stage (fire_desk.py)
         "dates": dates,
         "hotspots": len(spots),
         "masked": len(spots) - len(kept),

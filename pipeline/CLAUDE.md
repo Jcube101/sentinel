@@ -171,6 +171,21 @@ stations whose data is newer than `air.fresh_within_hours` count; with fewer
 than `air.min_fresh_cities` fresh cities the item stays last-known and the
 history requests are skipped.
 
+## Fire desk
+`fire_desk.py` runs right after the fire stage and turns its fire_events rows
+into one item per state (`fire:<state slug>`, e.g. `fire:madhya-pradesh`).
+The level comes from the last complete UTC day (yesterday; NOAA-20's night
+pass over India ends ~21:00 UTC): its fire events over the state's norm for
+that week (`data/fire_baseline.csv`), counted from `fire.min_fire_events`
+events; a large fire near a city (`data/india_places.csv`) is Level 4. These
+FIRMS-derived levels are capped at `fire.calibration_cap` (2) until live
+counts are calibrated against the archive; a current GDACS wildfire alert in
+the state lifts the item to Level 3 regardless. Today's events so far are in
+`figures.today` (marked partial) and never set the level. Items close after
+`fire.lifecycle.close_after_hours` of complete days below Level 2
+(`figures.quiet_since`). If FIRMS fails, or has no rows for yesterday, open
+items stay last-known; if GDACS fails, they keep their last known alerts.
+
 ## Migrations
 Schema changes are numbered SQL files in `migrations/`. There is no DB URL or
 psql on the Pi: Job pastes each file into the Supabase SQL editor. Write them

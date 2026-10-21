@@ -98,6 +98,15 @@ Draft thresholds, to be tuned:
 6. **Migrations:** SQL files in `pipeline/migrations/`, pasted into the Supabase SQL editor
    by Job. Each includes the Data API grants (see `pipeline/CLAUDE.md`).
 
+## Decisions (21 Oct 2026)
+1. **Fire level from the last complete UTC day** (yesterday) vs its norm. Today's partial
+   count is shown in figures only, marked partial; it never sets the level.
+2. **Calibration cap:** until the live-vs-archive comparison (follow-ups) is done,
+   FIRMS-derived fire levels are capped at 2 (`fire.calibration_cap` in `severity.toml`).
+   A current GDACS wildfire alert in the state can still lift an item to Level 3. The reason
+   says when the cap lowers a level.
+3. **Minimum fire count** stays at 10 events before any ratio counts.
+
 ## Build plan
 Rules: one work item at a time, each tested and committed separately; the existing
 `events` / `aqi_readings` output keeps working until the new output is verified (new
@@ -124,10 +133,13 @@ affect current output); all thresholds in **one** config file, `pipeline/severit
    The same pull builds the **static heat-source mask** from archive points with
    `type` = 2 (static land source) or 3 (offshore) — steel plants, refineries, gas flares,
    coal-seam fires — because the live NRT feed has no `type` column.
-6. **Fire severity** per state: `ratio_to_norm`, with a **minimum fire count** (in
-   `severity.toml`) before the ratio counts, so a 0.3-fires/day state doesn't read 10× on
-   a 3-fire day; GDACS WF alert in the state → Level 3 "forest fire"; high-FRP cluster near
-   a populated place → Level 4.
+6. **Fire severity** per state (`fire_desk.py`, item `fire:<state slug>`): `ratio_to_norm`
+   on the last complete UTC day, with a **minimum fire count** (in `severity.toml`) before
+   the ratio counts, so a 0.3-fires/day state doesn't read 10× on a 3-fire day; GDACS WF
+   alert in the state → Level 3 "forest fire"; high-FRP cluster near a populated place
+   (GeoNames, `data/india_places.csv`) → Level 4; FIRMS-derived levels capped at
+   `fire.calibration_cap` (decision 21 Oct). Closes after `close_after_hours` of complete
+   days below Level 2. No migration (uses `desk_items` / `desk_item_snapshots`).
 7. **Quiet-day support:** watching list, `category_status`, daily max level (IST day) for
    the 14-day strip, days since last Level 3+.
 
@@ -139,8 +151,9 @@ Notes that apply across steps:
 - Existing `events.severity` labels (low/medium/high/extreme) are left unchanged.
 - **TODO (About page, separate frontend task):** credit geoBoundaries (India outline and
   district boundaries, ODbL 1.0, source LGD via Pathways Data) and DataMeet / Election
-  Commission of India (state boundaries, CC BY 2.5 IN); the FIRMS acknowledgement covers the
-  baseline and mask. See pipeline/data/README.md.
+  Commission of India (state boundaries, CC BY 2.5 IN) and GeoNames (populated places,
+  CC BY 4.0); the FIRMS acknowledgement covers the baseline and mask. See
+  pipeline/data/README.md.
 
 ## Follow-ups (not scheduled)
 - **Fresher air source:** evaluate the data.gov.in CPCB real-time AQI feed as a source for
@@ -151,6 +164,12 @@ Notes that apply across steps:
   every `ratio_to_norm` shifts. Only one partial day overlapped in Oct 2026 and FIRMS timed
   out on it; once SP covers Jul-Sep 2026 (about 3 months after the fact), compare it with
   the NRT hotspots kept in `sentinel_archive.db` and scale the norm if needed.
+- **Fire thresholds (decision pending, 21 Oct 2026):** replaying the step-6 rules over the
+  2024-2025 archive itself (norms from the same data, cap ignored) gives a state Level 2+ on
+  ~4 state-days per day, so the desk would hold ~6 open fire items on an average day (p90 13)
+  and open ~590 a year. A single day's count is bursty (cloud, satellite swath). Same replay:
+  min 25 events → ~4 open/day; 2× / 4× → ~2.8; min 25 and 2× / 4× → ~1.8; a 3-day sum barely
+  helps. Level 4 (100 MW within 10 km of 100,000+ people) fired on 7 state-days in 2 years.
 
 ## Non-goals
 - No frontend changes in this task — UI redesign is separate (Situation Report direction A).

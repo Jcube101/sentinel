@@ -244,7 +244,8 @@ def _snapshot(row: dict, run_id: int, now: datetime, change: str | None, new_dat
 
 def reconcile(existing: dict[str, dict], candidates: list[Candidate], *, categories: set[str],
               source_good: bool, open_min_level: int, expired, now: datetime,
-              run_id: int, last_known_note: str | None = None) -> tuple[list[dict], list[dict]]:
+              run_id: int, last_known_note: str | None = None,
+              closes=None) -> tuple[list[dict], list[dict]]:
     """Apply the open / escalate / close rules for one source's categories.
 
     existing:    stored items by id (open ones, plus any candidate ids)
@@ -254,6 +255,9 @@ def reconcile(existing: dict[str, dict], candidates: list[Candidate], *, categor
                  open items without a candidate stay open as last-known
     last_known_note: why, appended to a last-known item's reason
                  ("... · last known: OpenAQ fetch failed this run")
+    closes:      (candidate, stored item) -> True to close an open item that
+                 still has a candidate (fire: quiet for long enough). By
+                 default an open item closes only when its candidate is gone.
 
     Returns (desk_items rows to upsert, snapshot rows).
     """
@@ -289,6 +293,9 @@ def reconcile(existing: dict[str, dict], candidates: list[Candidate], *, categor
             if old["status"] == "closed":
                 row.update(status="open", closed_at=None)
                 change = "reopened"
+            elif closes is not None and closes(c, old):
+                row.update(status="closed", closed_at=now_iso)
+                change = "closed"
             elif c.level > old_level:
                 row["escalated_at"] = now_iso
                 change = "escalated"
