@@ -66,6 +66,11 @@ db.sqlite3-journal
 # SQLite databases (including sentinel_archive.db)
 *.db
 
+# Raw FIRMS archive chunks (tools/pull_firms_archive.py); kept outside the
+# repo in /home/jcube/projects/sentinel-data, never committed
+*.csv.gz
+*.gz.part
+
 # Flask stuff:
 instance/
 .webassets-cache

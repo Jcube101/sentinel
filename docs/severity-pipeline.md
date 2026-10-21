@@ -1,6 +1,8 @@
 # Sentinel — Severity & Fire-Event Pipeline (brief for Claude Code)
 
-Status: **plan approved 20 Oct 2026, build in progress** (see *Decisions* and *Build plan* below).
+Status: **complete, 21 Oct 2026.** Build steps 0-7 are merged and run on the Pi three times a
+day; migrations 001-005 are applied. What is left is listed under *Follow-ups*; the UI that
+reads the new tables is a separate frontend task (*Non-goals*).
 Written 20 Oct 2026 after the Sentinel redesign session.
 Design reference: "Sentinel — Design Directions" canvas, artboards **A2 · Desk ranked by severity** and **A2 · Quiet-day desk**.
 
@@ -197,9 +199,24 @@ come from the same days), so live levels will be a little noisier; GDACS wildfir
 are not replayed; mask, clustering or confidence changes need a baseline rebuild first.
 
 ## Follow-ups (not scheduled)
+Open as of 21 Oct 2026, when the spec was completed.
+- **Live vs archive fire counts, then the calibration cap:** see the last item; once the norm
+  is checked (and scaled if needed), decide whether to raise `fire.calibration_cap` from 2.
+  Until then FIRMS-derived fire items never show above Level 2 (Level 4 "large fire near
+  people" included); only a GDACS wildfire alert lifts a state to Level 3.
+- **Frontend (separate task):** the redesign reads `desk_items`, `desk_item_snapshots`,
+  `desk_watch`, `category_status_latest`, `desk_daily_max`, `desk_last_level3`,
+  `fire_events` (+ views) and `fire_baseline`; the About-page credits (TODO under *Build
+  plan*) go in with it.
+- **Fire threshold tuning:** min 25 / 2× / 4× came from an in-sample replay; recheck with
+  `tools/replay_fire_levels.py` against a few weeks of live items.
+- **Static mask gaps:** a replayed Level 4 case near Dhanbad (Jharia coal field) is probably
+  a coal-seam fire the mask missed; check live Level 4 candidates near mining areas.
 - **Fresher air source:** evaluate the data.gov.in CPCB real-time AQI feed as a source for
   `air:IN`. CPCB data reaches OpenAQ ~2.5 days late, so the air level runs on data up to
-  72 h old (`air.fresh_within_hours`). Needs a free data.gov.in API key.
+  72 h old (`air.fresh_within_hours`). Needs a free data.gov.in API key. Already biting: in
+  edition No. 3 (21 Oct, 14:30 IST) OpenAQ's CPCB data still ended at 18 Oct 14:00 IST, only
+  2 cities were fresh, and `air:IN` went last-known.
 - **Live vs archive fire counts:** the baseline uses the reprocessed FIRMS product (SP), the
   live feed is near-real-time (NRT). If NRT detects systematically more or fewer hotspots,
   every `ratio_to_norm` shifts. Only one partial day overlapped in Oct 2026 and FIRMS timed
