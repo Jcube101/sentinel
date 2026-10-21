@@ -265,6 +265,50 @@ def quiet_hours(candidate: desk.Candidate, day: date) -> int:
     return ((day - date.fromisoformat(since)).days + 1) * 24
 
 
+def build_candidates(day_rows: list[dict], today_rows: list[dict], alerts: dict[str, list[dict]],
+                     existing: dict[str, dict], *, cfg: dict, day: date, today: date, norms: dict, places,
+                     gdacs_checked: bool, data_to: datetime | None) -> list[desk.Candidate]:
+    """One candidate per state with fire events on day, a wildfire alert, or an open item.
+
+    day_rows / today_rows: fire_events rows of the complete day and of today.
+    alerts: {state: [alert summary]}; when GDACS was not checked this run,
+    open items keep their last known alerts.
+    """
+    by_state, by_state_today = defaultdict(list), defaultdict(list)
+    for r in day_rows:
+        by_state[r["state"]].append(r)
+    for r in today_rows:
+        by_state_today[r["state"]].append(r)
+    open_states = {(i.get("figures") or {}).get("state") or i["place_name"]: i
+                   for i in existing.values() if i["status"] == "open" and i["category"] == CATEGORY}
+    alerts = dict(alerts)
+    if not gdacs_checked:
+        for state, item in open_states.items():
+            if (item.get("figures") or {}).get("gdacs_wildfire"):
+                alerts[state] = item["figures"]["gdacs_wildfire"]
+    week = baseline.week_of(day)
+    candidates = [
+        state_candidate(state, by_state.get(state, []), by_state_today.get(state, []), norms.get((state, week)),
+                        alerts.get(state, []), cfg=cfg, day=day, today=today, places=places,
+                        gdacs_checked=gdacs_checked, data_to=data_to)
+        for state in sorted(set(by_state) | set(alerts) | set(open_states))
+    ]
+    start_quiet_clock(candidates, existing, day, cfg)
+    return candidates
+
+
+def reconcile_items(existing: dict[str, dict], candidates: list[desk.Candidate], *, cfg: dict, day: date,
+                    now: datetime, run_id: int | None, note: str | None = None) -> tuple[list[dict], list[dict]]:
+    """desk.reconcile with the fire lifecycle. note: why there are no new
+    levels this run (FIRMS failed); open items then stay last-known."""
+    lifecycle = cfg["fire"]["lifecycle"]
+    return desk.reconcile(
+        existing, candidates, categories={CATEGORY}, source_good=note is None,
+        open_min_level=lifecycle["open_min_level"], expired=lambda item: False, now=now,
+        run_id=run_id, last_known_note=note,
+        closes=lambda c, old: quiet_hours(c, day) >= lifecycle["close_after_hours"])
+
+
 # --- stage ------------------------------------------------------------------------------
 
 def run_fire_desk(supabase, run_id: int | None, results: dict, now: datetime, *, rows: list[dict] | None = None,
@@ -276,7 +320,6 @@ def run_fire_desk(supabase, run_id: int | None, results: dict, now: datetime, *,
     FIRMS fetch when None (the fire stage failed after fetching).
     """
     cfg = cfg or desk.severity_config.load()
-    f = cfg["fire"]
     day = complete_day(now)
     today = now.astimezone(timezone.utc).date()
     firms, gdacs = results["FIRMS"], results.get("GDACS")
@@ -292,21 +335,19 @@ def run_fire_desk(supabase, run_id: int | None, results: dict, now: datetime, *,
         if not day_spots:
             note = f"no FIRMS data for {_day_text(day)} in this run"
 
-    by_state, by_state_today, alerts, unmatched = defaultdict(list), defaultdict(list), {}, 0
+    day_rows, today_rows, alerts, unmatched = [], [], {}, 0
     if note is None:
         districts = districts or fire.Districts.india()
         if rows is None:
             rows = fire.run_fire(supabase, run_id, results, now, write=False, cfg=cfg, districts=districts)["rows"]
-        for r in rows:
-            if r["acq_date"] == day.isoformat():
-                by_state[r["state"]].append(r)
-            elif r["acq_date"] == today.isoformat():
-                by_state_today[r["state"]].append(r)
+        day_rows = [r for r in rows if r["acq_date"] == day.isoformat()]
+        today_rows = [r for r in rows if r["acq_date"] == today.isoformat()]
         if gdacs_good:
             alerts, unmatched = wildfire_alerts_by_state(gdacs.extras.get("alerts", []), districts, cfg)
 
     try:
-        existing = desk.load_items(supabase, {CATEGORY}, [item_id(s) for s in set(by_state) | set(alerts)])
+        ids = {item_id(r["state"]) for r in day_rows} | {item_id(s) for s in alerts}
+        existing = desk.load_items(supabase, {CATEGORY}, sorted(ids))
     except Exception as exc:
         if write:
             raise
@@ -315,30 +356,14 @@ def run_fire_desk(supabase, run_id: int | None, results: dict, now: datetime, *,
 
     candidates = []
     if note is None:
-        open_states = {(i.get("figures") or {}).get("state") or i["place_name"]: i
-                       for i in existing.values() if i["status"] == "open" and i["category"] == CATEGORY}
-        if not gdacs_good:  # keep each open item's last known wildfire alerts
-            for state, item in open_states.items():
-                if (item.get("figures") or {}).get("gdacs_wildfire"):
-                    alerts[state] = item["figures"]["gdacs_wildfire"]
-        norms = norms if norms is not None else baseline.load()
-        places = places if places is not None else load_places()
         times = [t for r in day_spots if (t := desk._dt(r.get("started_at")))]
-        data_to = max(times) if times else None
-        week = baseline.week_of(day)
-        for state in sorted(set(by_state) | set(alerts) | set(open_states)):
-            candidates.append(state_candidate(
-                state, by_state.get(state, []), by_state_today.get(state, []), norms.get((state, week)),
-                alerts.get(state, []), cfg=cfg, day=day, today=today, places=places,
-                gdacs_checked=gdacs_good, data_to=data_to))
-        start_quiet_clock(candidates, existing, day, cfg)
+        candidates = build_candidates(
+            day_rows, today_rows, alerts, existing, cfg=cfg, day=day, today=today,
+            norms=norms if norms is not None else baseline.load(),
+            places=places if places is not None else load_places(),
+            gdacs_checked=gdacs_good, data_to=max(times) if times else None)
 
-    lifecycle = f["lifecycle"]
-    items, snapshots = desk.reconcile(
-        existing, candidates, categories={CATEGORY}, source_good=note is None,
-        open_min_level=lifecycle["open_min_level"], expired=lambda item: False, now=now,
-        run_id=run_id, last_known_note=note,
-        closes=lambda c, old: quiet_hours(c, day) >= lifecycle["close_after_hours"])
+    items, snapshots = reconcile_items(existing, candidates, cfg=cfg, day=day, now=now, run_id=run_id, note=note)
     if write:
         desk.store(supabase, items, snapshots)
 

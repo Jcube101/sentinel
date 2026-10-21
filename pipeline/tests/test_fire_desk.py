@@ -13,7 +13,12 @@ from severity_config import load
 from tests.fakes import FakeSupabase
 from tests.test_fire import DISTRICTS, _row as _hotspot_row
 
+# Thresholds pinned here, so retuning severity.toml doesn't break these
+# mechanics tests (test_severity_config checks the repo's values).
 CFG = load()
+CFG["fire"].update(min_fire_events=10, level_2_min_ratio=1.25, level_3_min_ratio=2.0, calibration_cap=2,
+                   level_4_min_frp_mw=100, level_4_near_km=10, level_4_min_population=100_000)
+CFG["fire"]["lifecycle"].update(open_min_level=2, close_after_hours=48)
 NOW = datetime(2026, 10, 21, 9, 0, tzinfo=timezone.utc)   # first run of 21 Oct: complete day = 20 Oct
 DAY, TODAY = date(2026, 10, 20), date(2026, 10, 21)
 NORMS = {(state, week): {"mean_daily_events": mean, "max_daily_events": 40, "years": "2024-2025"}
@@ -338,3 +343,13 @@ def test_real_baseline_has_a_norm_for_every_state_and_week():
     norms = baseline.load()
     states = {p["state"] for p in fire.Districts.india().props}
     assert all((s, w) in norms for s in states for w in range(1, 53))
+
+
+def test_repo_thresholds_min_25_and_2x_4x():
+    repo = load()
+    norm = {"mean_daily_events": 10.0, "max_daily_events": 40, "years": "2024-2025"}
+    level = lambda n, mean=10.0: _candidate(_events(n), cfg=repo, norm={**norm, "mean_daily_events": mean})
+    assert level(24).level == 1                                      # 2.4x, but under 25 events
+    assert level(30, mean=20.0).level == 1                           # 1.5x
+    assert level(25).level == 2 and level(39).level == 2             # 2.5x, 3.9x
+    assert level(40).level == 2 and level(40).figures["firms_level"] == 3   # 4x, capped at 2

@@ -110,12 +110,16 @@ excluded_district_ids = ["76128533B2782141712775"]
 # daily fire events for that calendar week, 2024-2025 baseline). Today's
 # events so far are shown as a partial count only; they never set the level.
 # Ratio below level_2 = Level 1 ("at norm").
-level_2_min_ratio = 1.25
-level_3_min_ratio = 2.0
+# A single day's count is bursty (cloud, satellite swath): with the spec's
+# 1.25x / 2x and a minimum of 10, a replay of 2024-2025 kept ~6 fire items
+# open on an average day. 2x / 4x with a minimum of 25 keeps ~1.8 (Job,
+# 21 Oct 2026). Test changes with tools/replay_fire_levels.py.
+level_2_min_ratio = 2.0
+level_3_min_ratio = 4.0
 # The ratio only counts once the state has at least this many fire events;
 # below it the state stays Level 1 however high the ratio. Stops a state
 # that averages 0.3 fires/day reading 10x norm on a 3-fire day.
-min_fire_events = 10
+min_fire_events = 25
 # Level 3 "forest fire": an active GDACS wildfire alert in the state.
 gdacs_wildfire_level = 3
 # Level 4: a fire event with max FRP at or above this, within level_4_near_km

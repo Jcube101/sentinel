@@ -185,6 +185,9 @@ the state lifts the item to Level 3 regardless. Today's events so far are in
 `fire.lifecycle.close_after_hours` of complete days below Level 2
 (`figures.quiet_since`). If FIRMS fails, or has no rows for yesterday, open
 items stay last-known; if GDACS fails, they keep their last known alerts.
+To test threshold changes against the 2024-2025 archive before editing
+severity.toml: `tools/replay_fire_levels.py --set fire.<key>=<value>` (usage in
+docs/severity-pipeline.md, *Tuning fire thresholds*).
 
 ## Migrations
 Schema changes are numbered SQL files in `migrations/`. There is no DB URL or

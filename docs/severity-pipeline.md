@@ -44,7 +44,7 @@ Draft thresholds, to be tuned:
 | GDACS flood/cyclone | green | green + rising | orange | red |
 | USGS quake | < M5 | M5–5.9 | M6–6.9 | M7+ |
 | OpenAQ air (CPCB AQI bands) | poor | very poor | severe, 1 city | severe, 3+ cities |
-| FIRMS fire | at norm | 1.25–2× norm | 2×+ norm or forest fire | high-FRP fire near population |
+| FIRMS fire | at norm | 2–4× norm (draft: 1.25–2×) | 4×+ norm (draft: 2×+) or forest fire | high-FRP fire near population |
 
 - Store `severity_level` + `severity_reason` (human string, e.g. "GDACS orange",
   "1.45× seasonal norm") on each item — the UI shows the reason.
@@ -105,7 +105,13 @@ Draft thresholds, to be tuned:
    FIRMS-derived fire levels are capped at 2 (`fire.calibration_cap` in `severity.toml`).
    A current GDACS wildfire alert in the state can still lift an item to Level 3. The reason
    says when the cap lowers a level.
-3. **Minimum fire count** stays at 10 events before any ratio counts.
+3. **Fire thresholds:** at least **25 fire events** before any ratio counts, **Level 2 at 2×**
+   the norm, **Level 3 at 4×** (replacing the draft 10 events and 1.25× / 2×). A replay of the
+   step-6 rules over the 2024-2025 archive (norms from the same data, so in-sample) showed the
+   drafts would keep ~6 fire items open on an average day (p90 13) and open ~590 a year: a
+   single day's count is bursty (cloud, satellite swath). The new values keep ~1.8 open
+   (median 1, p90 5) and open ~240 a year. Level 4 (100 MW within 10 km of 100,000+ people)
+   fired on 7 state-days in 2 years. Tune with the replay tool (*Tuning fire thresholds*).
 
 ## Build plan
 Rules: one work item at a time, each tested and committed separately; the existing
@@ -155,6 +161,24 @@ Notes that apply across steps:
   CC BY 4.0); the FIRMS acknowledgement covers the baseline and mask. See
   pipeline/data/README.md.
 
+## Tuning fire thresholds
+`pipeline/tools/replay_fire_levels.py` runs the live fire desk code over every day of the
+2024-2025 archive (one run per day, nothing written) and reports how many fire items the
+desk would hold, how often each state reaches each level, and the Level 4 cases. From
+`pipeline/` (~1 min on the Pi):
+
+```bash
+PYTHONPATH=. .venv/bin/python tools/replay_fire_levels.py \
+    --cache-dir /home/jcube/projects/sentinel-data/firms_sp \
+    --set fire.min_fire_events=30 --set fire.level_2_min_ratio=2.5
+```
+
+`--set` changes one `severity.toml` value for that replay only (repeatable; any key, e.g.
+`fire.lifecycle.close_after_hours=72`); without it the current file is replayed. When a
+result looks right, put the values in `severity.toml`. The replay is in-sample (the norms
+come from the same days), so live levels will be a little noisier; GDACS wildfire alerts
+are not replayed; mask, clustering or confidence changes need a baseline rebuild first.
+
 ## Follow-ups (not scheduled)
 - **Fresher air source:** evaluate the data.gov.in CPCB real-time AQI feed as a source for
   `air:IN`. CPCB data reaches OpenAQ ~2.5 days late, so the air level runs on data up to
@@ -164,12 +188,6 @@ Notes that apply across steps:
   every `ratio_to_norm` shifts. Only one partial day overlapped in Oct 2026 and FIRMS timed
   out on it; once SP covers Jul-Sep 2026 (about 3 months after the fact), compare it with
   the NRT hotspots kept in `sentinel_archive.db` and scale the norm if needed.
-- **Fire thresholds (decision pending, 21 Oct 2026):** replaying the step-6 rules over the
-  2024-2025 archive itself (norms from the same data, cap ignored) gives a state Level 2+ on
-  ~4 state-days per day, so the desk would hold ~6 open fire items on an average day (p90 13)
-  and open ~590 a year. A single day's count is bursty (cloud, satellite swath). Same replay:
-  min 25 events → ~4 open/day; 2× / 4× → ~2.8; min 25 and 2× / 4× → ~1.8; a 3-day sum barely
-  helps. Level 4 (100 MW within 10 km of 100,000+ people) fired on 7 state-days in 2 years.
 
 ## Non-goals
 - No frontend changes in this task — UI redesign is separate (Situation Report direction A).
