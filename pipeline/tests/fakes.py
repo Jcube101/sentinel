@@ -9,7 +9,8 @@ class FakeSupabase:
         self.missing = set(missing)  # tables that "don't exist yet" (migration not applied)
         # Tables whose upserts are stored (others are only recorded in calls)
         self.upsert_keys = {"desk_items": ("id",), "desk_item_snapshots": ("run_id", "item_id"),
-                            "fire_events": ("id",)}
+                            "fire_events": ("id",), "desk_watch": ("id",),
+                            "category_status": ("run_id", "category")}
         self.calls = []              # (table, op, payload)
         self._next_id = {}
 

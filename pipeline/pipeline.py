@@ -368,6 +368,9 @@ def run(dry_run: bool = False):
     else:
         logger.error("fire: skipped, no run record")
 
+    # Severity stage summaries for the quiet-day stage; None = the stage failed.
+    stages = {"fire_desk": None, "desk": None, "air": None}
+
     # --- Fire desk items: one per state, level from ratio to norm (fire_desk.py) ---
     if dry_run or run_id is not None:
         try:
@@ -375,6 +378,7 @@ def run(dry_run: bool = False):
 
             summary = fire_desk.run_fire_desk(
                 supabase, run_id, results, datetime.now(tz=timezone.utc), rows=fire_rows, write=not dry_run)
+            stages["fire_desk"] = summary
             prefix = "dry-run: " if dry_run else ""
             if summary["source_good"]:
                 logger.info(
@@ -399,6 +403,7 @@ def run(dry_run: bool = False):
             import desk
 
             summary = desk.run_desk(supabase, run_id, results, datetime.now(tz=timezone.utc), write=not dry_run)
+            stages["desk"] = summary
             logger.info(
                 "%sdesk: %d open (max level %s, %d last-known), changes: %s",
                 "dry-run: " if dry_run else "", summary["open"], summary["max_level"],
@@ -416,6 +421,7 @@ def run(dry_run: bool = False):
             import air
 
             summary = air.run_air(supabase, run_id, results, datetime.now(tz=timezone.utc), write=not dry_run)
+            stages["air"] = summary
             prefix = "dry-run: " if dry_run else ""
             if summary["source_good"]:
                 logger.info(
@@ -430,6 +436,23 @@ def run(dry_run: bool = False):
                 )
         except Exception as exc:
             logger.error("air: failed — %s", exc)
+            runs_ok = False
+
+    # --- Quiet-day desk: watching list + per-category status (watch.py) ---
+    if dry_run or run_id is not None:
+        try:
+            import watch
+
+            summary = watch.run_quiet(supabase, run_id, results, datetime.now(tz=timezone.utc), stages,
+                                      write=not dry_run)
+            logger.info(
+                "%squiet: status %s; watching %d of %d: %s",
+                "dry-run: " if dry_run else "",
+                ", ".join(f"{c} {s}" for c, s in summary["status"].items()),
+                len(summary["watching"]), summary["subjects"], "; ".join(summary["watching"]) or "none",
+            )
+        except Exception as exc:
+            logger.error("quiet: failed — %s", exc)
             runs_ok = False
 
     duration = time.monotonic() - start

@@ -59,6 +59,27 @@ class Candidate:
     figures: dict
 
 
+@dataclass
+class WatchSubject:
+    """One thing measured against its next level, for the watching list (watch.py).
+
+    level:      current level (None = nothing at Level 1, e.g. no Poor city)
+    next_level: the level it is measured against (None = none reachable)
+    value / threshold: next_level starts when value reaches threshold;
+                threshold None when there is no distance to compute (GDACS)
+    """
+    id: str
+    category: str
+    title: str
+    item_id: str | None
+    level: int | None
+    next_level: int | None
+    metric: str | None
+    value: float | None
+    threshold: float | None
+    source_updated_at: datetime | None
+
+
 def _dt(value) -> datetime | None:
     if value is None or value == "":
         return None
@@ -217,6 +238,41 @@ def gdacs_candidates(alerts: list[dict], existing: dict[str, dict], cfg: dict) -
                 "ends_at": alert["todate"],
             },
         ))
+    return out
+
+
+# --- watching (step 7) -------------------------------------------------------------
+
+def quake_watch(items: list[dict], cfg: dict) -> list[WatchSubject]:
+    """Open quake items against the next magnitude band."""
+    out = []
+    for item in items:
+        if item["category"] != EARTHQUAKE or item["status"] != "open":
+            continue
+        level = item["severity_level"]
+        next_level = level + 1 if level < 4 else None
+        out.append(WatchSubject(
+            id=item["id"], category=EARTHQUAKE, title=item["title"], item_id=item["id"], level=level,
+            next_level=next_level, metric="magnitude", value=(item.get("figures") or {}).get("magnitude"),
+            threshold=cfg["quake"][f"level_{next_level}_min_magnitude"] if next_level else None,
+            source_updated_at=_dt(item.get("source_updated_at"))))
+    return out
+
+
+def gdacs_watch(items: list[dict]) -> list[WatchSubject]:
+    """Open flood and cyclone items. GDACS episode scores are fixed per colour
+    (Green flood 0.5, Green cyclone 1.0), so there is no distance to the next
+    colour; only a score rising over several episodes can put one on watch."""
+    out = []
+    for item in items:
+        if item["category"] not in (FLOOD, CYCLONE) or item["status"] != "open":
+            continue
+        level = item["severity_level"]
+        out.append(WatchSubject(
+            id=item["id"], category=item["category"], title=item["title"], item_id=item["id"], level=level,
+            next_level=level + 1 if level < 4 else None, metric="GDACS episode alert score",
+            value=(item.get("figures") or {}).get("episode_alert_score"), threshold=None,
+            source_updated_at=_dt(item.get("source_updated_at"))))
     return out
 
 
@@ -395,9 +451,13 @@ def run_desk(supabase, run_id: int | None, results: dict, now: datetime, *,
         store(supabase, items, snapshots)
 
     open_items = [i for i in items if i["status"] == "open"]
+    watch = (quake_watch(q_items, cfg) if usgs_good else []) + (gdacs_watch(g_items) if gdacs_good else [])
     return {
         "open": len(open_items),
         "max_level": max((i["severity_level"] for i in open_items), default=None),
         "last_known": sum(1 for i in open_items if i["last_known"]),
         "changes": {s["item_id"]: s["change"] for s in snapshots if s["change"]},
+        "items": items,
+        "watch": watch,
+        "sources_good": {EARTHQUAKE: usgs_good, FLOOD: gdacs_good, CYCLONE: gdacs_good},
     }

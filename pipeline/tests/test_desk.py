@@ -279,7 +279,8 @@ def test_run_desk_lifecycle_across_runs():
 
     # Run 4: nothing open, nothing to snapshot.
     s4 = desk.run_desk(db, 4, _results(), later + timedelta(hours=6), cfg=CFG, km_from_india=_distance(0))
-    assert s4 == {"open": 0, "max_level": None, "last_known": 0, "changes": {}}
+    assert {k: s4[k] for k in ("open", "max_level", "last_known", "changes")} == {
+        "open": 0, "max_level": None, "last_known": 0, "changes": {}}
 
 
 def test_dry_run_reads_but_never_writes_and_tolerates_missing_tables():
@@ -294,3 +295,26 @@ def test_real_run_fails_loudly_when_tables_missing():
     db = FakeSupabase(missing={"desk_items"})
     with pytest.raises(RuntimeError):
         desk.run_desk(db, 1, _results([_quake()]), NOW, cfg=CFG, km_from_india=_distance(0))
+
+
+# --- watching (step 7) ------------------------------------------------------------------------
+
+def _open_item(item_id, category, level, figures, status="open"):
+    return {"id": item_id, "category": category, "title": f"{category} {item_id}", "severity_level": level,
+            "status": status, "figures": figures, "source_updated_at": NOW.isoformat()}
+
+
+def test_quake_watch_against_the_next_magnitude_band():
+    items = [_open_item("earthquake:a", "earthquake", 2, {"magnitude": 5.8}),
+             _open_item("earthquake:b", "earthquake", 4, {"magnitude": 7.2}),
+             _open_item("earthquake:c", "earthquake", 1, {"magnitude": 4.8}, status="closed"),
+             _open_item("flood:x", "flood", 1, {"episode_alert_score": 0.5})]
+    a, b = desk.quake_watch(items, CFG)
+    assert (a.id, a.item_id, a.level, a.next_level, a.value, a.threshold) == ("earthquake:a", "earthquake:a", 2, 3, 5.8, 6.0)
+    assert (b.next_level, b.threshold) == (None, None)
+
+
+def test_gdacs_watch_has_no_threshold():
+    (s,) = desk.gdacs_watch([_open_item("flood:x", "flood", 1, {"episode_alert_score": 0.5}),
+                             _open_item("earthquake:a", "earthquake", 2, {"magnitude": 5.8})])
+    assert (s.category, s.next_level, s.value, s.threshold) == ("flood", 2, 0.5, None)

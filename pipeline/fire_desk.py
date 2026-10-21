@@ -26,6 +26,7 @@ Thresholds: severity.toml [fire]. Places: data/india_places.csv (GeoNames).
 """
 import csv
 import logging
+import math
 import re
 from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
@@ -309,6 +310,40 @@ def reconcile_items(existing: dict[str, dict], candidates: list[desk.Candidate],
         closes=lambda c, old: quiet_hours(c, day) >= lifecycle["close_after_hours"])
 
 
+# --- watching (step 7) -----------------------------------------------------------------
+
+def watch_subjects(candidates: list[desk.Candidate], items: list[dict], norms: dict, *, cfg: dict, day: date,
+                   data_to: datetime | None) -> list[desk.WatchSubject]:
+    """Every state with a norm for the week, measured as fire events on the
+    complete day against the count its next level needs:
+    max(min_fire_events, that level's ratio x the norm). Only ratio levels
+    are measured (Level 4 has no distance), up to calibration_cap."""
+    f = cfg["fire"]
+    week = baseline.week_of(day)
+    by_state = {c.place_name: c for c in candidates}
+    open_ids = {i["id"] for i in items if i["status"] == "open"}
+    reachable = min(f["calibration_cap"], 3)
+    out = []
+    for (state, w), norm in sorted(norms.items()):
+        if w != week or state == baseline.NATIONAL:
+            continue
+        c = by_state.get(state)
+        level = c.level if c else 1
+        next_level = level + 1 if level < reachable else None
+        threshold = metric = None
+        if next_level:
+            ratio, mean = f[f"level_{next_level}_min_ratio"], norm["mean_daily_events"]
+            threshold = max(f["min_fire_events"], math.ceil(ratio * mean - 1e-9))
+            metric = (f"fire events on {_day_text(day)}; Level {next_level} needs {ratio:g}× the norm "
+                      f"({_norm_text(mean)}/day) and at least {f['min_fire_events']}")
+        sid = item_id(state)
+        out.append(desk.WatchSubject(
+            id=sid, category=CATEGORY, title=state, item_id=sid if sid in open_ids else None, level=level,
+            next_level=next_level, metric=metric, value=c.figures["fire_events"] if c else 0,
+            threshold=threshold, source_updated_at=data_to))
+    return out
+
+
 # --- stage ------------------------------------------------------------------------------
 
 def run_fire_desk(supabase, run_id: int | None, results: dict, now: datetime, *, rows: list[dict] | None = None,
@@ -354,23 +389,27 @@ def run_fire_desk(supabase, run_id: int | None, results: dict, now: datetime, *,
         logger.warning("dry-run: could not read desk items — %s", exc)
         existing = {}
 
-    candidates = []
+    candidates, watch = [], []
     if note is None:
+        norms = norms if norms is not None else baseline.load()
         times = [t for r in day_spots if (t := desk._dt(r.get("started_at")))]
+        data_to = max(times) if times else None
         candidates = build_candidates(
-            day_rows, today_rows, alerts, existing, cfg=cfg, day=day, today=today,
-            norms=norms if norms is not None else baseline.load(),
-            places=places if places is not None else load_places(),
-            gdacs_checked=gdacs_good, data_to=max(times) if times else None)
+            day_rows, today_rows, alerts, existing, cfg=cfg, day=day, today=today, norms=norms,
+            places=places if places is not None else load_places(), gdacs_checked=gdacs_good, data_to=data_to)
 
     items, snapshots = reconcile_items(existing, candidates, cfg=cfg, day=day, now=now, run_id=run_id, note=note)
     if write:
         desk.store(supabase, items, snapshots)
+    if note is None:
+        watch = watch_subjects(candidates, items, norms, cfg=cfg, day=day, data_to=data_to)
 
     open_items = sorted((i for i in items if i["status"] == "open"), key=lambda i: (-i["severity_level"], i["id"]))
     ranked = sorted((c for c in candidates if c.figures["ratio_counted"] and c.figures["ratio_to_norm"] is not None),
                     key=lambda c: -c.figures["ratio_to_norm"])
     return {
+        "items": items,
+        "watch": watch,
         "day": day.isoformat(),
         "source_good": note is None,
         "note": note,

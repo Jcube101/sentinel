@@ -6,13 +6,21 @@
 #   1 Minor · 2 Elevated · 3 High · 4 Severe
 
 [watching]
-# An item is "watching" when its key figure is within this fraction of the
-# next level's threshold (0.05 = within 5%)...
+# The watching list (watch.py, desk_watch). A subject (an open item, or a
+# fire state below Level 2) is "watching" when its key figure is within
+# this fraction of the next level's threshold (0.05 = within 5%)...
 margin = 0.05
 # ...or has risen for this many consecutive source updates toward it.
 # Counts new source data, not pipeline runs: FIRMS publishes about twice a
-# day, so its 02:30 IST run usually repeats the 20:30 IST data.
+# day, so its 02:30 IST run usually repeats the 20:30 IST data, and fire
+# levels use complete days, so fire subjects move once a day.
 rising_updates = 3
+# Rising only counts from this fraction of the threshold up, so a state
+# going from 2 to 5 fire events (threshold 25) is not "watching".
+# Not in the spec; first guess.
+rising_min_progress = 0.5
+# desk_watch rows not updated for this many days are deleted.
+keep_days = 14
 
 [quake]
 # USGS magnitude at which each level starts. Below level 2 = Level 1.

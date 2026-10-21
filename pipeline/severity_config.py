@@ -58,6 +58,8 @@ def _ascending(cfg, *dotted, strict=True):
 def validate(cfg: dict) -> None:
     _number(cfg, "watching.margin", minimum=0, maximum=1)
     _number(cfg, "watching.rising_updates", minimum=1, integer=True)
+    _number(cfg, "watching.rising_min_progress", minimum=0, maximum=1)
+    _number(cfg, "watching.keep_days", minimum=1, integer=True)
 
     quake_levels = [f"quake.level_{n}_min_magnitude" for n in (2, 3, 4)]
     for key in quake_levels:

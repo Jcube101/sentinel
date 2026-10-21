@@ -353,3 +353,37 @@ def test_repo_thresholds_min_25_and_2x_4x():
     assert level(30, mean=20.0).level == 1                           # 1.5x
     assert level(25).level == 2 and level(39).level == 2             # 2.5x, 3.9x
     assert level(40).level == 2 and level(40).figures["firms_level"] == 3   # 4x, capped at 2
+
+
+# --- watching (step 7) ------------------------------------------------------------------------
+
+def test_watch_subjects_cover_every_state_with_a_norm():
+    norm = lambda mean: {"mean_daily_events": mean, "max_daily_events": 90, "years": "2024-2025"}
+    norms = {("Punjab", 42): norm(20.0), ("Haryana", 42): norm(8.0), ("Kerala", 42): norm(1.0),
+             ("India", 42): norm(29.0), ("Punjab", 43): norm(50.0)}
+    punjab = _candidate(_events(22), norm=norms[("Punjab", 42)])                   # 1.1x: Level 1
+    haryana = _candidate(_events(12, state="Haryana", district="Karnal", did="D2"), state="Haryana",
+                         norm=norms[("Haryana", 42)])                              # 1.5x: Level 2
+    items = [{"id": "fire:haryana", "status": "open"}]
+    subjects = {s.title: s for s in fire_desk.watch_subjects([punjab, haryana], items, norms, cfg=CFG, day=DAY,
+                                                            data_to=NOW)}
+    assert sorted(subjects) == ["Haryana", "Kerala", "Punjab"]                     # not the national row
+    p = subjects["Punjab"]
+    assert (p.id, p.level, p.next_level, p.value, p.threshold, p.item_id) == ("fire:punjab", 1, 2, 22, 25, None)
+    assert p.metric == "fire events on 20 Oct; Level 2 needs 1.25× the norm (20/day) and at least 10"
+    h = subjects["Haryana"]
+    assert (h.level, h.next_level, h.threshold, h.item_id) == (2, None, None, "fire:haryana")  # cap 2: no FIRMS route up
+    k = subjects["Kerala"]
+    assert (k.value, k.threshold) == (0, 10)                                       # the minimum count binds
+    uncapped = {s.title: s for s in fire_desk.watch_subjects([haryana], [], norms, cfg=_cfg(calibration_cap=4),
+                                                            day=DAY, data_to=NOW)}
+    assert (uncapped["Haryana"].next_level, uncapped["Haryana"].threshold) == (3, 16)   # 2x the norm of 8
+
+
+def test_run_fire_desk_hands_over_items_and_watch_subjects():
+    db = FakeSupabase()
+    s = _run(db, _events(15), run_id=5)
+    assert [i["id"] for i in s["items"]] == ["fire:punjab"]
+    assert {w.title for w in s["watch"]} == {"Punjab", "Haryana"}
+    now, _ = _day(1)
+    assert _run(db, [], now=now, run_id=6, firms_status="timeout")["watch"] == []

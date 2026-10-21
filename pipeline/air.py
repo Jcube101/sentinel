@@ -37,6 +37,7 @@ PARAMETER_IDS = {"pm25": 2, "pm10": 1}
 LATEST_PAGE_SIZE = 1000
 MAX_LATEST_PAGES = 40          # pm25 is ~22 pages worldwide, pm10 ~14
 ITEM_ID = "air:IN"
+WATCH_CITIES = 10                         # worst cities kept in figures for the watching list
 BANDS = ("severe", "very_poor", "poor")  # worst first
 BAND_LABELS = {"severe": "Severe", "very_poor": "Very poor", "poor": "Poor"}
 IST = ZoneInfo("Asia/Kolkata")
@@ -103,6 +104,12 @@ def band(pollutant: str, value: float | None, cfg: dict) -> str | None:
     if value > b["poor_above"]:
         return "poor"
     return None
+
+
+def band_ratio(city: dict, band_name: str, cfg: dict) -> float:
+    """How far a city's 24 h means are toward a band: the higher of
+    pm25 / pm25 threshold and pm10 / pm10 threshold (1.0 = at the threshold)."""
+    return max((city.get(f"{p}_24h") or 0) / cfg["air"][p][f"{band_name}_above"] for p in PARAMETER_IDS)
 
 
 def worst(*bands: str | None) -> str | None:
@@ -233,6 +240,7 @@ def assess(stations: list[dict], client: OpenAQ, cfg: dict, now: datetime) -> di
         "stations_reporting": len({loc for loc, _ in current}),
         "counts": {b: 0 for b in BANDS},
         "cities": [],
+        "worst_cities": [],
         "station_means": [],
         "data_as_of": None,
         "oldest_data": None,
@@ -289,10 +297,12 @@ def assess(stations: list[dict], client: OpenAQ, cfg: dict, now: datetime) -> di
         else:
             stale_count[city] += 1
 
-    cities = []
+    cities, measured = [], []
     for city in by_city:
         values = {p: (sum(means[(city, p)]) / len(means[(city, p)]) if means[(city, p)] else None)
                   for p in PARAMETER_IDS}
+        if any(v is not None for v in values.values()):
+            measured.append({"city": city, **{f"{p}_24h": round(v, 1) for p, v in values.items() if v is not None}})
         b = worst(band("pm25", values["pm25"], cfg), band("pm10", values["pm10"], cfg))
         if b:
             cities.append({
@@ -309,9 +319,11 @@ def assess(stations: list[dict], client: OpenAQ, cfg: dict, now: datetime) -> di
     station_means.sort(key=lambda r: (r["stale"], r["city"], r["pollutant"]))
     fresh_until = [t for ts in city_until.values() for t in ts]
 
+    measured.sort(key=lambda c: -band_ratio(c, "poor", cfg))
     figures.update(
         counts={b: sum(1 for c in cities if c["band"] == b) for b in BANDS},
         cities=cities[:30],
+        worst_cities=measured[:WATCH_CITIES],  # any band, for the watching list (watch_subject)
         station_means=station_means,
         data_as_of=max(fresh_until).isoformat() if fresh_until else None,
         oldest_data=min(fresh_until).isoformat() if fresh_until else None,
@@ -356,6 +368,36 @@ def candidate(figures: dict, cfg: dict) -> desk.Candidate | None:
         reason=f"{label} in {_names(in_band)} (approx. CPCB band; {_as_of_text(in_band[:3])})",
         observed_at=as_of, source_updated_at=as_of, figures=figures,
     )
+
+
+def _worst_text(k: int) -> str:
+    if k == 1:
+        return "worst city"
+    suffix = {2: "nd", 3: "rd"}.get(k, "th")
+    return f"{k}{suffix}-worst city"
+
+
+def watch_subject(figures: dict, level: int | None, item_open: bool, cfg: dict) -> desk.WatchSubject:
+    """air:IN against its next level: the city the next level hinges on (the
+    worst for Poor and Very poor, the Nth-worst for Severe in N cities), its
+    24 h mean in the pollutant closest to that band, against the band's start."""
+    air = cfg["air"]
+    steps = {None: (1, "poor", 1), 1: (2, "very_poor", 1), 2: (3, "severe", air["level_3_min_severe_cities"]),
+             3: (4, "severe", air["level_4_min_severe_cities"])}
+    next_level = metric = value = threshold = None
+    if level in steps:
+        next_level, band_name, k = steps[level]
+        ranked = sorted(figures.get("worst_cities") or [], key=lambda c: -band_ratio(c, band_name, cfg))
+        if len(ranked) >= k:
+            city = ranked[k - 1]
+            p = max(PARAMETER_IDS, key=lambda p: (city.get(f"{p}_24h") or 0) / air[p][f"{band_name}_above"])
+            value, threshold = city[f"{p}_24h"], air[p][f"{band_name}_above"]
+            metric = (f"{'PM2.5' if p == 'pm25' else 'PM10'} 24 h mean (µg/m³) in {city['city']}, "
+                      f"the {_worst_text(k)}; {BAND_LABELS[band_name]} starts above {threshold:g}")
+    return desk.WatchSubject(
+        id=ITEM_ID, category="air", title="Air quality (India)", item_id=ITEM_ID if item_open else None,
+        level=level, next_level=next_level, metric=metric, value=value, threshold=threshold,
+        source_updated_at=desk._dt(figures.get("data_as_of")))
 
 
 # --- stage -----------------------------------------------------------------------------
@@ -407,7 +449,10 @@ def run_air(supabase, run_id: int | None, results: dict, now: datetime, *, write
         expired=lambda item: False, now=now, run_id=run_id, last_known_note=note)
     if write:
         desk.store(supabase, items, snapshots)
+    item_open = any(i["id"] == ITEM_ID and i["status"] == "open" for i in items)
     return {
+        "items": items,
+        "watch": [watch_subject(figures, cand.level if cand else None, item_open, cfg)] if note is None else [],
         "level": cand.level if cand else None,
         "reason": cand.reason if cand else None,
         "source_good": note is None,

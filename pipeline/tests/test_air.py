@@ -355,3 +355,45 @@ def test_run_air_fetch_failure_note(monkeypatch):
     s = air.run_air(db, 2, _results("error"), NOW, cfg=CFG, client=FakeOpenAQ({}, {}))
     assert s["note"] == "OpenAQ fetch failed this run" and s["requests"] == 0
     assert db.rows("desk_items")[0]["severity_reason"].endswith(" · last known: OpenAQ fetch failed this run")
+
+
+# --- watching (step 7) ------------------------------------------------------------------------
+
+def test_assess_keeps_worst_cities_in_any_band():
+    latest = {11: (60, 2), 21: (60, 2), 31: (100, 3), 41: (50, 2)}
+    hours = {11: [80] * 24, 21: [70] * 24, 31: [150] * 18, 41: [50] * 24}
+    figures, _ = _assess(latest, hours)
+    assert [(c["city"], c["pm25_24h"]) for c in figures["worst_cities"]] == [
+        ("Lucknow", 150.0), ("Delhi", 75.0), ("Pune", 50.0)]
+    assert [c["city"] for c in figures["cities"]] == ["Lucknow"]   # only Poor or worse gets a band
+
+
+def _worst(*cities):
+    return {"worst_cities": [dict(c) for c in cities], "data_as_of": NOW.isoformat()}
+
+
+def test_watch_subject_measures_the_city_the_next_level_hinges_on():
+    cities = ({"city": "Delhi", "pm25_24h": 240.0, "pm10_24h": 300.0},
+              {"city": "Noida", "pm25_24h": 200.0},
+              {"city": "Patna", "pm10_24h": 420.0})            # PM10 420 is nearer Severe (430) than any PM2.5
+    s = air.watch_subject(_worst(*cities), 2, True, REAL_CFG)  # Level 2 -> 3: Severe in 1 city
+    assert (s.next_level, s.value, s.threshold, s.item_id) == (3, 420.0, 430, "air:IN")
+    assert s.metric == "PM10 24 h mean (µg/m³) in Patna, the worst city; Severe starts above 430"
+    s = air.watch_subject(_worst(*cities), 3, True, REAL_CFG)  # Level 3 -> 4: Severe in 3 cities
+    assert (s.next_level, s.value, s.threshold) == (4, 200.0, 250)
+    assert "Noida, the 3rd-worst city" in s.metric
+    s = air.watch_subject(_worst(*cities[:2]), 3, True, REAL_CFG)
+    assert s.next_level == 4 and s.value is None             # fewer than 3 cities measured
+    s = air.watch_subject(_worst({"city": "Pune", "pm25_24h": 85.0}), None, False, REAL_CFG)
+    assert (s.level, s.next_level, s.value, s.threshold, s.item_id) == (None, 1, 85.0, 90, None)
+    assert air.watch_subject(_worst(*cities), 4, True, REAL_CFG).next_level is None
+
+
+def test_run_air_hands_over_its_item_and_watch_subject(monkeypatch):
+    db = FakeSupabase()
+    monkeypatch.setattr(air, "reference_stations", lambda locations, cfg: STATIONS[:1])
+    s = air.run_air(db, 1, _results(), NOW, cfg=CFG, client=FakeOpenAQ({11: (100, 1)}, {11: [100] * 24}))
+    (subject,) = s["watch"]
+    assert (subject.level, subject.next_level, subject.value, subject.threshold) == (1, 2, 100.0, 120)
+    assert [i["id"] for i in s["items"]] == ["air:IN"]
+    assert air.run_air(db, 2, _results("error"), NOW, cfg=CFG, client=FakeOpenAQ({}, {}))["watch"] == []

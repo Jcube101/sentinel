@@ -146,8 +146,25 @@ affect current output); all thresholds in **one** config file, `pipeline/severit
    (GeoNames, `data/india_places.csv`) → Level 4; FIRMS-derived levels capped at
    `fire.calibration_cap` (decision 21 Oct). Closes after `close_after_hours` of complete
    days below Level 2. No migration (uses `desk_items` / `desk_item_snapshots`).
-7. **Quiet-day support:** watching list, `category_status`, daily max level (IST day) for
-   the 14-day strip, days since last Level 3+.
+7. **Quiet-day support** (`watch.py`, migration 005): watching list, `category_status`, daily
+   max level (IST day) for the 14-day strip, days since last Level 3+.
+   - **Watching** (`desk_watch`, one row per subject): each stage measures its subjects against
+     the threshold of their next level. Quakes: magnitude vs the next band. Floods and
+     cyclones: GDACS episode scores are fixed per colour (Green flood 0.5, Green cyclone 1.0),
+     so there is no distance; only a score rising over `rising_updates` episodes counts. Air:
+     the city the next level hinges on (the worst for Poor / Very poor, the Nth-worst for
+     Severe in N cities) vs that band's start. Fire: every state's fire events on the complete
+     day vs the count its next level needs, max(minimum, ratio × norm); levels above
+     `calibration_cap` are not measured (only GDACS can lift a capped state). Watching = within
+     `margin` (5%) of the threshold, or `rising_updates` (3) source updates in a row toward it
+     once at least `rising_min_progress` (half) of the way there.
+   - **Category status** (`category_status`, one row per category per run; view
+     `category_status_latest`): highest open level or none open, a one-line summary (the top
+     item's title, or an all-clear line such as "No current GDACS flood alerts for India"),
+     source and fetch status, last-known flag, watching count.
+   - **14-day strip** (view `desk_daily_max`): most severe open item per IST day; 0 = runs but
+     nothing open, null = no runs. **Days since last Level 3+** (view `desk_last_level3`).
+     Both read `desk_item_snapshots`, so they need no pipeline code.
 
 Notes that apply across steps:
 - **"Rising for 3 updates" counts new source data, not runs.** FIRMS publishes twice a day

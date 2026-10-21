@@ -240,3 +240,26 @@ def test_fire_stage_rows_reach_the_fire_desk(harness, monkeypatch):
     monkeypatch.setattr(fire_desk, "run_fire_desk", fake_run_fire_desk)
     assert harness.run() == 0
     assert seen == {"rows": ["fire event"], "run_id": 1}
+
+
+def test_quiet_stage_writes_status_and_watch_rows(harness):
+    harness.fetchers["USGS"] = _fetcher([_quake_row()])
+    assert harness.run() == 0
+    statuses = {r["category"]: r for r in harness.db.rows("category_status")}
+    assert sorted(statuses) == ["air", "cyclone", "earthquake", "fire", "flood"]
+    assert statuses["earthquake"]["level"] == 2 and statuses["earthquake"]["run_id"] == 1
+    assert [r["id"] for r in harness.db.rows("desk_watch")] == ["earthquake:USGS-us1"]
+
+
+def test_quiet_stage_failure_only_fails_that_stage(harness):
+    harness.fetchers["USGS"] = _fetcher([_quake_row()])
+    harness.db.missing = {"desk_watch"}          # migration 005 not applied
+    assert harness.run() == 1
+    assert len(harness.db.rows("desk_items")) == 1
+    assert harness.db.rows("pipeline_runs")[0]["status"] == "failed"
+
+
+def test_dry_run_before_migration_005_is_ok(harness):
+    harness.fetchers["USGS"] = _fetcher([_quake_row()])
+    harness.db.missing = {"desk_watch", "category_status"}
+    assert harness.run(dry_run=True) == 0

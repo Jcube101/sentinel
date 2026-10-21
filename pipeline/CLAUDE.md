@@ -135,7 +135,10 @@ and the Windows scheduled task has been disabled.
   views fire_district_daily, fire_state_daily
 - fire_baseline: seasonal norm, mean daily fire events per state per week (baseline.py)
 - desk_items: severity desk, one row per item with a 1-4 level (desk.py)
-- desk_item_snapshots: one row per desk item per run
+- desk_item_snapshots: one row per desk item per run; views desk_daily_max
+  (most severe open item per IST day) and desk_last_level3
+- desk_watch: watching list, distance to the next level and trend per subject (watch.py)
+- category_status: one row per category per run; view category_status_latest
 
 ## Fire events
 `fire.py` runs first of the severity stages: nominal/high-confidence FIRMS
@@ -188,6 +191,16 @@ items stay last-known; if GDACS fails, they keep their last known alerts.
 To test threshold changes against the 2024-2025 archive before editing
 severity.toml: `tools/replay_fire_levels.py --set fire.<key>=<value>` (usage in
 docs/severity-pipeline.md, *Tuning fire thresholds*).
+
+## Quiet-day desk
+`watch.py` runs last. Each severity stage hands over watch subjects (a value
+against the threshold of its next level: quake magnitude, GDACS episode score,
+the air city the next level hinges on, each state's fire events) and its
+items. It keeps their trend in `desk_watch` (a point per new source update,
+not per run), marks them watching within `[watching] margin` of the threshold
+or after `rising_updates` updates in a row toward it, and writes a
+`category_status` row per category (level or none open, one-line summary,
+source). Needs migration 005; a missing table fails the run.
 
 ## Migrations
 Schema changes are numbered SQL files in `migrations/`. There is no DB URL or
