@@ -7,6 +7,9 @@ SUPABASE_URL = os.getenv("SUPABASE_URL", "").strip().rstrip("/")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "").strip()
 FIRMS_MAP_KEY = os.getenv("FIRMS_MAP_KEY")
 OPENAQ_API_KEY = os.getenv("OPENAQ_API_KEY")
+# data.gov.in key for CPCB's real-time AQI feed (datagov.py), the primary
+# source for the air:IN desk item; without it the item uses OpenAQ.
+DATA_GOV_IN_API_KEY = (os.getenv("DATA_GOV_IN_API_KEY") or "").strip() or None
 
 # Days an event stays in Supabase, by started_at, before pipeline._cleanup()
 # deletes it (the local SQLite archive keeps it). Fetchers that can return

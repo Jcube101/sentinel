@@ -85,11 +85,16 @@ def update_row(subject: desk.WatchSubject, stored: dict | None, cfg: dict, now: 
     value, threshold, next_level = subject.value, subject.threshold, subject.next_level
     streak = rising_streak(trend, next_level)
     distance = (threshold - value) / threshold if threshold and value is not None else None
+    # Past the threshold without the level: today only a Severe air reading
+    # still waiting for confirmation (air.severe_confirm_runs).
+    past = distance is not None and distance < 0
     near = distance is not None and 0 <= distance <= w["margin"]
     far_enough = threshold is None or (value is not None and value / threshold >= w["rising_min_progress"])
     rising = streak >= w["rising_updates"] and far_enough
-    watching = next_level is not None and (near or rising)
+    watching = next_level is not None and (near or past or rising)
     reasons = []
+    if watching and past:
+        reasons.append(f"past the Level {next_level} threshold ({threshold:g}), not yet at that level")
     if watching and near:
         reasons.append(f"{_below_text(distance)} the Level {next_level} threshold ({threshold:g})")
     if watching and rising:
@@ -161,6 +166,9 @@ def category_status(category: str, open_items: list[dict], *, results: dict, sta
                     watching: int, run_id: int | None, now: datetime) -> dict:
     key, source_id, _ = CATEGORY_SOURCES[category]
     note = _source_note(category, results, stage)
+    source_status = results[key].status if results.get(key) is not None else None
+    if stage and stage.get("source_id"):  # air: whichever source set the level (data.gov.in or OpenAQ)
+        source_id, source_status = stage["source_id"], stage.get("source_status")
     ranked = sorted(open_items, key=lambda i: (-i["severity_level"], -_strength(i), i["title"]))
     if ranked:
         summary = ranked[0]["title"] + (f" (+{len(ranked) - 1} more)" if len(ranked) > 1 else "")
@@ -168,7 +176,6 @@ def category_status(category: str, open_items: list[dict], *, results: dict, sta
         summary = all_clear(category, cfg, stage)
     if note:
         summary += f"{desk.LAST_KNOWN_SEP}{note}"
-    fetch = results.get(key)
     return {
         "run_id": run_id,
         "category": category,
@@ -177,7 +184,7 @@ def category_status(category: str, open_items: list[dict], *, results: dict, sta
         "last_known": note is not None or any(i.get("last_known") for i in ranked),
         "summary": summary,
         "source": source_id,
-        "source_status": fetch.status if fetch is not None else None,
+        "source_status": source_status,
         "watching": watching,
         "taken_at": now.isoformat(),
     }

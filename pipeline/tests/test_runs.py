@@ -147,3 +147,23 @@ def test_redact_strips_any_32_hex_key(monkeypatch):
 def test_redact_truncates_and_passes_none():
     assert runs.redact(None) is None
     assert len(runs.redact("x" * 5000)) == runs.ERROR_TEXT_LIMIT
+
+
+def test_redact_strips_the_data_gov_in_key_and_any_api_key_param(monkeypatch):
+    key = "579b464db66ec23bdd0000017a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c"
+    monkeypatch.setattr(runs.config, "DATA_GOV_IN_API_KEY", key)
+    assert key not in runs.redact(f"502 for url: https://api.data.gov.in/resource/x?api-key={key}&format=json")
+    other = runs.redact("https://api.data.gov.in/resource/x?format=json&api-key=someone-elses-key-123&limit=10")
+    assert other == "https://api.data.gov.in/resource/x?format=json&api-key=***&limit=10"
+    assert runs.redact("https://example.org/?MAP_KEY=abc123def456") == "https://example.org/?MAP_KEY=***"
+
+
+def test_freshness_update_marks_new_data_only_when_newer():
+    t1 = datetime(2026, 10, 21, 13, 30, tzinfo=timezone.utc)
+    now = datetime(2026, 10, 21, 14, 0, tzinfo=timezone.utc)
+    update, new = runs.freshness_update("ok", None, 3710, t1, {"newest_observation_at": None}, 7, now)
+    assert new and update["newest_observation_at"] == t1.isoformat() and update["last_success_at"] == now.isoformat()
+    update, new = runs.freshness_update("ok", None, 3710, t1, {"newest_observation_at": t1.isoformat()}, 8, now)
+    assert not new and "newest_observation_at" not in update
+    update, new = runs.freshness_update("timeout", "timed out", 0, None, None, 9, now)
+    assert not new and "last_success_at" not in update and update["last_status"] == "timeout"

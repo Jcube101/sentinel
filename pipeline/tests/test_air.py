@@ -14,6 +14,7 @@ NOW = datetime(2026, 10, 20, 15, 0, tzinfo=timezone.utc)
 REAL_CFG = load()
 CFG = copy.deepcopy(REAL_CFG)
 CFG["air"]["min_fresh_cities"] = 1  # most tests use a handful of cities
+CFG["air"]["severe_confirm_runs"] = 1  # the Severe guard has its own tests (test_air_datagov.py)
 ALIASES = {"New Delhi": "Delhi"}
 
 
@@ -338,14 +339,15 @@ def test_run_air_quorum_failure_keeps_level_and_says_why(monkeypatch):
         assert s["source_good"] is False and s["change"] is None
         assert item["status"] == "open" and item["last_known"] is True and item["severity_level"] == 3
         assert item["severity_reason"] == (
-            opened["severity_reason"] + " · last known: only 1 city has data from the last 72 h (need 10)")
+            opened["severity_reason"] + " · last known: data.gov.in feed failed (no DATA_GOV_IN_API_KEY set); "
+            "only 1 city has data from the last 72 h (need 10)")
 
     air.run_air(db, 4, _results(), NOW + timedelta(hours=30), cfg=CFG, client=dirty())
     item = db.rows("desk_items")[0]
     assert item["last_known"] is False and "last known" not in item["severity_reason"]
     snaps = db.rows("desk_item_snapshots")
     assert [s["last_known"] for s in snaps] == [False, True, True, False]
-    assert "last known: only 1 city" in snaps[1]["severity_reason"]
+    assert "; only 1 city has data" in snaps[1]["severity_reason"]
 
 
 def test_run_air_fetch_failure_note(monkeypatch):
@@ -353,8 +355,9 @@ def test_run_air_fetch_failure_note(monkeypatch):
     monkeypatch.setattr(air, "reference_stations", lambda locations, cfg: STATIONS[:1])
     air.run_air(db, 1, _results(), NOW, cfg=CFG, client=FakeOpenAQ({11: (300, 1)}, {11: [300] * 24}))
     s = air.run_air(db, 2, _results("error"), NOW, cfg=CFG, client=FakeOpenAQ({}, {}))
-    assert s["note"] == "OpenAQ fetch failed this run" and s["requests"] == 0
-    assert db.rows("desk_items")[0]["severity_reason"].endswith(" · last known: OpenAQ fetch failed this run")
+    # The note says why neither source gave a level (no key in tests, so the feed fails first).
+    assert s["note"] == "data.gov.in feed failed (no DATA_GOV_IN_API_KEY set); OpenAQ fetch failed this run" and s["requests"] == 0
+    assert db.rows("desk_items")[0]["severity_reason"].endswith(" · last known: data.gov.in feed failed (no DATA_GOV_IN_API_KEY set); OpenAQ fetch failed this run")
 
 
 # --- watching (step 7) ------------------------------------------------------------------------

@@ -53,12 +53,19 @@ red = 4
 open_min_level = 1
 
 [air]
-# National air-quality item (air.py). Bands are CPCB National AQI
-# breakpoints applied to 24 h means of OpenAQ hourly data, so the result is
-# marked approximate. A city's value is the mean over its stations.
+# National air-quality item (air.py). Primary source: CPCB's real-time AQI
+# on data.gov.in ([air.datagov], [air.aqi]). Fallback: CPCB National AQI
+# breakpoints applied to 24 h means of OpenAQ hourly data, marked
+# approximate (the rest of this section). Either way a city's value is the
+# mean over its stations, and the reason says which source set the level.
 # Spec: poor -> 1, very poor -> 2, severe in N cities -> 3 or 4.
 level_3_min_severe_cities = 1
 level_4_min_severe_cities = 3
+# The data is unvalidated, so a city counts as Severe toward Level 3/4 only
+# once it has been Severe in this many consecutive assessments; until then
+# it counts as Very poor (Job, 21 Oct 2026). Very poor and below count at
+# once. Runs whose air assessment failed don't count either way.
+severe_confirm_runs = 2
 # Reference-grade monitors only; low-cost sensors (AirGradient, Clarity)
 # read high in humid air. Add them here to trade accuracy for freshness.
 providers = ["CPCB", "AirNow"]
@@ -85,8 +92,28 @@ max_stations_per_city = 8
 # Station names CPCB counts as the same city.
 city_aliases = { "New Delhi" = "Delhi" }
 
+[air.datagov]
+# CPCB's real-time AQI feed (datagov.py): CPCB's own AQI sub-index per
+# station and pollutant, from 24 h averages (8 h for CO and ozone),
+# refreshed hourly, unvalidated. The OpenAQ assessment is used instead when
+# the feed fails, has fewer than min_fresh_cities cities with an AQI, or its
+# snapshot is older than this:
+max_snapshot_age_hours = 6
+# CPCB method: a station's AQI is its highest sub-index, computed only with
+# at least this many pollutants, one of them PM2.5 or PM10. A city's AQI is
+# the mean of its stations' AQIs, as in CPCB's daily bulletin.
+min_pollutants = 3
+
+[air.aqi]
+# CPCB AQI categories: a band starts above this AQI (201-300 Poor,
+# 301-400 Very poor, 401-500 Severe), the index-scale twin of the
+# [air.pm25] / [air.pm10] breakpoints.
+poor_above = 200
+very_poor_above = 300
+severe_above = 400
+
 [air.pm25]
-# µg/m³, 24 h mean. A band starts above this value.
+# µg/m³, 24 h mean (OpenAQ fallback). A band starts above this value.
 poor_above = 90
 very_poor_above = 120
 severe_above = 250
@@ -98,7 +125,7 @@ severe_above = 430
 
 [air.lifecycle]
 # Opens when any city is Poor or worse; closes when none is (on a good
-# assessment). If OpenAQ fails it stays open as last-known.
+# assessment). If both sources fail it stays open as last-known.
 open_min_level = 1
 
 [fire]

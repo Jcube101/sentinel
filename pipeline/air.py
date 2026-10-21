@@ -1,6 +1,16 @@
 """National air-quality desk item (step 3 of docs/severity-pipeline.md).
 
-One item, air:IN, levelled from approximate CPCB bands in Indian cities:
+One item, air:IN, levelled from CPCB bands in Indian cities. Two sources:
+
+Primary: CPCB's real-time AQI on data.gov.in (datagov.py, assess_feed):
+CPCB's own sub-indices per station and pollutant; station AQI = highest
+sub-index (at least 3 pollutants incl. PM2.5 or PM10), city AQI = mean of
+its stations, band from CPCB's AQI categories. Hourly, unvalidated; the
+reason says "CPCB AQI, real-time (unvalidated)".
+
+Fallback, when the feed fails, is older than [air.datagov]
+max_snapshot_age_hours or has too few cities: approximate CPCB bands from
+OpenAQ (the reason says "approx. CPCB band"):
 
   1. stations: reference monitors (providers in severity.toml, CPCB and
      AirNow by default) from the OpenAQ fetcher's location list; each gets
@@ -19,6 +29,7 @@ CPCB data reaches OpenAQ 2-3 days late, so the item carries the time the
 data runs to (figures.data_as_of) as well as the band.
 """
 import logging
+import math
 import re
 import time
 from collections import defaultdict
@@ -28,7 +39,9 @@ from zoneinfo import ZoneInfo
 import requests
 
 import config
+import datagov
 import desk
+import runs
 
 logger = logging.getLogger(__name__)
 
@@ -229,6 +242,7 @@ def assess(stations: list[dict], client: OpenAQ, cfg: dict, now: datetime) -> di
     fresh_cities = {by_id[loc]["city"] for (loc, _), (_, _, when) in current.items() if is_fresh(when)}
 
     figures = {
+        "source": "openaq",
         "approximate": True,
         "method": ("24 h mean of OpenAQ hourly PM2.5/PM10 at reference monitors ("
                    + ", ".join(air["providers"]) + "), CPCB AQI breakpoints"),
@@ -333,6 +347,92 @@ def assess(stations: list[dict], client: OpenAQ, cfg: dict, now: datetime) -> di
     return figures
 
 
+# --- data.gov.in feed (primary) -----------------------------------------------------------
+
+def aqi_band(aqi: float | None, cfg: dict) -> str | None:
+    """CPCB AQI category: Poor 201-300, Very poor 301-400, Severe 401-500."""
+    if aqi is None:
+        return None
+    t = cfg["air"]["aqi"]
+    if aqi > t["severe_above"]:
+        return "severe"
+    if aqi > t["very_poor_above"]:
+        return "very_poor"
+    if aqi > t["poor_above"]:
+        return "poor"
+    return None
+
+
+def assess_feed(records: list[dict], cfg: dict, now: datetime, requests_made: int = 0) -> dict:
+    """City AQIs from the data.gov.in feed, the way CPCB computes them."""
+    air, feed = cfg["air"], cfg["air"]["datagov"]
+    aliases = air.get("city_aliases", {})
+    listed = datagov.stations(records)
+    by_city = defaultdict(list)  # city -> [(station AQI, prominent pollutants, state)]
+    for name, st in listed.items():
+        aqi, top = datagov.station_aqi(st["sub_indices"], feed["min_pollutants"])
+        city = st["city"] or station_city(name, "CPCB", aliases)
+        city = aliases.get(city, city)
+        if aqi is not None and city:
+            by_city[city].append((aqi, top, st["state"]))
+    snapshot = max((st["updated"] for st in listed.values() if st["updated"]), default=None)
+
+    cities, measured = [], []
+    for city, rows in by_city.items():
+        value = math.floor(sum(r[0] for r in rows) / len(rows) + 0.5)  # CPCB reports whole numbers
+        measured.append({"city": city, "aqi": value})
+        b = aqi_band(value, cfg)
+        if b:
+            cities.append({"city": city, "band": b, "aqi": value, "stations": len(rows), "state": rows[0][2],
+                           "prominent": datagov.prominent([r[1] for r in rows])})
+    cities.sort(key=lambda c: (BANDS.index(c["band"]), -c["aqi"], c["city"]))
+    measured.sort(key=lambda c: (-c["aqi"], c["city"]))
+    return {
+        "source": "datagov",
+        "approximate": False,
+        "unvalidated": True,
+        "method": ("CPCB AQI from CPCB's real-time sub-indices on data.gov.in: station AQI = highest sub-index "
+                   f"(at least {feed['min_pollutants']} pollutants incl. PM2.5 or PM10), city AQI = mean of its stations"),
+        "dataset": datagov.DATASET_URL,
+        "snapshot_at": snapshot.isoformat() if snapshot else None,
+        "data_as_of": snapshot.isoformat() if snapshot else None,
+        "snapshot_age_hours": round((now - snapshot).total_seconds() / 3600, 1) if snapshot else None,
+        "max_snapshot_age_hours": feed["max_snapshot_age_hours"],
+        "stations_listed": len(listed),
+        "stations_reporting": sum(len(rows) for rows in by_city.values()),
+        "cities_reporting": len(by_city),
+        "fresh_cities": len(by_city),
+        "min_fresh_cities": air["min_fresh_cities"],
+        "quorum_met": len(by_city) >= air["min_fresh_cities"],
+        "counts": {b: sum(1 for c in cities if c["band"] == b) for b in BANDS},
+        "cities": cities,
+        "worst_cities": measured[:WATCH_CITIES],
+        "requests": requests_made,
+    }
+
+
+def apply_severe_guard(figures: dict, previous: dict | None, cfg: dict) -> None:
+    """Unvalidated data: a Severe city counts as Severe only once it has been
+    Severe in severe_confirm_runs consecutive assessments (streaks are kept
+    in the item's figures); until then it counts as Very poor. Recomputes
+    figures["counts"] and orders cities by what they count as."""
+    need = cfg["air"]["severe_confirm_runs"]
+    before = (previous or {}).get("severe_streaks") or {}
+    streaks, unconfirmed = {}, []
+    for c in figures["cities"]:
+        if c["band"] == "severe":
+            n = streaks[c["city"]] = int(before.get(c["city"], 0)) + 1
+            c["severe_confirmed"] = n >= need
+            c["counted_as"] = "severe" if n >= need else "very_poor"
+            if n < need:
+                unconfirmed.append(c["city"])
+        else:
+            c["counted_as"] = c["band"]
+    figures["cities"].sort(key=lambda c: BANDS.index(c["counted_as"]))  # stable: worst first within each
+    figures["counts"] = {b: sum(1 for c in figures["cities"] if c["counted_as"] == b) for b in BANDS}
+    figures.update(severe_streaks=streaks, severe_unconfirmed=unconfirmed, severe_confirm_runs=need)
+
+
 def _names(cities: list[dict], limit: int = 3) -> str:
     names = [c["city"] for c in cities]
     shown = ", ".join(names[:limit])
@@ -352,21 +452,36 @@ def _as_of_text(cities: list[dict]) -> str:
     return f"24 h means to {oldest.strftime('%-d %b')}–{newest.strftime('%-d %b')}"
 
 
+def _counted(city: dict) -> str:
+    return city.get("counted_as") or city["band"]
+
+
 def candidate(figures: dict, cfg: dict) -> desk.Candidate | None:
+    """The air:IN candidate; its reason names the source that set the level."""
     level = air_level(figures["counts"], cfg)
     if level is None:
         return None
-    top = figures["cities"][0]["band"]
-    in_band = [c for c in figures["cities"] if c["band"] == top]
+    top = _counted(figures["cities"][0])
+    in_band = [c for c in figures["cities"] if _counted(c) == top]
     label = BAND_LABELS[top]
     as_of = desk._dt(figures["data_as_of"])
     where = in_band[0]["city"] if len(in_band) == 1 else f"{len(in_band)} cities"
+    if figures.get("source") == "datagov":
+        source = datagov.SOURCE_ID
+        note = "CPCB AQI, real-time (unvalidated)" + (
+            f"; to {as_of.astimezone(IST).strftime('%-d %b, %H:%M IST')}" if as_of else "")
+    else:
+        source, note = "OPENAQ", f"approx. CPCB band; {_as_of_text(in_band[:3])}"
+    reason = f"{label} in {_names(in_band)} ({note})"
+    pending = figures.get("severe_unconfirmed") or []
+    if pending:
+        reason += (f" · Severe in {_names([{'city': c} for c in pending])} not yet confirmed "
+                   f"(needs {figures['severe_confirm_runs']} runs in a row)")
     return desk.Candidate(
-        id=ITEM_ID, category="air", source="OPENAQ", source_ref=None,
+        id=ITEM_ID, category="air", source=source, source_ref=None,
         title=f"Air quality: {label.lower()} in {where}",
         place_name="India", latitude=None, longitude=None, level=level,
-        reason=f"{label} in {_names(in_band)} (approx. CPCB band; {_as_of_text(in_band[:3])})",
-        observed_at=as_of, source_updated_at=as_of, figures=figures,
+        reason=reason, observed_at=as_of, source_updated_at=as_of, figures=figures,
     )
 
 
@@ -379,13 +494,23 @@ def _worst_text(k: int) -> str:
 
 def watch_subject(figures: dict, level: int | None, item_open: bool, cfg: dict) -> desk.WatchSubject:
     """air:IN against its next level: the city the next level hinges on (the
-    worst for Poor and Very poor, the Nth-worst for Severe in N cities), its
-    24 h mean in the pollutant closest to that band, against the band's start."""
+    worst for Poor and Very poor, the Nth-worst for Severe in N cities)
+    against the band's start: its CPCB AQI with the data.gov.in feed, its
+    24 h mean in the pollutant closest to that band with the OpenAQ fallback.
+    A Severe city still waiting for confirmation is past the threshold."""
     air = cfg["air"]
     steps = {None: (1, "poor", 1), 1: (2, "very_poor", 1), 2: (3, "severe", air["level_3_min_severe_cities"]),
              3: (4, "severe", air["level_4_min_severe_cities"])}
     next_level = metric = value = threshold = None
-    if level in steps:
+    if level in steps and figures.get("source") == "datagov":
+        next_level, band_name, k = steps[level]
+        ranked = sorted(figures.get("worst_cities") or [], key=lambda c: -c["aqi"])
+        if len(ranked) >= k:
+            city = ranked[k - 1]
+            value, threshold = city["aqi"], air["aqi"][f"{band_name}_above"]
+            metric = (f"CPCB AQI in {city['city']}, the {_worst_text(k)}; "
+                      f"{BAND_LABELS[band_name]} starts above {threshold:g}")
+    elif level in steps:
         next_level, band_name, k = steps[level]
         ranked = sorted(figures.get("worst_cities") or [], key=lambda c: -band_ratio(c, band_name, cfg))
         if len(ranked) >= k:
@@ -402,40 +527,101 @@ def watch_subject(figures: dict, level: int | None, item_open: bool, cfg: dict) 
 
 # --- stage -----------------------------------------------------------------------------
 
+def try_feed(feed, cfg: dict, now: datetime) -> tuple[dict | None, dict, str | None]:
+    """Read and assess the data.gov.in feed.
+
+    Returns (figures if the feed can set the level else None, the attempt
+    for the DATAGOV sources row, why the feed was not used).
+    """
+    feed = feed or (lambda: datagov.fetch(config.DATA_GOV_IN_API_KEY))
+    attempt = {"status": "error", "error": None, "rows": 0, "newest": None, "requests": 0, "duration_s": 0.0}
+    t0 = time.monotonic()
+    try:
+        records, made = feed()
+    except datagov.FeedError as exc:
+        attempt.update(status=exc.status, error=str(exc), duration_s=time.monotonic() - t0)
+        return None, attempt, f"data.gov.in feed failed ({exc})"
+    except Exception as exc:
+        attempt.update(error=runs.redact(f"{type(exc).__name__}: {exc}"), duration_s=time.monotonic() - t0)
+        return None, attempt, "data.gov.in feed failed"
+    attempt.update(rows=len(records), requests=made, duration_s=time.monotonic() - t0)
+    try:
+        figures = assess_feed(records, cfg, now, made)
+    except Exception as exc:
+        logger.error("air: data.gov.in assessment failed — %s", exc)
+        attempt.update(error=runs.redact(f"assessment failed: {type(exc).__name__}: {exc}"))
+        return None, attempt, "data.gov.in feed could not be read"
+    snapshot = desk._dt(figures["snapshot_at"])
+    attempt.update(status="ok", newest=snapshot)
+    max_age = cfg["air"]["datagov"]["max_snapshot_age_hours"]
+    if snapshot is None:
+        return None, attempt, "data.gov.in feed has no snapshot time"
+    age = (now - snapshot).total_seconds() / 3600
+    if age > max_age:
+        return None, attempt, f"data.gov.in snapshot is {age:.0f} h old (max {max_age:g} h)"
+    if not figures["quorum_met"]:
+        n = figures["cities_reporting"]
+        return None, attempt, (f"data.gov.in: only {n} {'city has' if n == 1 else 'cities have'} a CPCB AQI "
+                               f"(need {cfg['air']['min_fresh_cities']})")
+    return figures, attempt, None
+
+
+def openaq_assessment(results: dict, cfg: dict, now: datetime, client: OpenAQ | None):
+    """The OpenAQ fallback. Returns (figures, why there is no new level or None, client)."""
+    air = cfg["air"]
+    fetched = results["OpenAQ"]
+    if fetched.status != "ok":
+        return None, "OpenAQ fetch failed this run", client
+    stations = reference_stations(fetched.extras.get("locations", []), cfg)
+    client = client or OpenAQ()
+    try:
+        figures = assess(stations, client, cfg, now)
+    except Exception as exc:
+        logger.error("air: assessment failed — %s", exc)
+        return None, "air assessment failed this run", client
+    if not figures["stations_reporting"]:
+        return figures, "no reference monitors reporting", client
+    if not figures["quorum_met"]:
+        n = figures["fresh_cities"]
+        return figures, (f"only {n} {'city has' if n == 1 else 'cities have'} data from the last "
+                         f"{air['fresh_within_hours']} h (need {air['min_fresh_cities']})"), client
+    if figures["history_requests"] and figures["history_failed"] == figures["history_requests"]:
+        return figures, "OpenAQ history requests failed this run", client
+    return figures, None, client
+
+
+def record_feed(supabase, run_id: int | None, attempt: dict, now: datetime) -> dict:
+    """Write the feed attempt to the DATAGOV sources row; return it in the
+    shape of pipeline_runs.sources entries."""
+    prev = (supabase.table(runs.SOURCES_TABLE).select("id,newest_observation_at")
+            .eq("id", datagov.SOURCE_ID).execute().data)
+    update, new_data = runs.freshness_update(attempt["status"], attempt["error"], attempt["rows"],
+                                             attempt["newest"], prev[0] if prev else None, run_id, now)
+    resp = supabase.table(runs.SOURCES_TABLE).update(update).eq("id", datagov.SOURCE_ID).execute()
+    if not resp.data:
+        logger.warning("air: no sources row with id=%s (migration 006), freshness not recorded", datagov.SOURCE_ID)
+    return {
+        "status": attempt["status"],
+        "rows": attempt["rows"],
+        "duration_s": round(attempt["duration_s"], 1),
+        "error": runs.redact(attempt["error"]),
+        "newest_observation_at": attempt["newest"].isoformat() if attempt["newest"] else None,
+        "new_data": new_data,
+    }
+
+
 def run_air(supabase, run_id: int | None, results: dict, now: datetime, *, write: bool = True,
-            cfg: dict | None = None, client: OpenAQ | None = None) -> dict:
+            cfg: dict | None = None, client: OpenAQ | None = None, feed=None) -> dict:
     """Assess, reconcile and (if write) store the national air item.
 
-    No new level (item kept last-known, reason says why) when the OpenAQ
-    fetch failed, the assessment failed, too few cities have fresh data, or
-    every history request failed.
+    The data.gov.in feed sets the level when it is readable, at most
+    [air.datagov] max_snapshot_age_hours old and has min_fresh_cities
+    cities; otherwise the OpenAQ assessment does. No new level (item kept
+    last-known, reason says why) when neither can. feed: callable returning
+    (records, requests made); defaults to datagov.fetch with the configured key.
     """
     cfg = cfg or desk.severity_config.load()
     air = cfg["air"]
-    fetched = results["OpenAQ"]
-    figures, cand, note = None, None, None
-    if fetched.status != "ok":
-        note = "OpenAQ fetch failed this run"
-    else:
-        stations = reference_stations(fetched.extras.get("locations", []), cfg)
-        client = client or OpenAQ()
-        try:
-            figures = assess(stations, client, cfg, now)
-        except Exception as exc:
-            logger.error("air: assessment failed — %s", exc)
-            note = "air assessment failed this run"
-        else:
-            if not figures["stations_reporting"]:
-                note = "no reference monitors reporting"
-            elif not figures["quorum_met"]:
-                n = figures["fresh_cities"]
-                note = (f"only {n} {'city has' if n == 1 else 'cities have'} data from the last "
-                        f"{air['fresh_within_hours']} h (need {air['min_fresh_cities']})")
-            elif figures["history_requests"] and figures["history_failed"] == figures["history_requests"]:
-                note = "OpenAQ history requests failed this run"
-            else:
-                cand = candidate(figures, cfg)
-
     try:
         existing = desk.load_items(supabase, {"air"}, [ITEM_ID])
     except Exception as exc:
@@ -443,13 +629,31 @@ def run_air(supabase, run_id: int | None, results: dict, now: datetime, *, write
             raise
         logger.warning("dry-run: could not read desk items — %s", exc)
         existing = {}
+
+    figures, attempt, fallback_reason = try_feed(feed, cfg, now)
+    note = None
+    if figures is None:
+        figures, note, client = openaq_assessment(results, cfg, now, client)
+        if figures is not None:
+            figures["fallback_reason"] = fallback_reason
+        if note:
+            note = f"{fallback_reason}; {note}"
+    cand = None
+    if note is None:
+        apply_severe_guard(figures, (existing.get(ITEM_ID) or {}).get("figures"), cfg)
+        figures["cities"] = figures["cities"][:30]
+        cand = candidate(figures, cfg)
+
     items, snapshots = desk.reconcile(
         existing, [cand] if cand else [], categories={"air"}, source_good=note is None,
         open_min_level=air["lifecycle"]["open_min_level"],
         expired=lambda item: False, now=now, run_id=run_id, last_known_note=note)
+    feed_summary = None
     if write:
         desk.store(supabase, items, snapshots)
+        feed_summary = record_feed(supabase, run_id, attempt, now)
     item_open = any(i["id"] == ITEM_ID and i["status"] == "open" for i in items)
+    used_feed = note is None and fallback_reason is None
     return {
         "items": items,
         "watch": [watch_subject(figures, cand.level if cand else None, item_open, cfg)] if note is None else [],
@@ -457,9 +661,15 @@ def run_air(supabase, run_id: int | None, results: dict, now: datetime, *, write
         "reason": cand.reason if cand else None,
         "source_good": note is None,
         "note": note,
+        "source": ("data.gov.in" if used_feed else "OpenAQ") if note is None else None,
+        "source_id": datagov.SOURCE_ID if used_feed else "OPENAQ",
+        "source_status": attempt["status"] if used_feed else results["OpenAQ"].status,
+        "fallback_reason": fallback_reason,
+        "datagov": feed_summary,
         "change": snapshots[0]["change"] if snapshots else None,
-        "requests": client.requests if client else 0,
+        "requests": attempt["requests"] + (client.requests if client else 0),
         "counts": figures["counts"] if figures else None,
         "stations": figures["stations_reporting"] if figures else 0,
         "fresh_cities": figures["fresh_cities"] if figures else 0,
+        "severe_unconfirmed": (figures or {}).get("severe_unconfirmed") or [],
     }

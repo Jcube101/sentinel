@@ -67,7 +67,7 @@ def test_happy_path_writes_data_run_record_and_freshness(harness):
     (run,) = db.rows("pipeline_runs")
     assert run["id"] == 1 and run["status"] == "ok"
     assert run["events_upserted"] == 3 and run["aqi_upserted"] == 1
-    assert set(run["sources"]) == {"FIRMS", "EONET", "GDACS", "USGS", "OPENAQ"}
+    assert set(run["sources"]) == {"FIRMS", "EONET", "GDACS", "USGS", "OPENAQ", "DATAGOV"}  # DATAGOV: the air feed
     assert run["sources"]["FIRMS"]["new_data"] is True
 
     by_id = {r["id"]: r for r in db.rows("sources")}
@@ -194,8 +194,10 @@ def test_openaq_extras_reach_the_air_stage(harness, monkeypatch):
 
     def fake_run_air(supabase, run_id, results, now, write=True):
         seen["locations"] = results["OpenAQ"].extras["locations"]
-        return {"level": None, "reason": None, "source_good": True, "note": None, "change": None,
-                "requests": 0, "counts": None, "stations": 0, "fresh_cities": 0}
+        return {"items": [], "watch": [], "level": None, "reason": None, "source_good": True, "note": None,
+                "source": "OpenAQ", "source_id": "OPENAQ", "source_status": "ok", "fallback_reason": None,
+                "datagov": None, "change": None, "requests": 0, "counts": None, "stations": 0,
+                "fresh_cities": 0, "severe_unconfirmed": []}
 
     monkeypatch.setattr(air, "run_air", fake_run_air)
     harness.fetchers["OpenAQ"] = SimpleNamespace(fetch_detailed=lambda: ([], {"locations": [{"id": 7}]}))
@@ -263,3 +265,14 @@ def test_dry_run_before_migration_005_is_ok(harness):
     harness.fetchers["USGS"] = _fetcher([_quake_row()])
     harness.db.missing = {"desk_watch", "category_status"}
     assert harness.run(dry_run=True) == 0
+
+
+def test_data_gov_in_attempt_lands_in_the_run_record(harness):
+    # conftest drops the key, so the feed attempt fails fast and is recorded as an error
+    harness.db.tables["sources"].append({"id": "DATAGOV", "name": "DATAGOV", "newest_observation_at": None})
+    assert harness.run() == 0
+    run = harness.db.rows("pipeline_runs")[0]
+    assert run["sources"]["DATAGOV"]["status"] == "error"
+    assert "no DATA_GOV_IN_API_KEY" in run["sources"]["DATAGOV"]["error"]
+    row = next(r for r in harness.db.rows("sources") if r["id"] == "DATAGOV")
+    assert row["last_status"] == "error" and row["last_run_id"] == 1

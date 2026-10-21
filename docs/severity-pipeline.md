@@ -115,6 +115,25 @@ Draft thresholds, to be tuned:
    (median 1, p90 5) and open ~240 a year. Level 4 (100 MW within 10 km of 100,000+ people)
    fired on 7 state-days in 2 years. Tune with the replay tool (*Tuning fire thresholds*).
 
+## Decisions (21 Oct 2026): air source
+Follow-up "Fresher air source", evaluated and built the same day (`datagov.py`, `air.py`,
+migration 006).
+1. **data.gov.in is the primary source for `air:IN`, OpenAQ the fallback.** The feed
+   ("Real time Air Quality Index from various locations", CPCB) is hourly and ~0.5-1.5 h old;
+   OpenAQ's CPCB data had stopped at 18 Oct 14:00 IST. Fall back when the feed fails, has too
+   few cities, or its snapshot is older than `air.datagov.max_snapshot_age_hours` (6).
+2. **Full CPCB method:** the feed's values are CPCB's AQI sub-indices (not concentrations).
+   Station AQI = highest sub-index, only with 3+ pollutants including PM2.5 or PM10; city AQI
+   = mean of its stations. On 21 Oct this matched CPCB's 4 PM bulletin for 229 of 239 cities
+   (mean difference 4 AQI points).
+3. **Reason names the source:** "CPCB AQI, real-time (unvalidated)" from the feed, "approx.
+   CPCB band" only from the OpenAQ fallback; `desk_items.source` is DATAGOV or OPENAQ.
+4. **Severe guard for unvalidated data:** a city counts as Severe toward Level 3/4 only after
+   `air.severe_confirm_runs` (2) consecutive assessments; until then it counts as Very poor.
+   Very poor and below count at once.
+5. The map's `aqi_readings` stay on OpenAQ. The API hangs requests that carry Python's default
+   user agent, so the client sends its own.
+
 ## Build plan
 Rules: one work item at a time, each tested and committed separately; the existing
 `events` / `aqi_readings` output keeps working until the new output is verified (new
@@ -176,8 +195,9 @@ Notes that apply across steps:
 - Existing `events.severity` labels (low/medium/high/extreme) are left unchanged.
 - **TODO (About page, separate frontend task):** credit geoBoundaries (India outline and
   district boundaries, ODbL 1.0, source LGD via Pathways Data) and DataMeet / Election
-  Commission of India (state boundaries, CC BY 2.5 IN) and GeoNames (populated places,
-  CC BY 4.0); the FIRMS acknowledgement covers the baseline and mask. See
+  Commission of India (state boundaries, CC BY 2.5 IN), GeoNames (populated places,
+  CC BY 4.0) and CPCB via data.gov.in (real-time AQI, Government Open Data License -
+  India); the FIRMS acknowledgement covers the baseline and mask. See
   pipeline/data/README.md.
 
 ## Tuning fire thresholds
@@ -212,11 +232,10 @@ Open as of 21 Oct 2026, when the spec was completed.
   `tools/replay_fire_levels.py` against a few weeks of live items.
 - **Static mask gaps:** a replayed Level 4 case near Dhanbad (Jharia coal field) is probably
   a coal-seam fire the mask missed; check live Level 4 candidates near mining areas.
-- **Fresher air source:** evaluate the data.gov.in CPCB real-time AQI feed as a source for
-  `air:IN`. CPCB data reaches OpenAQ ~2.5 days late, so the air level runs on data up to
-  72 h old (`air.fresh_within_hours`). Needs a free data.gov.in API key. Already biting: in
-  edition No. 3 (21 Oct, 14:30 IST) OpenAQ's CPCB data still ended at 18 Oct 14:00 IST, only
-  2 cities were fresh, and `air:IN` went last-known.
+- ~~**Fresher air source**~~: done 21 Oct 2026, see *Decisions (21 Oct 2026): air source*.
+- **data.gov.in reliability:** one afternoon of evidence when it went in. Watch the DATAGOV
+  row in `sources` (`last_status`, `newest_observation_at`) and how often the air reason says
+  "approx. CPCB band" (the fallback); the map's `aqi_readings` could move to the feed later.
 - **Live vs archive fire counts:** the baseline uses the reprocessed FIRMS product (SP), the
   live feed is near-real-time (NRT). If NRT detects systematically more or fewer hotspots,
   every `ratio_to_norm` shifts. Only one partial day overlapped in Oct 2026 and FIRMS timed

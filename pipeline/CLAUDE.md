@@ -116,6 +116,8 @@ and the Windows scheduled task has been disabled.
 - SUPABASE_SERVICE_KEY
 - FIRMS_MAP_KEY
 - OPENAQ_API_KEY
+- DATA_GOV_IN_API_KEY (data.gov.in key for CPCB's real-time AQI feed; without it
+  the air item uses OpenAQ)
 - NOTIFY_WEBHOOK_URL (optional; failure and staleness alerts, see notify.py)
 
 ## Data Sources
@@ -123,7 +125,9 @@ and the Windows scheduled task has been disabled.
 - EONET: cyclones + wildfires (category filter + India bbox)
 - GDACS: floods, cyclones, earthquakes (GeoJSON feed)
 - USGS: earthquakes (India bbox, min magnitude 4.0)
-- OpenAQ: AQI readings for Indian cities (PM2.5, PM10, NO2)
+- OpenAQ: AQI readings for Indian cities (PM2.5, PM10, NO2); the map's aqi_readings
+- data.gov.in (CPCB real-time AQI, `datagov.py`): the air desk item's primary source,
+  read by the air stage only (not a fetcher, writes no rows of its own)
 
 ## Supabase Tables
 - events: all disaster events
@@ -166,13 +170,20 @@ fire_baseline table (migration 004). Rerun only to change years or parameters.
 from `gdacs.fetch_detailed()`) become desk items with a level, a reason and
 open / escalate / close rules; a failed source leaves its items "last-known".
 India's outline is `data/india_outline.geojson` (see data/README.md).
-`air.py` adds one national air-quality item (`air:IN`) from 24 h means at
-CPCB / AirNow monitors: ~36 OpenAQ listing requests plus up to
-`air.max_history_requests` history requests per run, paced on OpenAQ's
-rate-limit headers (adds ~3 min to a run). Its band is approximate. Only
-stations whose data is newer than `air.fresh_within_hours` count; with fewer
-than `air.min_fresh_cities` fresh cities the item stays last-known and the
-history requests are skipped.
+`air.py` adds one national air-quality item (`air:IN`). Primary source: CPCB's
+real-time AQI on data.gov.in (`datagov.py`, 4 requests): CPCB's own sub-indices,
+station AQI = highest sub-index (3+ pollutants incl. PM2.5 or PM10), city AQI =
+mean of its stations; reason "CPCB AQI, real-time (unvalidated)", item source
+DATAGOV. The API hangs requests with Python's default user agent, so datagov.py
+sends its own. Fallback when the feed fails, its snapshot is older than
+`air.datagov.max_snapshot_age_hours` or it has fewer than `air.min_fresh_cities`
+cities: 24 h means at CPCB / AirNow monitors on OpenAQ (~36 listing requests plus
+up to `air.max_history_requests` history requests, ~3 min), reason "approx. CPCB
+band", item source OPENAQ. Either way a city counts as Severe only after
+`air.severe_confirm_runs` assessments in a row. With neither source usable the
+item stays last-known and the reason says why. Each feed attempt updates the
+DATAGOV sources row (migration 006) and pipeline_runs.sources. Tests never reach
+data.gov.in (tests/conftest.py drops the key and blocks requests).
 
 ## Fire desk
 `fire_desk.py` runs right after the fire stage and turns its fire_events rows

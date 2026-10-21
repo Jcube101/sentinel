@@ -56,8 +56,9 @@ def test_within_margin_is_watching():
     assert row["watch_reason"] == "4% below the Level 2 threshold (25)"
     assert watch.update_row(_subject(23), None, CFG, NOW, 1)["watching"] is False      # 8% below
     assert watch.update_row(_subject(25), None, CFG, NOW, 1)["watch_reason"] == "at the Level 2 threshold (25)"
-    over = watch.update_row(_subject(30), None, CFG, NOW, 1)                           # above, yet not that level
-    assert over["watching"] is False and over["distance_to_threshold"] == -0.2
+    over = watch.update_row(_subject(30), None, CFG, NOW, 1)    # past it, yet not that level (Severe guard)
+    assert over["watching"] is True and over["distance_to_threshold"] == -0.2
+    assert over["watch_reason"] == "past the Level 2 threshold (25), not yet at that level"
 
 
 def test_rising_three_updates_is_watching_from_half_the_threshold():

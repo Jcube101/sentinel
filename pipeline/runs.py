@@ -40,6 +40,8 @@ ERROR_TEXT_LIMIT = 500
 # FIRMS map keys are 32 hex chars and sit in the request URL, which
 # requests puts in its error messages.
 _HEX_KEY = re.compile(r"\b[0-9a-fA-F]{32}\b")
+# Any key passed as a query parameter (data.gov.in: ?api-key=...).
+_KEY_PARAM = re.compile(r"((?:api[-_]?key|MAP_KEY)=)[^&\s'\"]+", re.IGNORECASE)
 
 
 @dataclass
@@ -68,10 +70,12 @@ def redact(text: str | None) -> str | None:
     """Strip credentials from error text before it is stored in a public table."""
     if text is None:
         return None
-    for secret in (config.FIRMS_MAP_KEY, config.OPENAQ_API_KEY, config.SUPABASE_SERVICE_KEY):
+    for secret in (config.FIRMS_MAP_KEY, config.OPENAQ_API_KEY, config.SUPABASE_SERVICE_KEY,
+                   config.DATA_GOV_IN_API_KEY):
         if secret and len(secret) >= 8:
             text = text.replace(secret, "***")
     text = _HEX_KEY.sub("***", text)
+    text = _KEY_PARAM.sub(r"\1***", text)
     return text[:ERROR_TEXT_LIMIT]
 
 
@@ -100,6 +104,28 @@ def newest_observation(name: str, rows: list) -> datetime | None:
     return newest
 
 
+def freshness_update(status: str, error: str | None, rows: int, newest: datetime | None,
+                     previous: dict | None, run_id: int | None, now: datetime) -> tuple[dict, bool]:
+    """One sources row's freshness columns for an attempt; also whether it
+    brought data newer than any seen before (previous: the current row)."""
+    now_iso = now.isoformat()
+    prev_newest = _to_datetime((previous or {}).get("newest_observation_at"))
+    new_data = status == "ok" and newest is not None and (prev_newest is None or newest > prev_newest)
+    update = {
+        "last_attempt_at": now_iso,
+        "last_status": status,
+        "last_error": redact(error),
+        "last_row_count": rows,
+        "last_run_id": run_id,
+    }
+    if status == "ok":
+        update["last_success_at"] = now_iso
+    if new_data:
+        update["newest_observation_at"] = newest.isoformat()
+        update["last_new_data_at"] = now_iso
+    return update, new_data
+
+
 def source_updates(
     results: dict[str, FetchResult],
     written: dict[str, bool],
@@ -116,7 +142,6 @@ def source_updates(
     Returns (updates keyed by sources.id, summary keyed by sources.id). No I/O.
     """
     updates, summary = {}, {}
-    now_iso = now.isoformat()
     for name, result in results.items():
         sid = SOURCE_IDS[name]
         status, error = result.status, result.error
@@ -125,21 +150,8 @@ def source_updates(
         good = status == "ok"
 
         newest = newest_observation(name, result.rows) if good else None
-        prev_newest = _to_datetime((previous.get(sid) or {}).get("newest_observation_at"))
-        new_data = newest is not None and (prev_newest is None or newest > prev_newest)
-
-        update = {
-            "last_attempt_at": now_iso,
-            "last_status": status,
-            "last_error": redact(error),
-            "last_row_count": len(result.rows),
-            "last_run_id": run_id,
-        }
-        if good:
-            update["last_success_at"] = now_iso
-        if new_data:
-            update["newest_observation_at"] = newest.isoformat()
-            update["last_new_data_at"] = now_iso
+        update, new_data = freshness_update(status, error, len(result.rows), newest, previous.get(sid),
+                                            run_id, now)
         updates[sid] = update
 
         summary[sid] = {

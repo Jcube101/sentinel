@@ -415,23 +415,27 @@ def run(dry_run: bool = False):
     else:
         logger.error("desk: skipped, no run record to attach snapshots to")
 
-    # --- National air-quality item (air.py): extra OpenAQ requests, own stage ---
+    # --- National air-quality item (air.py): data.gov.in feed, OpenAQ fallback, own stage ---
     if dry_run or run_id is not None:
         try:
             import air
 
             summary = air.run_air(supabase, run_id, results, datetime.now(tz=timezone.utc), write=not dry_run)
             stages["air"] = summary
+            if summary.get("datagov") and sources_summary is not None:
+                sources_summary["DATAGOV"] = summary["datagov"]  # into pipeline_runs.sources
             prefix = "dry-run: " if dry_run else ""
+            if summary["fallback_reason"]:
+                logger.warning("%sair: data.gov.in not used (%s), trying OpenAQ", prefix, summary["fallback_reason"])
             if summary["source_good"]:
                 logger.info(
-                    "%sair: level %s (%s), change: %s, %d OpenAQ requests, %d stations, %d fresh cities",
-                    prefix, summary["level"], summary["reason"] or "nothing Poor or worse",
+                    "%sair: level %s (%s), source %s, change: %s, %d requests, %d stations, %d cities",
+                    prefix, summary["level"], summary["reason"] or "nothing Poor or worse", summary["source"],
                     summary["change"] or "none", summary["requests"], summary["stations"], summary["fresh_cities"],
                 )
             else:
                 logger.warning(
-                    "%sair: no new level (%s); any open item kept as last-known, %d OpenAQ requests",
+                    "%sair: no new level (%s); any open item kept as last-known, %d requests",
                     prefix, summary["note"], summary["requests"],
                 )
         except Exception as exc:

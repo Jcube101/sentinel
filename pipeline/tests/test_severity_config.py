@@ -28,6 +28,10 @@ def test_matches_spec_drafts(cfg):
     assert (cfg["fire"]["min_fire_events"], cfg["fire"]["calibration_cap"]) == (25, 2)  # Job, 21 Oct 2026
     assert (cfg["air"]["level_3_min_severe_cities"], cfg["air"]["level_4_min_severe_cities"]) == (1, 3)
     assert cfg["watching"]["rising_updates"] == 3
+    # data.gov.in feed (Job, 21 Oct 2026): fall back after 6 h, CPCB's 3-pollutant rule, Severe twice in a row
+    assert (cfg["air"]["datagov"]["max_snapshot_age_hours"], cfg["air"]["datagov"]["min_pollutants"],
+            cfg["air"]["severe_confirm_runs"]) == (6, 3, 2)
+    assert [cfg["air"]["aqi"][f"{b}_above"] for b in ("poor", "very_poor", "severe")] == [200, 300, 400]
 
 
 def test_cpcb_breakpoints(cfg):
@@ -69,6 +73,10 @@ def _broken(cfg, dotted, value):
         ("fire.calibration_cap", 0, ">= 1"),
         ("fire.calibration_cap", 5, "<= 4"),
         ("fire.calibration_cap", KeyError, "missing fire.calibration_cap"),
+        ("air.aqi.very_poor_above", 450, "air.aqi.very_poor_above < air.aqi.severe_above"),
+        ("air.severe_confirm_runs", 0, ">= 1"),
+        ("air.datagov.min_pollutants", 9, "<= 7"),
+        ("air.datagov", KeyError, "missing air.datagov.max_snapshot_age_hours"),
     ],
 )
 def test_rejects_bad_values(cfg, dotted, value, message):

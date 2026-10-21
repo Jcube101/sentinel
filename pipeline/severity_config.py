@@ -99,6 +99,13 @@ def validate(cfg: dict) -> None:
     if not isinstance(aliases, dict) or not all(isinstance(v, str) for v in aliases.values()):
         raise ConfigError(f"severity.toml: air.city_aliases must map names to names, got {aliases!r}")
     _number(cfg, "air.lifecycle.open_min_level", minimum=1, maximum=4, integer=True)
+    _number(cfg, "air.severe_confirm_runs", minimum=1, integer=True)
+    _number(cfg, "air.datagov.max_snapshot_age_hours", minimum=1)
+    _number(cfg, "air.datagov.min_pollutants", minimum=1, maximum=7, integer=True)
+    aqi_bands = [f"air.aqi.{b}_above" for b in ("poor", "very_poor", "severe")]
+    for key in aqi_bands:
+        _number(cfg, key, minimum=0, maximum=500)
+    _ascending(cfg, *aqi_bands)
 
     confidence = _get(cfg, "fire.confidence")
     if not isinstance(confidence, list) or not confidence or not set(confidence) <= CONFIDENCE_CODES:
