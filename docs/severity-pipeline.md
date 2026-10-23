@@ -236,6 +236,12 @@ Open as of 21 Oct 2026, when the spec was completed.
 - **data.gov.in reliability:** one afternoon of evidence when it went in. Watch the DATAGOV
   row in `sources` (`last_status`, `newest_observation_at`) and how often the air reason says
   "approx. CPCB band" (the fallback); the map's `aqi_readings` could move to the feed later.
+- **Grants on `sources` (added 23 Oct 2026):** an anon-key update of the DATAGOV row returned
+  HTTP 200 and changed nothing, where a revoked grant gives "permission denied". So RLS
+  blocks the write, but anon probably still holds write grants on this older table (it
+  predates the grant pattern). Fix with a migration in the standard pattern (revoke all
+  from anon/authenticated, grant select to anon, grant writes to service_role), and check
+  the other older tables (`events`, `aqi_readings`, `categories`) the same way.
 - **Live vs archive fire counts:** the baseline uses the reprocessed FIRMS product (SP), the
   live feed is near-real-time (NRT). If NRT detects systematically more or fewer hotspots,
   every `ratio_to_norm` shifts. Only one partial day overlapped in Oct 2026 and FIRMS timed
