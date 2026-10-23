@@ -166,13 +166,46 @@ def test_fallback_to_openaq(monkeypatch, feed, why):
     assert item["source"] == "OPENAQ" and item["figures"]["fallback_reason"] == why
 
 
+def _openaq():
+    """OpenAQ fallback data: PM2.5 24 h means of 100 µg/m³ (Poor) at Delhi x2 and Lucknow."""
+    return FakeOpenAQ({11: (100, 1), 21: (100, 1), 31: (100, 1)}, {11: [100] * 24, 21: [100] * 24, 31: [100] * 24})
+
+
+def test_item_opened_under_openaq_takes_datagov_once_the_feed_sets_the_level(monkeypatch):
+    monkeypatch.setattr(air, "reference_stations", lambda locations, cfg: STATIONS[:3])
+    db = _db()
+    s1 = air.run_air(db, 1, _results(), NOW, cfg=CFG, feed=_failing_feed(), client=_openaq())
+    assert s1["source_id"] == "OPENAQ" and db.rows("desk_items")[0]["source"] == "OPENAQ"
+
+    later = NOW + timedelta(hours=6)
+    s2 = air.run_air(db, 2, _results(), later, cfg=CFG,
+                     feed=_feed_fn(_feed(("Delhi", [350]), *CLEAN, updated=_at(later))))
+    item = db.rows("desk_items")[0]
+    assert s2["source_id"] == "DATAGOV" and s2["change"] == "escalated"
+    assert item["source"] == "DATAGOV" and item["first_run_id"] == 1 and item["last_known"] is False
+    assert item["severity_reason"].startswith("Very poor in Delhi (CPCB AQI, real-time (unvalidated)")
+
+
+def test_item_opened_under_datagov_takes_openaq_when_the_fallback_sets_the_level(monkeypatch):
+    monkeypatch.setattr(air, "reference_stations", lambda locations, cfg: STATIONS[:3])
+    db = _db()
+    air.run_air(db, 1, _results(), NOW, cfg=CFG, feed=_feed_fn(_feed(("Delhi", [350]), *CLEAN)))
+    assert db.rows("desk_items")[0]["source"] == "DATAGOV"
+
+    s2 = air.run_air(db, 2, _results(), NOW + timedelta(hours=6), cfg=CFG, feed=_failing_feed(), client=_openaq())
+    item = db.rows("desk_items")[0]
+    assert s2["source_id"] == "OPENAQ" and s2["change"] == "deescalated"
+    assert item["source"] == "OPENAQ" and item["first_run_id"] == 1 and item["last_known"] is False
+    assert "approx. CPCB band" in item["severity_reason"] and "unvalidated" not in item["severity_reason"]
+
+
 def test_both_sources_down_keeps_last_known_and_says_why():
     db = _db()
     air.run_air(db, 1, _results(), NOW, cfg=CFG, feed=_feed_fn(_feed(("Delhi", [250]), *CLEAN)))
     s = air.run_air(db, 2, _results("error"), NOW + timedelta(hours=6), cfg=CFG, feed=_failing_feed())
     assert s["note"] == "data.gov.in feed failed (HTTP 502 (3 tries, offset 0)); OpenAQ fetch failed this run"
     item = db.rows("desk_items")[0]
-    assert item["last_known"] is True and item["severity_level"] == 1
+    assert item["last_known"] is True and item["severity_level"] == 1 and item["source"] == "DATAGOV"
     assert item["severity_reason"].endswith("· last known: data.gov.in feed failed (HTTP 502 (3 tries, offset 0)); "
                                             "OpenAQ fetch failed this run")
 

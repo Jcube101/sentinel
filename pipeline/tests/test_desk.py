@@ -222,6 +222,18 @@ def test_closes_rule_closes_an_item_that_still_has_a_candidate():
     assert row["status"] == "open" and snap["change"] is None
 
 
+def test_update_takes_the_source_that_set_the_level():
+    old = _stored_item(source="OPENAQ")
+    (row,), _ = _reconcile({old["id"]: old}, [_cand(level=2)])
+    assert row["source"] == "USGS" and row["opened_at"] == old["opened_at"]
+
+
+def test_last_known_keeps_the_source_of_the_last_level():
+    old = _stored_item(source="OPENAQ")
+    (row,), _ = _reconcile({old["id"]: old}, [], source_good=False)
+    assert row["last_known"] is True and row["source"] == "OPENAQ"
+
+
 def test_already_closed_items_are_not_resnapshotted():
     old = _stored_item(status="closed")
     assert _reconcile({old["id"]: old}, []) == ([], [])

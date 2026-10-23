@@ -324,8 +324,11 @@ def reconcile(existing: dict[str, dict], candidates: list[Candidate], *, categor
     for c in candidates:
         seen.add(c.id)
         old = existing.get(c.id)
+        # An update takes the candidate's source, the one that set this run's
+        # level (air: DATAGOV, or OPENAQ when it falls back). A last-known item
+        # (no candidate, below) keeps the source of its last level.
         fresh = {
-            "title": c.title, "place_name": c.place_name,
+            "source": c.source, "title": c.title, "place_name": c.place_name,
             "latitude": c.latitude, "longitude": c.longitude,
             "severity_level": c.level, "severity_reason": c.reason,
             "last_known": False, "observed_at": _iso(c.observed_at),
