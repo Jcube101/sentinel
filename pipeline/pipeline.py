@@ -89,6 +89,13 @@ def _dedup(rows: list) -> list:
 # hangs rather than erroring. HTTP/parse errors still fail the run.
 SOFT_TIMEOUT_SOURCES = {"GDACS"}
 
+# Sources whose timeout fails the run only when the previous run's fetch of
+# the same source timed out too (its sources row's last_status, written by
+# that run). One FIRMS timeout (edition 19) left every other stage working,
+# with the fire desk's items kept last-known. A longer outage also trips
+# the 2-day FIRMS staleness alert. HTTP/parse errors still fail at once.
+FAIL_ON_SECOND_TIMEOUT = {"FIRMS"}
+
 FETCHERS = (
     ("FIRMS", firms),
     ("EONET", eonet),
@@ -116,6 +123,8 @@ def _run_fetcher(name: str, module) -> runs.FetchResult:
         error, timed_out = exc, True
         if name in SOFT_TIMEOUT_SOURCES:
             logger.warning("%s: timed out, skipping this run (not a failure) — %s", name, exc)
+        elif name in FAIL_ON_SECOND_TIMEOUT:
+            logger.warning("%s: timed out — %s", name, exc)  # _tolerate_first_timeouts() decides
         else:
             logger.error("%s: fetcher raised an exception — %s", name, exc)
     except Exception as exc:
@@ -128,6 +137,34 @@ def _run_fetcher(name: str, module) -> runs.FetchResult:
         duration_s=time.monotonic() - t0,
         extras=extras,
     )
+
+
+def _tolerate_first_timeouts(supabase, results: dict[str, runs.FetchResult]) -> None:
+    """A FAIL_ON_SECOND_TIMEOUT source's timeout fails the run only if its
+    fetch in the previous run timed out too. If the previous status can't be
+    read, the timeout fails the run, as before."""
+    for name in sorted(FAIL_ON_SECOND_TIMEOUT):
+        result = results.get(name)
+        if result is None or result.status != "timeout":
+            continue
+        sid = runs.SOURCE_IDS[name]
+        try:
+            rows = (supabase.table(runs.SOURCES_TABLE).select("id,last_status")
+                    .eq("id", sid).execute().data)
+        except Exception as exc:
+            logger.error("%s: timed out, and the previous run's status could not be read (%s): "
+                         "failing the run", name, exc)
+            continue
+        if not rows:
+            logger.error("%s: timed out, and there is no sources row to compare with: failing the run", name)
+            continue
+        previous = rows[0].get("last_status")
+        if previous == "timeout":
+            logger.error("%s: timed out in the previous run too: failing the run", name)
+        else:
+            result.ok = True
+            logger.warning("%s: timed out, but not in the previous run (%s): not failing the run; "
+                           "a timeout next run will", name, previous or "no status yet")
 
 
 def _upsert(supabase, table: str, rows: list, conflict_key: str) -> int:
@@ -291,8 +328,11 @@ def run(dry_run: bool = False):
 
     # --- Run fetchers ---
     results = {name: _run_fetcher(name, module) for name, module in FETCHERS}
-    fetch_results = {name: result.ok for name, result in results.items()}
-    any_failure = not all(fetch_results.values())
+    _tolerate_first_timeouts(supabase, results)
+    any_failure = not all(result.ok for result in results.values())
+    # For the staleness alerts' "last fetch" line: whether data came back, even when a
+    # timeout didn't fail the run.
+    fetch_results = {name: result.status in ("ok", "empty") for name, result in results.items()}
 
     # --- Write events ---
     all_events = _dedup([row for name in EVENT_SOURCES for row in results[name].rows])

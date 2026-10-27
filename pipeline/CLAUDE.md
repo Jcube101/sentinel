@@ -270,6 +270,10 @@ created_at: timestamptz
   source failed for the run, without halting the others
 - Log clearly: source name, rows fetched, rows upserted, any errors
 - Never hardcode credentials, always read from environment variables
+- Timeouts (after the retries): GDACS never fails the run; FIRMS fails it only if
+  FIRMS also timed out in the previous run (`FAIL_ON_SECOND_TIMEOUT` in pipeline.py,
+  read from its `sources.last_status`); other sources fail at once. Any other
+  fetch error fails the run at once.
 - A run that fails, or where FIRMS/USGS/OpenAQ go stale, sends an alert via
   notify.py if NOTIFY_WEBHOOK_URL is set; EONET/GDACS are event-driven and
   are never alerted on row age, only on the fetch itself failing

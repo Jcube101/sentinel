@@ -99,6 +99,48 @@ def test_soft_gdacs_timeout_keeps_run_ok_but_not_last_success(harness):
     assert harness.db.rows("pipeline_runs")[0]["status"] == "ok"
 
 
+def _firms_timeout():
+    return _fetcher(exc=requests.exceptions.ReadTimeout("read timed out"))
+
+
+def test_one_firms_timeout_does_not_fail_the_run(harness):
+    harness.fetchers["FIRMS"] = _firms_timeout()
+    assert harness.run() == 0
+    run = harness.db.rows("pipeline_runs")[0]
+    assert run["status"] == "ok" and run["sources"]["FIRMS"]["status"] == "timeout"
+    firms = next(r for r in harness.db.rows("sources") if r["id"] == "FIRMS")
+    assert firms["last_status"] == "timeout" and "last_success_at" not in firms
+
+
+def test_second_firms_timeout_in_a_row_fails_the_run(harness):
+    harness.fetchers["FIRMS"] = _firms_timeout()
+    assert [harness.run(), harness.run()] == [0, 1]
+    assert [r["status"] for r in harness.db.rows("pipeline_runs")] == ["ok", "failed"]
+
+
+def test_a_good_firms_fetch_in_between_starts_the_count_again(harness):
+    good, codes = harness.fetchers["FIRMS"], []
+    for fetcher in (_firms_timeout(), good, _firms_timeout()):
+        harness.fetchers["FIRMS"] = fetcher
+        codes.append(harness.run())
+    assert codes == [0, 0, 0]
+
+
+def test_firms_errors_other_than_timeouts_still_fail_at_once(harness):
+    harness.fetchers["FIRMS"] = _fetcher(exc=RuntimeError("500 Server Error"))
+    assert harness.run() == 1
+
+
+def test_firms_timeout_fails_the_run_when_the_previous_status_cannot_be_read():
+    class Unreachable:
+        def table(self, name):
+            raise RuntimeError("supabase unreachable")
+
+    result = pipeline.runs.FetchResult("FIRMS", [], False, "timeout", "read timed out", 113.4)
+    pipeline._tolerate_first_timeouts(Unreachable(), {"FIRMS": result})
+    assert result.ok is False
+
+
 def test_fetcher_error_marks_run_failed_and_redacts(harness, monkeypatch):
     monkeypatch.setattr(pipeline.runs.config, "FIRMS_MAP_KEY", "firms-secret-key")
     harness.fetchers["FIRMS"] = _fetcher(exc=RuntimeError("400 for url: /csv/firms-secret-key/VIIRS"))
