@@ -6,6 +6,7 @@ import requests
 logger = logging.getLogger(__name__)
 
 RETRY_BACKOFF_SECONDS = (5, 15)
+DEFAULT_TIMEOUT_S = 30  # connect and read, per attempt, unless the caller sets its own
 
 
 def get_with_retry(source: str, url: str, **kwargs) -> requests.Response:
@@ -16,7 +17,7 @@ def get_with_retry(source: str, url: str, **kwargs) -> requests.Response:
     resp.raise_for_status() in the caller. A single transient blip against an
     upstream host must not fail the whole run.
     """
-    kwargs.setdefault("timeout", 30)
+    kwargs.setdefault("timeout", DEFAULT_TIMEOUT_S)
     attempts = len(RETRY_BACKOFF_SECONDS) + 1
     for attempt in range(1, attempts + 1):
         try:

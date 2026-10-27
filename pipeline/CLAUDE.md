@@ -123,7 +123,9 @@ and the Windows scheduled task has been disabled.
 ## Data Sources
 - FIRMS: fire hotspots (India bbox: 68.7,8.4,97.4,37.1)
 - EONET: cyclones + wildfires (category filter + India bbox)
-- GDACS: floods, cyclones, earthquakes (GeoJSON feed)
+- GDACS: floods, cyclones, earthquakes, wildfire alerts (search API, ~6 pages a run;
+  droughts not requested; read timeout `config.GDACS_READ_TIMEOUT_S`, 90 s, the
+  others keep 30 s; each page's time is logged)
 - USGS: earthquakes (India bbox, min magnitude 4.0)
 - OpenAQ: AQI readings for Indian cities (PM2.5, PM10, NO2); the map's aqi_readings
 - data.gov.in (CPCB real-time AQI, `datagov.py`): the air desk item's primary source,

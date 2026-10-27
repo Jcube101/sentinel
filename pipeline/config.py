@@ -17,6 +17,14 @@ DATA_GOV_IN_API_KEY = (os.getenv("DATA_GOV_IN_API_KEY") or "").strip() or None
 SHORT_RETENTION_DAYS = 60   # FIRMS, GDACS
 LONG_RETENTION_DAYS = 365   # EONET, USGS
 
+# Read timeout (s) per GDACS request; other fetchers keep fetchers.http's 30 s.
+# GDACS's search is slow to answer a query it hasn't cached. A page usually
+# took 8-15 s, but in 11 of 14 runs (23-27 Oct 2026) a request ran past 30 s,
+# often the run's first, while the retry came back in seconds. In 5 runs every
+# try timed out and the run had no GDACS data. 90 s lets a slow first request
+# finish. With GDACS down, its 3 tries now take ~5 min instead of ~2.
+GDACS_READ_TIMEOUT_S = 90
+
 # India bounding box
 INDIA_BBOX = {
     "west": 68.7,

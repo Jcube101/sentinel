@@ -251,6 +251,12 @@ Open as of 21 Oct 2026, when the spec was completed.
   itself. OpenAQ's CPCB data stopped at 18 Oct 14:00 IST, and again from 23 Oct 21:00 to
   27 Oct 09:00 IST (the gap wasn't backfilled). Since then it has run about 1–2 h behind
   real time, not the 2–3 days `air.fresh_within_hours` (72) was set for.
+- **GDACS reliability (added 28 Oct 2026):** GDACS is the only source for floods and
+  cyclones. In editions 11–24 it returned no data in 5 of 14 runs, and a request ran past
+  the 30 s read timeout in 11 of them. Droughts are no longer requested, the read timeout
+  is 90 s (`config.GDACS_READ_TIMEOUT_S`), and each page's time is logged. Next: measure
+  page times over a few runs, then decide on a separate small query for the current
+  alerts the desk needs.
 - **Grants on `sources` (added 23 Oct 2026):** an anon-key update of the DATAGOV row returned
   HTTP 200 and changed nothing, where a revoked grant gives "permission denied". So RLS
   blocks the write, but anon probably still holds write grants on this older table (it

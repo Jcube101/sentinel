@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
+import config
 from fetchers import gdacs
 
 IN_INDIA = [78.0, 22.0]       # lon, lat
@@ -52,11 +53,12 @@ class FakeResponse:
 @pytest.fixture
 def fake_api(monkeypatch):
     """Serve `pages` (a list of FakeResponse) by pageNumber; record requests."""
-    state = {"pages": [], "requested": []}
+    state = {"pages": [], "requested": [], "calls": []}
 
     def fake_get(source, url, params=None, **kwargs):
         page = params["pageNumber"]
         state["requested"].append(page)
+        state["calls"].append({"params": params, **kwargs})
         assert params["pageSize"] == gdacs.PAGE_SIZE
         if page > len(state["pages"]):
             return FakeResponse(204)
@@ -92,6 +94,30 @@ def test_stops_on_204_after_exactly_full_pages(fake_api):
 def test_no_events_at_all_returns_empty(fake_api):
     fake_api["pages"] = []  # first page is a 204
     assert gdacs.fetch() == []
+
+
+def test_droughts_are_not_requested(fake_api):
+    gdacs.fetch()
+    assert fake_api["calls"][0]["params"]["eventtypes"] == "EQ,TC,FL,WF"
+
+
+def test_every_page_uses_the_longer_gdacs_read_timeout(fake_api):
+    fake_api["pages"] = [_full_page(1)]
+    gdacs.fetch()
+    assert config.GDACS_READ_TIMEOUT_S == 90
+    assert [c["timeout"] for c in fake_api["calls"]] == [(30, 90), (30, 90)]
+
+
+def test_each_page_time_is_logged(fake_api, caplog):
+    page = _full_page(1)
+    page.elapsed = timedelta(seconds=7.25)
+    fake_api["pages"] = [page]
+    with caplog.at_level("INFO", logger="fetchers.gdacs"):
+        gdacs.fetch()
+    lines = [r.getMessage() for r in caplog.records if ": page " in r.getMessage()]
+    assert len(lines) == 2
+    assert lines[0].startswith("GDACS: page 1: 100 features, ") and lines[0].endswith(", last request 7.2 s")
+    assert lines[1].startswith("GDACS: page 2: no content, ")
 
 
 def test_wildfire_and_drought_kept_out_of_events(fake_api):

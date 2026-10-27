@@ -1,10 +1,11 @@
 import logging
+import time
 from datetime import datetime, timedelta, timezone
 
 from dateutil import parser as dateutil_parser
 
-from fetchers.http import get_with_retry
-from config import INDIA_BBOX, SHORT_RETENTION_DAYS
+from fetchers.http import DEFAULT_TIMEOUT_S, get_with_retry
+from config import GDACS_READ_TIMEOUT_S, INDIA_BBOX, SHORT_RETENTION_DAYS
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +18,10 @@ ENDPOINT = "https://www.gdacs.org/gdacsapi/api/events/geteventlist/SEARCH"
 PAGE_SIZE = 100
 MAX_PAGES = 50
 
-# DR, WF and unknown types map to None → excluded from results.
+# Event types asked for. Droughts (DR) are not: nothing reads them.
+EVENT_TYPES = "EQ,TC,FL,WF"
+
+# WF and unknown types map to None → excluded from results.
 # WF (wildfire) is kept out of `events`: EONET already carries the same
 # GDACS wildfire alerts (same ids), so they would show twice on the map.
 # The severity stage uses GDACS WF alerts only as the forest-fire trigger.
@@ -26,7 +30,6 @@ CATEGORY_MAP = {
     "TC": "cyclone",
     "FL": "flood",
     "WF": None,
-    "DR": None,
 }
 
 SEVERITY_MAP = {
@@ -41,7 +44,7 @@ def _build_params(start_date: str | None = None, end_date: str | None = None) ->
     from_date = start_date or (today - timedelta(days=90)).strftime("%Y-%m-%d")
     to_date = end_date or today.strftime("%Y-%m-%d")
     return {
-        "eventtypes": "EQ,TC,FL,WF,DR",
+        "eventtypes": EVENT_TYPES,
         "fromDate": from_date,
         "toDate": to_date,
         "alertlevel": "Green,Orange,Red",
@@ -92,16 +95,26 @@ def _fetch_features(params: dict) -> list[dict]:
 
     Request/parse failures on any page propagate — a broken endpoint must
     fail the run, not silently return a partial or empty list.
+
+    Each page's time is logged (with retries, and the last request alone) to
+    measure how slow the search API is.
     """
     features: list[dict] = []
     for page in range(1, MAX_PAGES + 1):
+        t0 = time.monotonic()
         resp = get_with_retry(
-            "GDACS", ENDPOINT, params={**params, "pageSize": PAGE_SIZE, "pageNumber": page}
+            "GDACS", ENDPOINT, params={**params, "pageSize": PAGE_SIZE, "pageNumber": page},
+            timeout=(DEFAULT_TIMEOUT_S, GDACS_READ_TIMEOUT_S),
         )
+        took = time.monotonic() - t0
+        last = getattr(resp, "elapsed", None)
+        last_text = f", last request {last.total_seconds():.1f} s" if last is not None else ""
         if resp.status_code == 204:  # past the last page (or no events at all)
+            logger.info("GDACS: page %d: no content, %.1f s%s", page, took, last_text)
             break
         resp.raise_for_status()
         page_features = resp.json().get("features", [])
+        logger.info("GDACS: page %d: %d features, %.1f s%s", page, len(page_features), took, last_text)
         features.extend(page_features)
         if len(page_features) < PAGE_SIZE:
             break
