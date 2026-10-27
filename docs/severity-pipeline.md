@@ -239,6 +239,13 @@ Open as of 21 Oct 2026, when the spec was completed.
   `desk_watch`, `category_status_latest`, `desk_daily_max`, `desk_last_level3`,
   `fire_events` (+ views) and `fire_baseline`; the About-page credits (TODO under *Build
   plan*) go in with it.
+  Two pipeline changes go in with it (added 28 Oct 2026):
+  - **Wind speed in the cyclone reason:** "GDACS Red alert" says nothing about strength.
+    The speed is already in the item's figures (`severity`, `severity_text`), e.g. "GDACS
+    Red alert, 222 km/h winds" for ARNAB-26 (`desk.gdacs_candidates`).
+  - **`last_known` in `desk_last_level3`:** the view picks the latest open Level 3+
+    snapshot, last-known ones included (ARNAB-26 in editions 23–24, while GDACS timed
+    out), and doesn't say so. Add the column (a migration) so the page can mark it.
 - **Fire threshold tuning:** min 25 / 2× / 4× came from an in-sample replay; recheck with
   `tools/replay_fire_levels.py` against a few weeks of live items.
 - **Static mask gaps:** a replayed Level 4 case near Dhanbad (Jharia coal field) is probably
