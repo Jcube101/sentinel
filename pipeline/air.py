@@ -207,12 +207,16 @@ def mean_24h(client: OpenAQ, sensor_id: int, until: datetime, min_hours: int) ->
 
 # --- assessment -----------------------------------------------------------------------
 
-def assess(stations: list[dict], client: OpenAQ, cfg: dict, now: datetime) -> dict:
+def assess(stations: list[dict], client: OpenAQ, cfg: dict, now: datetime,
+           level_from: datetime | None = None) -> dict:
     """City bands from 24 h means. Returns the figures for the air item.
 
     A station is fresh when its 24 h window (which ends at its newest
-    reading) ends within fresh_within_hours. Only fresh stations count
-    toward city bands and the level; stale ones are listed in
+    reading) ends within fresh_within_hours and, if the item has a current
+    level, no earlier than the data behind that level (level_from, see
+    level_data_from()): older data must not replace a newer level. Only
+    fresh stations count toward city bands and the level; stale ones are
+    listed in
     figures["station_means"] with stale=True, budget permitting. With fewer
     than min_fresh_cities fresh cities, no history is fetched and
     quorum_met is False: the item keeps its last-known level.
@@ -232,14 +236,19 @@ def assess(stations: list[dict], client: OpenAQ, cfg: dict, now: datetime) -> di
             if recent:
                 current[(st["location_id"], pollutant)] = max(recent, key=lambda t: t[2])
 
-    def is_fresh(when: datetime) -> bool:
+    def is_recent(when: datetime) -> bool:
         return now - when <= fresh_within
+
+    def is_fresh(when: datetime) -> bool:
+        return is_recent(when) and (level_from is None or when >= level_from)
 
     by_city = defaultdict(list)
     for st in stations:
         if any((st["location_id"], p) in current for p in PARAMETER_IDS):
             by_city[st["city"]].append(st)
+    recent_cities = {by_id[loc]["city"] for (loc, _), (_, _, when) in current.items() if is_recent(when)}
     fresh_cities = {by_id[loc]["city"] for (loc, _), (_, _, when) in current.items() if is_fresh(when)}
+    newest = max((when for _, _, when in current.values()), default=None)
 
     figures = {
         "source": "openaq",
@@ -250,6 +259,9 @@ def assess(stations: list[dict], client: OpenAQ, cfg: dict, now: datetime) -> di
         "min_fresh_cities": air["min_fresh_cities"],
         "fresh_cities": len(fresh_cities),
         "quorum_met": len(fresh_cities) >= air["min_fresh_cities"],
+        "level_data_from": level_from.isoformat() if level_from else None,
+        "cities_older_than_level": len(recent_cities - fresh_cities),
+        "newest_reading": newest.isoformat() if newest else None,
         "cities_reporting": len(by_city),
         "stations_reporting": len({loc for loc, _ in current}),
         "counts": {b: 0 for b in BANDS},
@@ -566,8 +578,26 @@ def try_feed(feed, cfg: dict, now: datetime) -> tuple[dict | None, dict, str | N
     return figures, attempt, None
 
 
-def openaq_assessment(results: dict, cfg: dict, now: datetime, client: OpenAQ | None):
-    """The OpenAQ fallback. Returns (figures, why there is no new level or None, client)."""
+def level_data_from(item: dict | None) -> datetime | None:
+    """Where the data behind an open item's current level starts: the feed's
+    snapshot, or the oldest 24 h window the OpenAQ assessment used. None
+    when there is no current level."""
+    if not item or item.get("status") != "open":
+        return None
+    figures = item.get("figures") or {}
+    return desk._dt(figures.get("oldest_data") or figures.get("data_as_of") or item.get("observed_at"))
+
+
+def _ist(when: datetime) -> str:
+    return when.astimezone(IST).strftime("%-d %b, %H:%M IST")
+
+
+def openaq_assessment(results: dict, cfg: dict, now: datetime, client: OpenAQ | None,
+                      level_from: datetime | None = None):
+    """The OpenAQ fallback. Returns (figures, why there is no new level or None, client).
+
+    level_from: see level_data_from(); readings older than it don't count.
+    """
     air = cfg["air"]
     fetched = results["OpenAQ"]
     if fetched.status != "ok":
@@ -575,7 +605,7 @@ def openaq_assessment(results: dict, cfg: dict, now: datetime, client: OpenAQ | 
     stations = reference_stations(fetched.extras.get("locations", []), cfg)
     client = client or OpenAQ()
     try:
-        figures = assess(stations, client, cfg, now)
+        figures = assess(stations, client, cfg, now, level_from)
     except Exception as exc:
         logger.error("air: assessment failed — %s", exc)
         return None, "air assessment failed this run", client
@@ -583,8 +613,14 @@ def openaq_assessment(results: dict, cfg: dict, now: datetime, client: OpenAQ | 
         return figures, "no reference monitors reporting", client
     if not figures["quorum_met"]:
         n = figures["fresh_cities"]
-        return figures, (f"only {n} {'city has' if n == 1 else 'cities have'} data from the last "
-                         f"{air['fresh_within_hours']} h (need {air['min_fresh_cities']})"), client
+        cities = f"only {n} {'city has' if n == 1 else 'cities have'} data from the last {air['fresh_within_hours']} h"
+        if figures["cities_older_than_level"] and n == 0:
+            return figures, (f"OpenAQ data runs to {_ist(desk._dt(figures['newest_reading']))}, older than "
+                             f"the current level ({_ist(level_from)})"), client
+        if figures["cities_older_than_level"]:
+            return figures, (f"{cities} that is not older than the current level ({_ist(level_from)}; "
+                             f"need {air['min_fresh_cities']})"), client
+        return figures, f"{cities} (need {air['min_fresh_cities']})", client
     if figures["history_requests"] and figures["history_failed"] == figures["history_requests"]:
         return figures, "OpenAQ history requests failed this run", client
     return figures, None, client
@@ -616,8 +652,9 @@ def run_air(supabase, run_id: int | None, results: dict, now: datetime, *, write
 
     The data.gov.in feed sets the level when it is readable, at most
     [air.datagov] max_snapshot_age_hours old and has min_fresh_cities
-    cities; otherwise the OpenAQ assessment does. No new level (item kept
-    last-known, reason says why) when neither can. feed: callable returning
+    cities; otherwise the OpenAQ assessment does, counting only readings
+    no older than the data behind the item's current level. No new level
+    (item kept last-known, reason says why) when neither can. feed: callable returning
     (records, requests made); defaults to datagov.fetch with the configured key.
     """
     cfg = cfg or desk.severity_config.load()
@@ -633,7 +670,8 @@ def run_air(supabase, run_id: int | None, results: dict, now: datetime, *, write
     figures, attempt, fallback_reason = try_feed(feed, cfg, now)
     note = None
     if figures is None:
-        figures, note, client = openaq_assessment(results, cfg, now, client)
+        figures, note, client = openaq_assessment(results, cfg, now, client,
+                                                  level_data_from(existing.get(ITEM_ID)))
         if figures is not None:
             figures["fallback_reason"] = fallback_reason
         if note:

@@ -83,18 +83,18 @@ def test_spread_sample():
 # --- assess with a fake OpenAQ ----------------------------------------------------------
 
 class FakeOpenAQ(air.OpenAQ):
-    """latest: sensor -> (value, hours_ago); hours: sensor -> list of hourly values."""
+    """latest: sensor -> (value, hours before `now`); hours: sensor -> list of hourly values."""
 
-    def __init__(self, latest, hours, fail=()):
+    def __init__(self, latest, hours, fail=(), now=NOW):
         super().__init__(get=None, sleep=lambda s: None)
-        self.latest, self.hours, self.fail = latest, hours, set(fail)
+        self.latest, self.hours, self.fail, self.now = latest, hours, set(fail), now
         self.history_calls = []
 
     def get(self, path, params):
         self.requests += 1
         if path.startswith("/parameters/"):
             rows = [{"sensorsId": sid, "value": v,
-                     "datetime": {"utc": (NOW - timedelta(hours=age)).isoformat()}}
+                     "datetime": {"utc": (self.now - timedelta(hours=age)).isoformat()}}
                     for sid, (v, age) in self.latest.items()] if params["page"] == 1 else []
             return {"results": rows}
         sid = int(path.split("/")[2])
@@ -320,6 +320,39 @@ def test_quorum_not_met_fetches_no_history():
                               cfg=cfg, stations=[STATIONS[0], STATIONS[2]])
     assert figures["quorum_met"] is False and figures["fresh_cities"] == 1
     assert client.history_calls == [] and figures["counts"] == {"severe": 0, "very_poor": 0, "poor": 0}
+
+
+def test_readings_older_than_the_current_level_do_not_count():
+    level_from = NOW - timedelta(hours=10)
+    client = FakeOpenAQ({11: (300, 2), 31: (300, 20), 41: (300, 10)},
+                        {11: [300] * 24, 31: [300] * 24, 41: [300] * 24})
+    figures = air.assess([STATIONS[0], STATIONS[2], STATIONS[3]], client, CFG, NOW, level_from)
+    # Delhi is newer than the level's data and Pune as old: both count. Lucknow is older: listed, not counted.
+    assert figures["fresh_cities"] == 2 and figures["cities_older_than_level"] == 1
+    assert [c["city"] for c in figures["cities"]] == ["Delhi", "Pune"]
+    assert [(r["city"], r["stale"]) for r in figures["station_means"]] == [
+        ("Delhi", False), ("Pune", False), ("Lucknow", True)]
+    assert figures["level_data_from"] == level_from.isoformat()
+    assert figures["newest_reading"] == (NOW - timedelta(hours=2)).isoformat()
+
+
+def test_only_readings_older_than_the_current_level_fetch_no_history():
+    client = FakeOpenAQ({11: (300, 30)}, {11: [300] * 24})
+    figures = air.assess(STATIONS[:1], client, CFG, NOW, NOW - timedelta(hours=6))
+    assert figures["quorum_met"] is False and figures["fresh_cities"] == 0
+    assert figures["cities_older_than_level"] == 1 and client.history_calls == []
+
+
+def test_unchanged_openaq_data_still_counts_for_its_own_level(monkeypatch):
+    """An OpenAQ level's data starts at its oldest 24 h window, so re-reading the same data still counts."""
+    cfg = copy.deepcopy(CFG)
+    cfg["air"]["min_fresh_cities"] = 2
+    monkeypatch.setattr(air, "reference_stations", lambda locations, cfg: [STATIONS[0], STATIONS[2]])
+    same = lambda: FakeOpenAQ({11: (300, 1), 31: (300, 3)}, {11: [300] * 24, 31: [300] * 24})
+    db = FakeSupabase()
+    air.run_air(db, 1, _results(), NOW, cfg=cfg, client=same())
+    s2 = air.run_air(db, 2, _results(), NOW + timedelta(hours=6), cfg=cfg, client=same())
+    assert s2["source_good"] is True and db.rows("desk_items")[0]["last_known"] is False
 
 
 def test_run_air_quorum_failure_keeps_level_and_says_why(monkeypatch):

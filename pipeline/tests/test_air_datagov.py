@@ -166,9 +166,12 @@ def test_fallback_to_openaq(monkeypatch, feed, why):
     assert item["source"] == "OPENAQ" and item["figures"]["fallback_reason"] == why
 
 
-def _openaq():
-    """OpenAQ fallback data: PM2.5 24 h means of 100 µg/m³ (Poor) at Delhi x2 and Lucknow."""
-    return FakeOpenAQ({11: (100, 1), 21: (100, 1), 31: (100, 1)}, {11: [100] * 24, 21: [100] * 24, 31: [100] * 24})
+def _openaq(pm25=100, age=1, now=None):
+    """OpenAQ fallback data: PM2.5 24 h means (100 µg/m³ is Poor) at Delhi x2 and Lucknow,
+    newest reading `age` hours before `now` (default: test_air's NOW, a day before this file's)."""
+    sensors = (11, 21, 31)
+    return FakeOpenAQ({s: (pm25, age) for s in sensors}, {s: [pm25] * 24 for s in sensors},
+                      **({"now": now} if now else {}))
 
 
 def test_item_opened_under_openaq_takes_datagov_once_the_feed_sets_the_level(monkeypatch):
@@ -192,11 +195,40 @@ def test_item_opened_under_datagov_takes_openaq_when_the_fallback_sets_the_level
     air.run_air(db, 1, _results(), NOW, cfg=CFG, feed=_feed_fn(_feed(("Delhi", [350]), *CLEAN)))
     assert db.rows("desk_items")[0]["source"] == "DATAGOV"
 
-    s2 = air.run_air(db, 2, _results(), NOW + timedelta(hours=6), cfg=CFG, feed=_failing_feed(), client=_openaq())
+    later = NOW + timedelta(hours=6)  # OpenAQ data newer than the feed's level
+    s2 = air.run_air(db, 2, _results(), later, cfg=CFG, feed=_failing_feed(), client=_openaq(now=later))
     item = db.rows("desk_items")[0]
     assert s2["source_id"] == "OPENAQ" and s2["change"] == "deescalated"
     assert item["source"] == "OPENAQ" and item["first_run_id"] == 1 and item["last_known"] is False
     assert "approx. CPCB band" in item["severity_reason"] and "unvalidated" not in item["severity_reason"]
+
+
+def _feed_level_then_feed_fails(monkeypatch, openaq):
+    """Run 1: the feed sets Level 1 (Poor in Delhi, data to 21 Oct, 19:00 IST). Run 2, 6 h later: it fails."""
+    monkeypatch.setattr(air, "reference_stations", lambda locations, cfg: STATIONS[:3])
+    db = _db()
+    air.run_air(db, 1, _results(), NOW, cfg=CFG, feed=_feed_fn(_feed(("Delhi", [250]), *CLEAN)))
+    s = air.run_air(db, 2, _results(), NOW + timedelta(hours=6), cfg=CFG, feed=_failing_feed(), client=openaq)
+    return s, db.rows("desk_items")[0]
+
+
+def test_fallback_data_older_than_the_current_level_keeps_it_last_known(monkeypatch):
+    """Edition 21: OpenAQ's newest data was 3 days older than the feed's level, and escalated it."""
+    openaq = _openaq(pm25=130, age=30, now=NOW + timedelta(hours=6))     # Very poor, to 20 Oct, 19:30 IST
+    s, item = _feed_level_then_feed_fails(monkeypatch, openaq)
+    assert s["source_good"] is False and s["change"] is None and openaq.history_calls == []
+    assert item["severity_level"] == 1 and item["source"] == "DATAGOV" and item["last_known"] is True
+    assert item["severity_reason"].endswith(
+        "· last known: data.gov.in feed failed (HTTP 502 (3 tries, offset 0)); "
+        "OpenAQ data runs to 20 Oct, 19:30 IST, older than the current level (21 Oct, 19:00 IST)")
+
+
+def test_fallback_data_newer_than_the_current_level_sets_it(monkeypatch):
+    openaq = _openaq(pm25=130, age=1, now=NOW + timedelta(hours=6))      # Very poor, to 22 Oct, 00:30 IST
+    s, item = _feed_level_then_feed_fails(monkeypatch, openaq)
+    assert s["source_good"] is True and s["change"] == "escalated" and openaq.history_calls
+    assert item["severity_level"] == 2 and item["source"] == "OPENAQ" and item["last_known"] is False
+    assert item["severity_reason"] == "Very poor in Delhi, Lucknow (approx. CPCB band; 24 h mean to 22 Oct, 00:30 IST)"
 
 
 def test_both_sources_down_keeps_last_known_and_says_why():

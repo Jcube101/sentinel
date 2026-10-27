@@ -179,7 +179,9 @@ sends its own. Fallback when the feed fails, its snapshot is older than
 `air.datagov.max_snapshot_age_hours` or it has fewer than `air.min_fresh_cities`
 cities: 24 h means at CPCB / AirNow monitors on OpenAQ (~36 listing requests plus
 up to `air.max_history_requests` history requests, ~3 min), reason "approx. CPCB
-band", item source OPENAQ. Either way a city counts as Severe only after
+band", item source OPENAQ. OpenAQ readings older than the data behind the item's
+current level don't count (`air.level_data_from`), so the fallback never replaces a
+level with older data. Either way a city counts as Severe only after
 `air.severe_confirm_runs` assessments in a row. With neither source usable the
 item stays last-known and the reason says why. Each feed attempt updates the
 DATAGOV sources row (migration 006) and pipeline_runs.sources. Tests never reach

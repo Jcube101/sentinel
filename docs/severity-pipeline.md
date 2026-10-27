@@ -133,6 +133,13 @@ migration 006).
    Very poor and below count at once.
 5. The map's `aqi_readings` stay on OpenAQ. The API hangs requests that carry Python's default
    user agent, so the client sends its own.
+6. **The fallback never replaces a level with older data (28 Oct 2026).** In edition 21 the
+   feed failed (HTTP 500), and the fallback raised air from Level 1 to 2 using 24 h means that
+   ended 23 Oct 21:00 IST. The feed's Level 1 was from 26 Oct 14:00 IST, three days newer.
+   Edition 23 dropped it back. Now an OpenAQ reading counts only if it is no older than the
+   data behind the item's current level: the feed's snapshot, or the oldest 24 h window of an
+   OpenAQ level. Otherwise the item stays last-known with the reason "OpenAQ data runs to …,
+   older than the current level (…)". The check runs before the history requests.
 
 ## Build plan
 Rules: one work item at a time, each tested and committed separately; the existing
@@ -236,6 +243,10 @@ Open as of 21 Oct 2026, when the spec was completed.
 - **data.gov.in reliability:** one afternoon of evidence when it went in. Watch the DATAGOV
   row in `sources` (`last_status`, `newest_observation_at`) and how often the air reason says
   "approx. CPCB band" (the fallback); the map's `aqi_readings` could move to the feed later.
+  Seen so far: the feed returned HTTP 500 in editions 21–22 (26–27 Oct) and recovered by
+  itself. OpenAQ's CPCB data stopped at 18 Oct 14:00 IST, and again from 23 Oct 21:00 to
+  27 Oct 09:00 IST (the gap wasn't backfilled). Since then it has run about 1–2 h behind
+  real time, not the 2–3 days `air.fresh_within_hours` (72) was set for.
 - **Grants on `sources` (added 23 Oct 2026):** an anon-key update of the DATAGOV row returned
   HTTP 200 and changed nothing, where a revoked grant gives "permission denied". So RLS
   blocks the write, but anon probably still holds write grants on this older table (it
