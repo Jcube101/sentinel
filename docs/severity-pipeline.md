@@ -140,6 +140,10 @@ migration 006).
    data behind the item's current level: the feed's snapshot, or the oldest 24 h window of an
    OpenAQ level. Otherwise the item stays last-known with the reason "OpenAQ data runs to …,
    older than the current level (…)". The check runs before the history requests.
+   Also kept last-known: a run where stations near Poor were asked for 24 h history and none
+   had the 16 hourly values a mean needs. On 27 Oct, OpenAQ's data had just come back after
+   3.5 days with under 16 h of it, and the fallback read that as no city Poor and would have
+   closed the item.
 
 ## Build plan
 Rules: one work item at a time, each tested and committed separately; the existing

@@ -355,6 +355,8 @@ def assess(stations: list[dict], client: OpenAQ, cfg: dict, now: datetime,
         oldest_data=min(fresh_until).isoformat() if fresh_until else None,
         cities_assessed=len({city for _, _, city, _, _, _, _ in jobs}),
         history_requests=len(jobs),
+        fresh_history_requests=sum(1 for job in jobs if job[0]),
+        fresh_means=sum(len(v) for v in means.values()),
     )
     return figures
 
@@ -623,6 +625,11 @@ def openaq_assessment(results: dict, cfg: dict, now: datetime, client: OpenAQ | 
         return figures, f"{cities} (need {air['min_fresh_cities']})", client
     if figures["history_requests"] and figures["history_failed"] == figures["history_requests"]:
         return figures, "OpenAQ history requests failed this run", client
+    if figures["fresh_history_requests"] and not figures["fresh_means"]:
+        # Stations near Poor were asked for, none gave a mean: that says nothing about them, it
+        # doesn't mean the air is clean (27 Oct: data back after a 3.5-day gap, < 16 h of it).
+        return figures, (f"no OpenAQ station near Poor had a 24 h mean this run "
+                         f"(each needs {air['min_hours_for_mean']} hourly values)"), client
     return figures, None, client
 
 

@@ -261,6 +261,22 @@ def test_run_air_all_history_failed_is_last_known(monkeypatch):
     assert db.rows("desk_items")[0]["last_known"] is True
 
 
+def test_run_air_no_full_24h_mean_keeps_last_known_instead_of_closing(monkeypatch):
+    """27 Oct: OpenAQ's data came back after a 3.5-day gap with under 16 h of it. No station near
+    Poor had a 24 h mean, and that must not read as clean air."""
+    db = FakeSupabase()
+    monkeypatch.setattr(air, "reference_stations", lambda locations, cfg: STATIONS[:1])
+    air.run_air(db, 1, _results(), NOW, cfg=CFG, client=FakeOpenAQ({11: (300, 1)}, {11: [300] * 24}))
+    later = NOW + timedelta(hours=6)
+    short = FakeOpenAQ({11: (300, 1)}, {11: [300] * 14}, now=later)
+    s2 = air.run_air(db, 2, _results(), later, cfg=CFG, client=short)
+    item = db.rows("desk_items")[0]
+    assert s2["source_good"] is False and s2["change"] is None and short.history_calls == [11]
+    assert item["status"] == "open" and item["last_known"] is True and item["severity_level"] == 3
+    assert item["severity_reason"].endswith(
+        "; no OpenAQ station near Poor had a 24 h mean this run (each needs 16 hourly values)")
+
+
 def test_run_air_no_stations_is_last_known():
     s = air.run_air(FakeSupabase(), 1, _results(), NOW, cfg=CFG, client=FakeOpenAQ({}, {}))
     assert s["source_good"] is False and s["requests"] == 0
