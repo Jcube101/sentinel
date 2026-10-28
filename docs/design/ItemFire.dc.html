@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sentinel — Item 3, fires</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans+Condensed:wght@500;600;700&amp;family=IBM+Plex+Serif:ital,wght@0,400;0,500;1,400&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F3F0E8}
+a{color:#17171B;text-decoration:none}a:hover{color:#A8221B}
+</style>
+</helmet>
+<div style="background: #F3F0E8; color: #17171B; font-family: 'IBM Plex Serif', Georgia, serif; min-height: 100vh; box-sizing: border-box; padding: 0 40px 56px">
+<div style="max-width: 1360px; margin: 0 auto">
+
+<header style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; padding: 28px 0 14px; border-bottom: 4px solid #17171B">
+<div style="display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap">
+<div style="font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 700; font-size: 40px; letter-spacing: 0.04em; line-height: 1">SENTINEL</div>
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase">Situation report · India</div>
+</div>
+<nav aria-label="Primary" style="display: flex; gap: 24px; font-family: 'IBM Plex Mono', monospace; font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em">
+<a href="#" style="border-bottom: 2px solid {{accent}}; padding-bottom: 2px">Desk</a>
+<a href="#">Map</a>
+<a href="#">Archive</a>
+<a href="#">Sources</a>
+<a href="#">About</a>
+</nav>
+</header>
+
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid #17171B; font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.04em">
+<span><a href="#" style="border-bottom: 1px solid #17171B">← DESK</a> · REPORT NO. 293 · ITEM 3 OF 5</span>
+<span><a href="#">‹ ITEM 2</a> · <a href="#">ITEM 4 ›</a></span>
+</div>
+
+<section style="padding: 36px 0 32px; border-bottom: 1px solid #17171B; display: flex; flex-wrap: wrap; gap: 40px; justify-content: space-between; align-items: flex-end">
+<div style="display: flex; flex-direction: column; gap: 18px; max-width: 900px; flex: 1 1 560px">
+<div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase">
+<span style="display: inline-flex; gap: 3px; margin-right: 4px" role="img" aria-label="Level 2 of 4"><span style="width: 10px; height: 10px; background: #17171B"></span><span style="width: 10px; height: 10px; background: #17171B"></span><span style="width: 10px; height: 10px; border: 1px solid #17171B; box-sizing: border-box"></span><span style="width: 10px; height: 10px; border: 1px solid #17171B; box-sizing: border-box"></span></span>
+<span style="background: #17171B; color: #F3F0E8; padding: 3px 8px">Level 2 · Elevated</span>
+<span style="border: 1px solid #17171B; padding: 2px 8px">Fire</span>
+<span style="border: 1px solid #17171B; padding: 2px 8px">▲ Escalated · on the desk since 19 Oct</span>
+</div>
+<h1 style="margin: 0; font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 600; font-size: 50px; line-height: 1.04; letter-spacing: -0.01em">Seasonal crop burning runs 45% above normal across Punjab and Haryana</h1>
+<p style="margin: 0; font-size: 20px; line-height: 1.55; max-width: 820px">Fire activity is up in 14 districts, against an average of 9 for this week in 2023–25. Every fire is low-intensity and on farmland, which is why this sits at Level 2 rather than higher. Outside these two states, fire activity is at or below normal.</p>
+</div>
+<div style="flex: 0 1 360px; min-width: 280px; display: flex; flex-direction: column; gap: 10px">
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase">Where it sits on the fire scale</div>
+<div style="position: relative; height: 18px; display: flex">
+<span style="width: 50%; background: #E3DDD0"></span>
+<span style="width: 30%; background: #CFC9BC"></span>
+<span style="width: 20%; background: #B9B2A4"></span>
+<span style="position: absolute; left: 58%; top: -7px; width: 3px; height: 32px; background: {{accent}}"></span>
+</div>
+<div style="position: relative; height: 30px; font-family: 'IBM Plex Mono', monospace; font-size: 11px">
+<span style="position: absolute; left: 0">0×</span>
+<span style="position: absolute; left: 40%; transform: translateX(-50%); color: #5C5A55">1× norm</span>
+<span style="position: absolute; left: 58%; transform: translateX(-50%); top: 14px; color: {{accent}}; font-weight: 600">1.45×</span>
+<span style="position: absolute; left: 80%; transform: translateX(-50%); color: #5C5A55">2× · L3</span>
+</div>
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #5C5A55">LEVEL 2 STARTS AT 1.25× · LEVEL 3 AT 2× OR ANY FOREST FIRE</div>
+</div>
+</section>
+
+<section aria-label="Key figures" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); border-bottom: 1px solid #17171B">
+<div style="padding: 22px 24px 22px 0; display: flex; flex-direction: column; gap: 4px"><span style="font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 700; font-size: 46px; line-height: 1">14</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase">Districts active · norm 9</span></div>
+<div style="padding: 22px 24px; border-left: 1px solid #CFC9BC; display: flex; flex-direction: column; gap: 4px"><span style="font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 700; font-size: 46px; line-height: 1">386</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase">Fire events, last 24h</span></div>
+<div style="padding: 22px 24px; border-left: 1px solid #CFC9BC; display: flex; flex-direction: column; gap: 4px"><span style="font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 700; font-size: 46px; line-height: 1; color: {{accent}}">1.45×</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase">Seasonal norm · ▲ from 1.41×</span></div>
+<div style="padding: 22px 24px; border-left: 1px solid #CFC9BC; display: flex; flex-direction: column; gap: 4px"><span style="font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 700; font-size: 46px; line-height: 1">0</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase">High-intensity fires</span></div>
+</section>
+
+<div style="display: flex; flex-wrap: wrap; gap: 48px; padding-top: 32px">
+
+<main style="flex: 999 1 600px; min-width: 0; display: flex; flex-direction: column; gap: 44px">
+
+<section>
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 10px; padding-bottom: 10px; border-bottom: 1px solid #17171B">
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase">Fire events per run vs the seasonal norm</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #5C5A55">Punjab + Haryana · last 21 runs</span>
+</div>
+<div style="position: relative; margin-top: 24px">
+<div style="display: flex; align-items: flex-end; gap: 5px; height: 220px; border-bottom: 2px solid #17171B">
+<sc-for list="{{runs}}" as="r" hint-placeholder-count="21">
+<div style="flex: 1; height: {{r.h}}; background: {{r.c}}"></div>
+</sc-for>
+</div>
+<div style="position: absolute; left: 0; right: 0; bottom: 66.5%; border-top: 2px dashed #17171B"></div>
+<div style="position: absolute; left: 0; bottom: calc(66.5% + 6px); font-family: 'IBM Plex Mono', monospace; font-size: 11px; background: #F3F0E8; padding-right: 6px">NORM 266 · 2023–25 AVG</div>
+<div style="position: absolute; left: 0; right: 0; bottom: 83.1%; border-top: 1px dotted {{accent}}"></div>
+<div style="position: absolute; left: 0; bottom: calc(83.1% + 4px); font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: {{accent}}; background: #F3F0E8; padding-right: 6px">1.25× · LEVEL 2</div>
+</div>
+<div style="display: flex; justify-content: space-between; margin-top: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #5C5A55">
+<span>13 OCT 22:00</span><span>16 OCT</span><span style="color: #17171B; font-weight: 600">20 OCT 14:00 · 386</span>
+</div>
+</section>
+
+<section>
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; padding-bottom: 10px; border-bottom: 1px solid #17171B">By district</div>
+<div style="display: grid; grid-template-columns: minmax(0, 1.3fr) 48px minmax(0, 1.6fr) 64px 72px 64px; gap: 14px; padding: 10px 0; border-bottom: 1px solid #17171B; font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: #5C5A55">
+<span>District</span><span>State</span><span>Fires today</span><span style="text-align: right">Fires</span><span style="text-align: right">vs norm</span><span style="text-align: right">24h</span>
+</div>
+<sc-for list="{{districts}}" as="d" hint-placeholder-count="9">
+<div style="display: grid; grid-template-columns: minmax(0, 1.3fr) 48px minmax(0, 1.6fr) 64px 72px 64px; gap: 14px; align-items: center; padding: 11px 0; border-bottom: 1px solid #CFC9BC; font-family: 'IBM Plex Mono', monospace; font-size: 14px">
+<span style="font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 600; font-size: 18px; color: {{d.nc}}">{{d.name}}</span>
+<span style="color: #5C5A55">{{d.st}}</span>
+<span style="height: 10px; background: #E3DDD0"><span style="display: block; height: 10px; width: {{d.w}}; background: {{d.c}}"></span></span>
+<b style="text-align: right">{{d.n}}</b>
+<span style="text-align: right; font-weight: 600; color: {{d.rc}}">{{d.r}}</span>
+<span style="text-align: right; color: #5C5A55">{{d.d}}</span>
+</div>
+</sc-for>
+</section>
+
+<section>
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; padding-bottom: 10px; border-bottom: 1px solid #17171B">How this item has moved</div>
+<sc-for list="{{history}}" as="h" hint-placeholder-count="4">
+<div style="display: grid; grid-template-columns: 170px 120px minmax(0, 1fr); gap: 16px; padding: 12px 0; border-bottom: 1px solid #CFC9BC; font-size: 15px; line-height: 1.45">
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; padding-top: 2px">{{h.ed}}</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600; padding-top: 3px; color: {{h.c}}">{{h.tag}}</span>
+<span>{{h.note}}</span>
+</div>
+</sc-for>
+</section>
+</main>
+
+<aside style="flex: 1 1 340px; min-width: 0; display: flex; flex-direction: column; gap: 32px">
+<section>
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; padding-bottom: 10px; border-bottom: 1px solid #17171B">How the count is built</div>
+<div style="display: flex; flex-direction: column; padding-top: 6px">
+<div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 12px 0; border-bottom: 1px solid #CFC9BC"><span style="font-size: 15px">Satellite hotspots in PB + HR</span><b style="font-family: 'IBM Plex Sans Condensed', sans-serif; font-size: 24px">1,404</b></div>
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #5C5A55; padding: 6px 0">↓ merge pixels within 1.5 km, same day</div>
+<div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 12px 0; border-bottom: 1px solid #CFC9BC"><span style="font-size: 15px">Fire events</span><b style="font-family: 'IBM Plex Sans Condensed', sans-serif; font-size: 24px">386</b></div>
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #5C5A55; padding: 6px 0">↓ group by district, compare with 2023–25</div>
+<div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 12px 0; border-bottom: 1px solid #17171B"><span style="font-size: 15px">Districts above norm</span><b style="font-family: 'IBM Plex Sans Condensed', sans-serif; font-size: 24px">14</b></div>
+</div>
+<p style="margin: 12px 0 0; font-size: 14px; line-height: 1.5; color: #5C5A55; font-style: italic">A hotspot is one 375 m pixel that read hot. One field fire can light several, so Sentinel ranks fires, not pixels.</p>
+</section>
+
+<section>
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; padding-bottom: 10px; border-bottom: 1px solid #17171B">Where</div>
+<img src="/_blob/d3864543f09846c2d52f8380ea945edd" alt="Map of India with fire activity concentrated in Punjab and Haryana" style="width: 100%; height: auto; display: block; padding-top: 14px">
+<a href="#" style="display: inline-block; margin-top: 10px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1px solid #17171B; padding: 12px 0 2px">Open on the map →</a>
+</section>
+
+<section>
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; padding-bottom: 10px; border-bottom: 1px solid #17171B">Also on the desk</div>
+<a href="#" style="display: flex; gap: 12px; padding: 14px 0; border-bottom: 1px solid #CFC9BC">
+<span style="font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 700; font-size: 24px; line-height: 1; width: 18px; color: {{accent}}">1</span>
+<span style="display: flex; flex-direction: column; gap: 4px"><span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: #5C5A55">L4 Severe · Air</span><span style="font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 600; font-size: 17px; line-height: 1.2">Mumbai, Delhi and Ghaziabad in the severe band</span></span>
+</a>
+<a href="#" style="display: flex; gap: 12px; padding: 14px 0; border-bottom: 1px solid #CFC9BC">
+<span style="font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 700; font-size: 24px; line-height: 1; width: 18px">2</span>
+<span style="display: flex; flex-direction: column; gap: 4px"><span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: #5C5A55">L3 High · Cyclone · new</span><span style="font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 600; font-size: 17px; line-height: 1.2">Storm tracking toward Odisha</span></span>
+</a>
+</section>
+</aside>
+</div>
+
+<footer style="margin-top: 48px; padding-top: 12px; border-top: 1px solid #17171B; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #5C5A55; letter-spacing: 0.04em">
+<span>NASA FIRMS · VIIRS 375 M · NOMINAL + HIGH CONFIDENCE · FETCHED 14:00 IST</span>
+<span>ITEM ID FIRE-PB-HR-2026-10 · <a href="#" style="color: #5C5A55; border-bottom: 1px solid #5C5A55">PERMALINK</a></span>
+</footer>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#A8221B","options":["#A8221B","#C2410C","#1F4E8C","#17171B"]},"$preview":{"width":1440,"height":1860}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const accent = this.props.accent ?? '#A8221B';
+    const ev = [180,205,176,214,208,226,219,240,233,250,246,258,255,270,293,281,300,314,338,375,386];
+    const runs = ev.map((v, i) => ({ h: (v / 400 * 100).toFixed(1) + '%', c: i === ev.length - 1 ? accent : (v >= 332 ? '#8E8778' : '#CFC9BC') }));
+    const D = [['Sangrur','PB',61,1.6,'+9'],['Firozpur','PB',48,1.5,'+7'],['Tarn Taran','PB',41,1.4,'+6'],['Bathinda','PB',37,1.5,'+8'],['Kaithal','HR',29,1.7,'+11'],['Patiala','PB',27,1.3,'+3'],['Moga','PB',24,1.4,'+4'],['Fatehabad','HR',22,1.6,'+6'],['6 more districts','',97,1.3,'+9']];
+    const districts = D.map((d, i) => ({ name: d[0], st: d[1], n: d[2], w: (d[2] / 61 * 100).toFixed(1) + '%', c: i === 8 ? '#B9B2A4' : (d[3] >= 1.5 ? accent : '#C9574F'), r: d[3].toFixed(1) + '×', rc: d[3] >= 1.5 ? accent : '#17171B', d: d[4], nc: i === 8 ? '#5C5A55' : '#17171B' }));
+    const history = [
+      { ed: 'NO. 293 · 20 OCT 14:00', tag: '▲ 1.45×', c: accent, note: 'Highest this season. Kaithal is the fastest-rising district, at 1.7× its norm.' },
+      { ed: 'NO. 292 · 20 OCT 06:00', tag: '▲ 1.41×', c: '#17171B', note: 'Two more Haryana districts crossed their norm overnight.' },
+      { ed: 'NO. 291 · 19 OCT 22:00', tag: '+ OPENED · L2', c: '#17171B', note: 'Crossed 1.25× and moved from Watching onto the desk at Level 2.' },
+      { ed: 'NO. 287 · 18 OCT 14:00', tag: '◌ WATCHING', c: '#5C5A55', note: 'Reached 1.1× the norm; flagged as approaching the Level 2 threshold.' }
+    ];
+    return { accent, runs, districts, history };
+  }
+}
+</script>
+</body>
+</html>

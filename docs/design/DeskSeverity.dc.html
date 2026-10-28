@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sentinel — Desk by severity</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans+Condensed:wght@500;600;700&amp;family=IBM+Plex+Serif:ital,wght@0,400;0,500;1,400&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F3F0E8}
+a{color:#17171B;text-decoration:none}a:hover{color:#A8221B}
+</style>
+</helmet>
+<div style="background: #F3F0E8; color: #17171B; font-family: 'IBM Plex Serif', Georgia, serif; min-height: 100vh; box-sizing: border-box; padding: 0 40px 56px">
+<div style="max-width: 1360px; margin: 0 auto">
+
+<header style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; padding: 28px 0 14px; border-bottom: 4px solid #17171B">
+<div style="display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap">
+<div style="font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 700; font-size: 40px; letter-spacing: 0.04em; line-height: 1">SENTINEL</div>
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase">Situation report · India</div>
+</div>
+<nav aria-label="Primary" style="display: flex; gap: 24px; font-family: 'IBM Plex Mono', monospace; font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em">
+<a href="#" style="border-bottom: 2px solid {{accent}}; padding-bottom: 2px">Desk</a>
+<a href="#">Map</a>
+<a href="#">Archive</a>
+<a href="#">Sources</a>
+<a href="#">About</a>
+</nav>
+</header>
+
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid #17171B; font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.04em">
+<span>REPORT NO. 293 · TUE 20 OCT 2026 · 14:00 IST RUN</span>
+<span>RANKED BY SEVERITY LEVEL · NOT BY COUNT</span>
+</div>
+
+<section style="padding: 36px 0 28px; border-bottom: 1px solid #17171B; display: flex; flex-wrap: wrap; gap: 32px; align-items: flex-end; justify-content: space-between">
+<h1 style="margin: 0; font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 600; font-size: 50px; line-height: 1.04; max-width: 860px; letter-spacing: -0.01em">Mumbai's air is the most severe item on the desk. New since yesterday: a cyclonic storm in the Bay of Bengal.</h1>
+<div style="display: flex; flex-direction: column; gap: 10px; font-family: 'IBM Plex Mono', monospace">
+<div style="display: grid; grid-template-columns: repeat(4, minmax(72px, auto)); gap: 0">
+<div style="display: flex; flex-direction: column; gap: 4px; padding-right: 16px"><span style="font-size: 34px; font-weight: 600; color: {{accent}}">1</span><span style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase">Severe</span></div>
+<div style="display: flex; flex-direction: column; gap: 4px; padding: 0 16px; border-left: 1px solid #CFC9BC"><span style="font-size: 34px; font-weight: 600">1</span><span style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase">High</span></div>
+<div style="display: flex; flex-direction: column; gap: 4px; padding: 0 16px; border-left: 1px solid #CFC9BC"><span style="font-size: 34px; font-weight: 600">1</span><span style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase">Elevated</span></div>
+<div style="display: flex; flex-direction: column; gap: 4px; padding-left: 16px; border-left: 1px solid #CFC9BC"><span style="font-size: 34px; font-weight: 600; color: #5C5A55">2</span><span style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase">Minor</span></div>
+</div>
+<div style="font-size: 12px; color: #5C5A55">1 NEW · 2 ESCALATED · 3 CLOSED</div>
+</div>
+</section>
+
+<div style="display: flex; flex-wrap: wrap; gap: 48px; padding-top: 8px">
+
+<main style="flex: 999 1 560px; min-width: 0">
+
+<article style="display: flex; gap: 24px; padding: 24px 0 26px; border-bottom: 1px solid #17171B">
+<div style="display: flex; flex-direction: column; gap: 10px; width: 52px; flex: none">
+<span style="font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 700; font-size: 56px; line-height: 0.9; color: {{accent}}">1</span>
+<span style="display: flex; gap: 3px" role="img" aria-label="Level 4 of 4"><span style="width: 10px; height: 10px; background: {{accent}}"></span><span style="width: 10px; height: 10px; background: {{accent}}"></span><span style="width: 10px; height: 10px; background: {{accent}}"></span><span style="width: 10px; height: 10px; background: {{accent}}"></span></span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 10px; min-width: 0">
+<div style="display: flex; flex-wrap: wrap; gap: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase">
+<span style="background: {{accent}}; color: #FFFFFF; padding: 3px 8px">Level 4 · Severe</span>
+<span style="border: 1px solid #17171B; padding: 2px 8px">Air quality</span>
+<span style="border: 1px solid #17171B; padding: 2px 8px">▲ Escalated</span>
+</div>
+<h2 style="margin: 0; font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 600; font-size: 32px; line-height: 1.1">Mumbai's air is in the severe band for a third straight run</h2>
+<p style="margin: 0; font-size: 18px; line-height: 1.55; max-width: 760px">Bandra–Kurla reads PM2.5 712 µg/m³, nearly three times the threshold for India's "severe" category. Delhi (486) and Ghaziabad (441) are also severe. 4 of 52 stations sit in the top band.</p>
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #5C5A55">LEVEL FROM: AQI BAND · <span style="color: {{accent}}; font-weight: 600">LAST-KNOWN · 14:00 PULL CAME BACK EMPTY</span></div>
+</div>
+</article>
+
+<article style="display: flex; gap: 24px; padding: 24px 0 26px; border-bottom: 1px solid #17171B">
+<div style="display: flex; flex-direction: column; gap: 10px; width: 52px; flex: none">
+<span style="font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 700; font-size: 56px; line-height: 0.9">2</span>
+<span style="display: flex; gap: 3px" role="img" aria-label="Level 3 of 4"><span style="width: 10px; height: 10px; background: #17171B"></span><span style="width: 10px; height: 10px; background: #17171B"></span><span style="width: 10px; height: 10px; background: #17171B"></span><span style="width: 10px; height: 10px; border: 1px solid #17171B; box-sizing: border-box"></span></span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 10px; min-width: 0">
+<div style="display: flex; flex-wrap: wrap; gap: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase">
+<span style="background: #17171B; color: #F3F0E8; padding: 3px 8px">Level 3 · High</span>
+<span style="border: 1px solid #17171B; padding: 2px 8px">Cyclone</span>
+<span style="border: 1px solid {{accent}}; color: {{accent}}; padding: 2px 8px; font-weight: 600">+ New</span>
+</div>
+<h2 style="margin: 0; font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 600; font-size: 30px; line-height: 1.1">Cyclonic storm in the Bay of Bengal, tracking north-west toward the Odisha coast</h2>
+<p style="margin: 0; font-size: 18px; line-height: 1.55; max-width: 760px">Centre roughly 520 km south-east of Puri. Landfall expected between Gopalpur and Paradip on 22–23 October. Would move to level 4 if GDACS raises it to red.</p>
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #5C5A55">LEVEL FROM: GDACS ORANGE · OPENED 19 OCT 22:00 IST</div>
+</div>
+</article>
+
+<article style="display: flex; gap: 24px; padding: 24px 0 26px; border-bottom: 1px solid #17171B">
+<div style="display: flex; flex-direction: column; gap: 10px; width: 52px; flex: none">
+<span style="font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 700; font-size: 56px; line-height: 0.9">3</span>
+<span style="display: flex; gap: 3px" role="img" aria-label="Level 2 of 4"><span style="width: 10px; height: 10px; background: #17171B"></span><span style="width: 10px; height: 10px; background: #17171B"></span><span style="width: 10px; height: 10px; border: 1px solid #17171B; box-sizing: border-box"></span><span style="width: 10px; height: 10px; border: 1px solid #17171B; box-sizing: border-box"></span></span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 12px; min-width: 0; flex: 1">
+<div style="display: flex; flex-wrap: wrap; gap: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase">
+<span style="background: #17171B; color: #F3F0E8; padding: 3px 8px">Level 2 · Elevated</span>
+<span style="border: 1px solid #17171B; padding: 2px 8px">Fire</span>
+<span style="border: 1px solid #17171B; padding: 2px 8px">▲ Escalated</span>
+</div>
+<h2 style="margin: 0; font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 600; font-size: 28px; line-height: 1.12">Seasonal crop burning runs 45% above normal across Punjab and Haryana</h2>
+<p style="margin: 0; font-size: 17px; line-height: 1.55; max-width: 760px">Activity in 14 districts, compared with an average of 9 for this week in 2023–25. All fires are low-intensity and on farmland; none in forest. Elsewhere in India, fire activity is at or below normal.</p>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); border-top: 1px solid #CFC9BC; border-bottom: 1px solid #CFC9BC; max-width: 760px">
+<div style="padding: 12px 16px 12px 0; display: flex; flex-direction: column; gap: 2px"><span style="font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 700; font-size: 26px">14</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em">Districts active</span></div>
+<div style="padding: 12px 16px; border-left: 1px solid #CFC9BC; display: flex; flex-direction: column; gap: 2px"><span style="font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 700; font-size: 26px">386</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em">Fire events</span></div>
+<div style="padding: 12px 16px; border-left: 1px solid #CFC9BC; display: flex; flex-direction: column; gap: 2px"><span style="font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 700; font-size: 26px">1.45×</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em">Seasonal norm</span></div>
+<div style="padding: 12px 16px; border-left: 1px solid #CFC9BC; display: flex; flex-direction: column; gap: 2px"><span style="font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 700; font-size: 26px">0</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em">High-intensity</span></div>
+</div>
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #5C5A55">LEVEL FROM: VS 2023–25 SAME WEEK · BUILT FROM 1,404 OF 2,147 FIRMS HOTSPOTS</div>
+</div>
+</article>
+
+<article style="display: flex; gap: 24px; padding: 20px 0 22px; border-bottom: 1px solid #17171B">
+<div style="display: flex; flex-direction: column; gap: 8px; width: 52px; flex: none">
+<span style="font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 700; font-size: 40px; line-height: 0.9">4</span>
+<span style="display: flex; gap: 3px" role="img" aria-label="Level 1 of 4"><span style="width: 10px; height: 10px; background: #17171B"></span><span style="width: 10px; height: 10px; border: 1px solid #17171B; box-sizing: border-box"></span><span style="width: 10px; height: 10px; border: 1px solid #17171B; box-sizing: border-box"></span><span style="width: 10px; height: 10px; border: 1px solid #17171B; box-sizing: border-box"></span></span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px; min-width: 0">
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: #5C5A55">Level 1 · Minor · Flood · Steady</div>
+<h2 style="margin: 0; font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 600; font-size: 23px; line-height: 1.15">Flooding around Chennai and coastal Tamil Nadu, unchanged since yesterday</h2>
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #5C5A55">LEVEL FROM: GDACS GREEN</div>
+</div>
+</article>
+
+<article style="display: flex; gap: 24px; padding: 20px 0 22px; border-bottom: 1px solid #17171B">
+<div style="display: flex; flex-direction: column; gap: 8px; width: 52px; flex: none">
+<span style="font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 700; font-size: 40px; line-height: 0.9">5</span>
+<span style="display: flex; gap: 3px" role="img" aria-label="Level 1 of 4"><span style="width: 10px; height: 10px; background: #17171B"></span><span style="width: 10px; height: 10px; border: 1px solid #17171B; box-sizing: border-box"></span><span style="width: 10px; height: 10px; border: 1px solid #17171B; box-sizing: border-box"></span><span style="width: 10px; height: 10px; border: 1px solid #17171B; box-sizing: border-box"></span></span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px; min-width: 0">
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: #5C5A55">Level 1 · Minor · Earthquake · Steady</div>
+<h2 style="margin: 0; font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 600; font-size: 23px; line-height: 1.15">Six small earthquakes, the largest M4.6 off the Andaman Islands</h2>
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #5C5A55">LEVEL FROM: MAGNITUDE · NONE ABOVE M5</div>
+</div>
+</article>
+</main>
+
+<aside style="flex: 1 1 340px; min-width: 0; display: flex; flex-direction: column; gap: 32px; padding-top: 24px">
+<section>
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; padding-bottom: 10px; border-bottom: 1px solid #17171B">How levels are set</div>
+<div style="display: grid; grid-template-columns: 64px repeat(4, minmax(0, 1fr)); font-family: 'IBM Plex Mono', monospace; font-size: 11px; line-height: 1.4">
+<span style="padding: 10px 0; border-bottom: 1px solid #CFC9BC"></span>
+<span style="padding: 10px 4px; border-bottom: 1px solid #CFC9BC; font-weight: 600">1</span>
+<span style="padding: 10px 4px; border-bottom: 1px solid #CFC9BC; font-weight: 600">2</span>
+<span style="padding: 10px 4px; border-bottom: 1px solid #CFC9BC; font-weight: 600">3</span>
+<span style="padding: 10px 4px; border-bottom: 1px solid #CFC9BC; font-weight: 600; color: {{accent}}">4</span>
+<span style="padding: 10px 0; border-bottom: 1px solid #CFC9BC; color: #5C5A55">FLOOD CYCLONE</span>
+<span style="padding: 10px 4px; border-bottom: 1px solid #CFC9BC">green</span>
+<span style="padding: 10px 4px; border-bottom: 1px solid #CFC9BC">green + rising</span>
+<span style="padding: 10px 4px; border-bottom: 1px solid #CFC9BC">orange</span>
+<span style="padding: 10px 4px; border-bottom: 1px solid #CFC9BC">red</span>
+<span style="padding: 10px 0; border-bottom: 1px solid #CFC9BC; color: #5C5A55">QUAKE</span>
+<span style="padding: 10px 4px; border-bottom: 1px solid #CFC9BC">&lt; M5</span>
+<span style="padding: 10px 4px; border-bottom: 1px solid #CFC9BC">M5–5.9</span>
+<span style="padding: 10px 4px; border-bottom: 1px solid #CFC9BC">M6–6.9</span>
+<span style="padding: 10px 4px; border-bottom: 1px solid #CFC9BC">M7+</span>
+<span style="padding: 10px 0; border-bottom: 1px solid #CFC9BC; color: #5C5A55">AIR</span>
+<span style="padding: 10px 4px; border-bottom: 1px solid #CFC9BC">poor</span>
+<span style="padding: 10px 4px; border-bottom: 1px solid #CFC9BC">very poor</span>
+<span style="padding: 10px 4px; border-bottom: 1px solid #CFC9BC">severe, 1 city</span>
+<span style="padding: 10px 4px; border-bottom: 1px solid #CFC9BC">severe, 3+ cities</span>
+<span style="padding: 10px 0; border-bottom: 1px solid #CFC9BC; color: #5C5A55">FIRE</span>
+<span style="padding: 10px 4px; border-bottom: 1px solid #CFC9BC">at norm</span>
+<span style="padding: 10px 4px; border-bottom: 1px solid #CFC9BC">1.25–2× norm</span>
+<span style="padding: 10px 4px; border-bottom: 1px solid #CFC9BC">2×+ or forest</span>
+<span style="padding: 10px 4px; border-bottom: 1px solid #CFC9BC">near people</span>
+</div>
+<p style="margin: 12px 0 0; font-size: 14px; line-height: 1.5; color: #5C5A55; font-style: italic">Fires are judged against the same week in past years, so the October stubble season doesn't read as a national emergency.</p>
+</section>
+
+<section>
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; padding-bottom: 10px; border-bottom: 1px solid #17171B">The map</div>
+<img src="/_blob/d3864543f09846c2d52f8380ea945edd" alt="Map of India showing fire activity in Punjab and Haryana, a cyclone in the Bay of Bengal and a flood near Chennai" style="width: 100%; height: auto; display: block; padding-top: 14px">
+<a href="#" style="display: inline-block; margin-top: 10px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1px solid #17171B; padding: 12px 0 2px">Open full map →</a>
+</section>
+
+<section>
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; padding-bottom: 10px; border-bottom: 1px solid #17171B">Since yesterday 14:00</div>
+<div style="display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 12px; padding: 12px 0; border-bottom: 1px solid #CFC9BC; font-size: 15px; line-height: 1.4"><span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600; color: {{accent}}; padding-top: 3px">+ NEW</span><span>Cyclonic storm enters at level 3</span></div>
+<div style="display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 12px; padding: 12px 0; border-bottom: 1px solid #CFC9BC; font-size: 15px; line-height: 1.4"><span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600; padding-top: 3px">▲ 3 → 4</span><span>Mumbai air, a third city went severe</span></div>
+<div style="display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 12px; padding: 12px 0; border-bottom: 1px solid #CFC9BC; font-size: 15px; line-height: 1.4"><span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600; padding-top: 3px">▲ 1 → 2</span><span>Fires crossed 1.25× seasonal norm</span></div>
+<div style="display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 12px; padding: 12px 0; border-bottom: 1px solid #CFC9BC; font-size: 15px; line-height: 1.4; color: #5C5A55"><span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600; padding-top: 3px">− CLOSED</span><span>3 items · show</span></div>
+</section>
+</aside>
+</div>
+
+<footer style="margin-top: 48px; padding-top: 12px; border-top: 1px solid #17171B; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #5C5A55; letter-spacing: 0.04em">
+<span>SENTINEL · REFRESHED 06:00 / 14:00 / 22:00 IST FROM A RASPBERRY PI</span>
+<span>FIRMS 2H 14M · USGS 2H 14M · GDACS 2H 14M · <span style="color: {{accent}}; font-weight: 600">OPENAQ 10H 14M</span> · EONET QUIET</span>
+</footer>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#A8221B","options":["#A8221B","#C2410C","#1F4E8C","#17171B"]},"$preview":{"width":1440,"height":1900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#A8221B' };
+  }
+}
+</script>
+</body>
+</html>

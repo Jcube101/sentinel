@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sentinel — Desk, phone</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans+Condensed:wght@500;600;700&amp;family=IBM+Plex+Serif:ital,wght@0,400;0,500;1,400&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F3F0E8}
+a{color:#17171B;text-decoration:none}a:hover{color:#A8221B}
+</style>
+</helmet>
+<div style="width: 390px; height: 2560px; box-sizing: border-box; background: #F3F0E8; color: #17171B; font-family: 'IBM Plex Serif', Georgia, serif; display: flex; flex-direction: column">
+
+<header style="padding: 18px 20px 0; background: #F3F0E8">
+<div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; border-bottom: 3px solid #17171B">
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span style="font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 700; font-size: 28px; letter-spacing: 0.04em; line-height: 1">SENTINEL</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase">Situation report · India</span>
+</div>
+<button type="button" aria-label="Refresh status" style="width: 44px; height: 44px; border: 1px solid #17171B; background: transparent; display: flex; align-items: center; justify-content: center; padding: 0">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#17171B" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7"></path><path d="M20 4v5h-5"></path></svg>
+</button>
+</div>
+<div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #17171B; font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.03em">
+<span>NO. 293 · 20 OCT · 14:00 IST</span>
+<span>BY SEVERITY</span>
+</div>
+</header>
+
+<div style="padding: 0 20px; display: flex; flex-direction: column; flex: 1">
+
+<section style="padding: 22px 0 20px; border-bottom: 1px solid #17171B; display: flex; flex-direction: column; gap: 18px">
+<h1 style="margin: 0; font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 600; font-size: 30px; line-height: 1.06; letter-spacing: -0.01em">Mumbai's air is the most severe item on the desk. New: a cyclonic storm in the Bay of Bengal.</h1>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); font-family: 'IBM Plex Mono', monospace">
+<div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 26px; font-weight: 600; color: {{accent}}">1</span><span style="font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase">Severe</span></div>
+<div style="display: flex; flex-direction: column; gap: 2px; border-left: 1px solid #CFC9BC; padding-left: 10px"><span style="font-size: 26px; font-weight: 600">1</span><span style="font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase">High</span></div>
+<div style="display: flex; flex-direction: column; gap: 2px; border-left: 1px solid #CFC9BC; padding-left: 10px"><span style="font-size: 26px; font-weight: 600">1</span><span style="font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase">Elevated</span></div>
+<div style="display: flex; flex-direction: column; gap: 2px; border-left: 1px solid #CFC9BC; padding-left: 10px"><span style="font-size: 26px; font-weight: 600; color: #5C5A55">2</span><span style="font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase">Minor</span></div>
+</div>
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #5C5A55">1 NEW · 2 ESCALATED · 3 CLOSED</div>
+</section>
+
+<div style="display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; margin-top: 16px; background: #E8E3D8; font-size: 14px; line-height: 1.45">
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600; color: {{accent}}; padding-top: 2px; flex: none">LATE</span>
+<span style="font-style: italic">OpenAQ's 14:00 pull came back empty. Air figures are from 06:00.</span>
+</div>
+
+<a href="#" style="display: flex; gap: 14px; padding: 20px 0 20px; border-bottom: 1px solid #17171B">
+<span style="display: flex; flex-direction: column; gap: 8px; width: 40px; flex: none">
+<span style="font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 700; font-size: 40px; line-height: 0.9; color: {{accent}}">1</span>
+<span style="display: flex; gap: 2px" role="img" aria-label="Level 4 of 4"><span style="width: 8px; height: 8px; background: {{accent}}"></span><span style="width: 8px; height: 8px; background: {{accent}}"></span><span style="width: 8px; height: 8px; background: {{accent}}"></span><span style="width: 8px; height: 8px; background: {{accent}}"></span></span>
+</span>
+<span style="display: flex; flex-direction: column; gap: 9px; min-width: 0">
+<span style="display: flex; flex-wrap: wrap; gap: 6px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase">
+<span style="background: {{accent}}; color: #FFFFFF; padding: 3px 7px">L4 · Severe</span>
+<span style="border: 1px solid #17171B; padding: 2px 7px">Air</span>
+<span style="border: 1px solid #17171B; padding: 2px 7px">▲ Escalated</span>
+</span>
+<span style="font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 600; font-size: 23px; line-height: 1.12">Mumbai's air is in the severe band for a third straight run</span>
+<span style="font-size: 15px; line-height: 1.5">PM2.5 712 at Bandra–Kurla. Delhi and Ghaziabad also severe.</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #5C5A55">FROM AQI BAND · <span style="color: {{accent}}; font-weight: 600">LAST-KNOWN</span></span>
+</span>
+</a>
+
+<a href="#" style="display: flex; gap: 14px; padding: 20px 0 20px; border-bottom: 1px solid #17171B">
+<span style="display: flex; flex-direction: column; gap: 8px; width: 40px; flex: none">
+<span style="font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 700; font-size: 40px; line-height: 0.9">2</span>
+<span style="display: flex; gap: 2px" role="img" aria-label="Level 3 of 4"><span style="width: 8px; height: 8px; background: #17171B"></span><span style="width: 8px; height: 8px; background: #17171B"></span><span style="width: 8px; height: 8px; background: #17171B"></span><span style="width: 8px; height: 8px; border: 1px solid #17171B; box-sizing: border-box"></span></span>
+</span>
+<span style="display: flex; flex-direction: column; gap: 9px; min-width: 0">
+<span style="display: flex; flex-wrap: wrap; gap: 6px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase">
+<span style="background: #17171B; color: #F3F0E8; padding: 3px 7px">L3 · High</span>
+<span style="border: 1px solid #17171B; padding: 2px 7px">Cyclone</span>
+<span style="border: 1px solid {{accent}}; color: {{accent}}; padding: 2px 7px; font-weight: 600">+ New</span>
+</span>
+<span style="font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 600; font-size: 22px; line-height: 1.12">Cyclonic storm tracking toward the Odisha coast</span>
+<span style="font-size: 15px; line-height: 1.5">About 520 km SE of Puri. Landfall expected 22–23 Oct.</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #5C5A55">FROM GDACS ORANGE</span>
+</span>
+</a>
+
+<a href="#" style="display: flex; gap: 14px; padding: 20px 0 20px; border-bottom: 1px solid #17171B">
+<span style="display: flex; flex-direction: column; gap: 8px; width: 40px; flex: none">
+<span style="font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 700; font-size: 40px; line-height: 0.9">3</span>
+<span style="display: flex; gap: 2px" role="img" aria-label="Level 2 of 4"><span style="width: 8px; height: 8px; background: #17171B"></span><span style="width: 8px; height: 8px; background: #17171B"></span><span style="width: 8px; height: 8px; border: 1px solid #17171B; box-sizing: border-box"></span><span style="width: 8px; height: 8px; border: 1px solid #17171B; box-sizing: border-box"></span></span>
+</span>
+<span style="display: flex; flex-direction: column; gap: 10px; min-width: 0; flex: 1">
+<span style="display: flex; flex-wrap: wrap; gap: 6px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase">
+<span style="background: #17171B; color: #F3F0E8; padding: 3px 7px">L2 · Elevated</span>
+<span style="border: 1px solid #17171B; padding: 2px 7px">Fire</span>
+<span style="border: 1px solid #17171B; padding: 2px 7px">▲ Escalated</span>
+</span>
+<span style="font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 600; font-size: 21px; line-height: 1.14">Crop burning runs 45% above normal in Punjab and Haryana</span>
+<span style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid #CFC9BC; border-bottom: 1px solid #CFC9BC">
+<span style="display: flex; flex-direction: column; gap: 2px; padding: 10px 8px 10px 0"><b style="font-family: 'IBM Plex Sans Condensed', sans-serif; font-size: 22px">14</b><span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; text-transform: uppercase">Districts</span></span>
+<span style="display: flex; flex-direction: column; gap: 2px; padding: 10px 8px; border-left: 1px solid #CFC9BC"><b style="font-family: 'IBM Plex Sans Condensed', sans-serif; font-size: 22px">386</b><span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; text-transform: uppercase">Fires</span></span>
+<span style="display: flex; flex-direction: column; gap: 2px; padding: 10px 8px; border-left: 1px solid #CFC9BC"><b style="font-family: 'IBM Plex Sans Condensed', sans-serif; font-size: 22px">1.45×</b><span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; text-transform: uppercase">Norm</span></span>
+</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #5C5A55">FROM SAME WEEK 2023–25 · 0 HIGH-INTENSITY</span>
+</span>
+</a>
+
+<a href="#" style="display: flex; gap: 14px; align-items: flex-start; padding: 14px 0; border-bottom: 1px solid #17171B; min-height: 44px">
+<span style="display: flex; flex-direction: column; gap: 6px; width: 40px; flex: none">
+<span style="font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 700; font-size: 26px; line-height: 1">4</span>
+<span style="display: flex; gap: 2px" role="img" aria-label="Level 1 of 4"><span style="width: 8px; height: 8px; background: #17171B"></span><span style="width: 8px; height: 8px; border: 1px solid #17171B; box-sizing: border-box"></span><span style="width: 8px; height: 8px; border: 1px solid #17171B; box-sizing: border-box"></span><span style="width: 8px; height: 8px; border: 1px solid #17171B; box-sizing: border-box"></span></span>
+</span>
+<span style="display: flex; flex-direction: column; gap: 5px; min-width: 0">
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: #5C5A55">L1 · Minor · Flood · GDACS green</span>
+<span style="font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 600; font-size: 18px; line-height: 1.2">Flooding around Chennai and coastal Tamil Nadu</span>
+</span>
+</a>
+
+<a href="#" style="display: flex; gap: 14px; align-items: flex-start; padding: 14px 0; border-bottom: 1px solid #17171B; min-height: 44px">
+<span style="display: flex; flex-direction: column; gap: 6px; width: 40px; flex: none">
+<span style="font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 700; font-size: 26px; line-height: 1">5</span>
+<span style="display: flex; gap: 2px" role="img" aria-label="Level 1 of 4"><span style="width: 8px; height: 8px; background: #17171B"></span><span style="width: 8px; height: 8px; border: 1px solid #17171B; box-sizing: border-box"></span><span style="width: 8px; height: 8px; border: 1px solid #17171B; box-sizing: border-box"></span><span style="width: 8px; height: 8px; border: 1px solid #17171B; box-sizing: border-box"></span></span>
+</span>
+<span style="display: flex; flex-direction: column; gap: 5px; min-width: 0">
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: #5C5A55">L1 · Minor · Earthquake · max M4.6</span>
+<span style="font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 600; font-size: 18px; line-height: 1.2">Six small quakes, largest off the Andamans</span>
+</span>
+</a>
+
+<section style="padding-top: 26px">
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; padding-bottom: 8px; border-bottom: 1px solid #17171B">Since yesterday 14:00</div>
+<div style="display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 10px; padding: 11px 0; border-bottom: 1px solid #CFC9BC; font-size: 15px; line-height: 1.35"><span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600; color: {{accent}}; padding-top: 2px">+ NEW</span><span>Cyclone enters at Level 3</span></div>
+<div style="display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 10px; padding: 11px 0; border-bottom: 1px solid #CFC9BC; font-size: 15px; line-height: 1.35"><span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600; padding-top: 2px">▲ 3 → 4</span><span>Mumbai air, a third city went severe</span></div>
+<div style="display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 10px; padding: 11px 0; border-bottom: 1px solid #CFC9BC; font-size: 15px; line-height: 1.35"><span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600; padding-top: 2px">▲ 1 → 2</span><span>Fires crossed 1.25× seasonal norm</span></div>
+<div style="display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 10px; padding: 11px 0; border-bottom: 1px solid #CFC9BC; font-size: 15px; line-height: 1.35; color: #5C5A55"><span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600; padding-top: 2px">− CLOSED</span><span>3 items · show</span></div>
+</section>
+
+<a href="#" style="display: block; margin-top: 26px; border: 1px solid #17171B; background: #EFEBE2">
+<span style="display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; border-bottom: 1px solid #17171B; font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase"><span>The map</span><span>Open →</span></span>
+<img src="/_blob/d3864543f09846c2d52f8380ea945edd" alt="Map of India showing fire activity in Punjab and Haryana, a cyclone in the Bay of Bengal and a flood near Chennai" style="width: 100%; height: 300px; object-fit: contain; display: block; padding: 14px; box-sizing: border-box">
+</a>
+
+<section style="padding-top: 30px">
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; padding-bottom: 8px; border-bottom: 4px solid #17171B">The wire</div>
+<button type="button" aria-expanded="false" style="width: 100%; min-height: 56px; display: flex; justify-content: space-between; align-items: center; background: transparent; border: 0; border-bottom: 1px solid #17171B; padding: 0; color: #17171B; text-align: left"><span style="font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 600; font-size: 19px">How levels are set</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px">4 levels ›</span></button>
+<button type="button" aria-expanded="false" style="width: 100%; min-height: 56px; display: flex; justify-content: space-between; align-items: center; background: transparent; border: 0; border-bottom: 1px solid #17171B; padding: 0; color: #17171B; text-align: left"><span style="font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 600; font-size: 19px">Fires by district</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px">14 active ›</span></button>
+<button type="button" aria-expanded="false" style="width: 100%; min-height: 56px; display: flex; justify-content: space-between; align-items: center; background: transparent; border: 0; border-bottom: 1px solid #17171B; padding: 0; color: #17171B; text-align: left"><span style="font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 600; font-size: 19px">Worst air</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px">52 stations ›</span></button>
+<button type="button" aria-expanded="false" style="width: 100%; min-height: 56px; display: flex; justify-content: space-between; align-items: center; background: transparent; border: 0; border-bottom: 1px solid #17171B; padding: 0; color: #17171B; text-align: left"><span style="font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 600; font-size: 19px">Earthquakes</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px">6 · max 4.6 ›</span></button>
+<button type="button" aria-expanded="false" style="width: 100%; min-height: 56px; display: flex; justify-content: space-between; align-items: center; background: transparent; border: 0; border-bottom: 1px solid #17171B; padding: 0; color: #17171B; text-align: left"><span style="font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 600; font-size: 19px">Source desk</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px"><span style="color: {{accent}}; font-weight: 600">1 late</span> · 5 ›</span></button>
+</section>
+
+<footer style="padding: 28px 0 24px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; line-height: 1.6; color: #5C5A55; letter-spacing: 0.04em">REFRESHED 06:00 / 14:00 / 22:00 IST FROM A RASPBERRY PI<br>FIRMS · EONET · GDACS · USGS · OPENAQ</footer>
+</div>
+
+<nav aria-label="Primary" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 3px solid #17171B; background: #F3F0E8; font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase">
+<a href="#" style="display: flex; align-items: center; justify-content: center; min-height: 64px; font-weight: 600; box-shadow: inset 0 3px 0 {{accent}}">Desk</a>
+<a href="#" style="display: flex; align-items: center; justify-content: center; min-height: 64px">Map</a>
+<a href="#" style="display: flex; align-items: center; justify-content: center; min-height: 64px">Archive</a>
+<a href="#" style="display: flex; align-items: center; justify-content: center; min-height: 64px">Sources</a>
+</nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#A8221B","options":["#A8221B","#C2410C","#1F4E8C","#17171B"]},"$preview":{"width":390,"height":2560}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#A8221B' };
+  }
+}
+</script>
+</body>
+</html>
