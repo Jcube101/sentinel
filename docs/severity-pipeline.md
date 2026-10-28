@@ -341,8 +341,19 @@ Open as of 28 Oct 2026 (first listed 21 Oct, when the spec was completed).
   **28 Oct:** the same probe (an update matching no row) got HTTP 200 on all four older
   tables and "permission denied" on every table from 001 on. Migration 007 applies the
   pattern to the four (RLS on with a read policy, the id sequence too) and keeps anon's
-  SELECT, since the live site reads `events` and `aqi_readings`. Removing that SELECT
-  from the tables the new site doesn't read waits for the frontend switch.
+  SELECT, since the live site reads `events` and `aqi_readings`. **Applied 29 Oct:** the
+  check query shows no anon or authenticated write on any table or view, and the probe
+  now gets "permission denied" on all eleven tables. Done, apart from *After the frontend
+  switch* below.
+- **After the frontend switch (Job, 29 Oct 2026; waits for Job's go):**
+  1. Remove anon SELECT on `events`, `aqi_readings` and the other older tables the new site
+     no longer reads.
+  2. Check whether anything still needs FIRMS hotspots in `events`. If not, stop writing them
+     there (`fire_events` and the per-day fire points cover the map) and delete the existing
+     rows.
+  3. Then reclaim the space: give Job the exact SQL editor command (no VACUUM FULL from the
+     pipeline session). On 29 Oct `events` took 118 MB of the database's 134 MB, 98 MB of it
+     heap for 37k rows (~2.6 KB a row on disk for ~0.9 KB of data, so mostly bloat).
 - **Live vs archive fire counts:** the baseline uses the reprocessed FIRMS product (SP), the
   live feed is near-real-time (NRT). If NRT detects systematically more or fewer hotspots,
   every `ratio_to_norm` shifts. Only one partial day overlapped in Oct 2026 and FIRMS timed

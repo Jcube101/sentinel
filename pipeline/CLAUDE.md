@@ -294,10 +294,10 @@ migration only after it has been applied.
 
 Applied (checked 28 Oct 2026, every table and view answers): 001 pipeline_runs and
 source freshness, 002 desk_items and snapshots, 003 fire_events, 004 fire_baseline,
-005 quiet-day desk, 006 the DATAGOV sources row. Written 29 Oct, not yet applied: 007
-read-only grants on the pre-001 tables (no code depends on it). Planned next, with the
-frontend phase: a `last_known` column in the `desk_last_level3` view
-(docs/severity-pipeline.md), now migration 008.
+005 quiet-day desk, 006 the DATAGOV sources row, 007 read-only grants on the pre-001
+tables (applied 29 Oct; an anon-key write gets "permission denied" on every table). Planned
+next, with the frontend phase: migration 008 (`last_known` in the `desk_last_level3` view,
+plus the per-edition archive tables, docs/severity-pipeline.md).
 
 ## Schema — events table
 id: text (primary key, deterministic)
