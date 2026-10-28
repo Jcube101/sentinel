@@ -252,8 +252,14 @@ data.gov.in (tests/conftest.py drops the key and blocks requests).
 ## Fire desk
 `fire_desk.py` runs right after the fire stage and turns its fire_events rows
 into one item per state (`fire:<state slug>`, e.g. `fire:madhya-pradesh`).
-The level comes from the last complete UTC day (yesterday; NOAA-20's night
-pass over India ends ~21:00 UTC): its fire events over the state's norm for
+The level comes from yesterday (UTC) once FIRMS holds all of it
+(`[fire.complete_day]`): its night-pass hotspots (from 14:00 UTC) must span 60+
+min, i.e. two of the night pass's 2-3 orbits (18:20-22:20 UTC). Until then no
+levels are set and open items keep the last complete day's levels as
+last-known ("27 Oct incomplete in FIRMS (...)"). Items levelled on an
+incomplete day before the rule (editions 26-27) are restored to their last
+complete-day snapshot (`restore_complete_levels`), and their fire trend points
+in `desk_watch` are dropped. The level: the day's fire events over the state's norm for
 that week (`data/fire_baseline.csv`), counted from `fire.min_fire_events`
 events; a large fire near a city (`data/india_places.csv`) is Level 4. These
 FIRMS-derived levels are capped at `fire.calibration_cap` (2) until live
@@ -261,8 +267,9 @@ counts are calibrated against the archive; a current GDACS wildfire alert in
 the state lifts the item to Level 3 regardless. Today's events so far are in
 `figures.today` (marked partial) and never set the level. Items close after
 `fire.lifecycle.close_after_hours` of complete days below Level 2
-(`figures.quiet_since`). If FIRMS fails, or has no rows for yesterday, open
-items stay last-known; if GDACS fails, they keep their last known alerts.
+(`figures.quiet_since`). If FIRMS fails, has no rows for yesterday, or
+yesterday is incomplete, open items stay last-known; if GDACS fails, they keep
+their last known alerts.
 To test threshold changes against the 2024-2025 archive before editing
 severity.toml: `tools/replay_fire_levels.py --set fire.<key>=<value>` (usage in
 docs/severity-pipeline.md, *Tuning fire thresholds*).

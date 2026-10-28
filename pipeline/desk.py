@@ -12,6 +12,7 @@ and cyclones (GDACS). Each run:
 Thresholds come from severity.toml. Schema: migrations/002_desk_items.sql.
 """
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
@@ -67,6 +68,8 @@ class WatchSubject:
     next_level: the level it is measured against (None = none reachable)
     value / threshold: next_level starts when value reaches threshold;
                 threshold None when there is no distance to compute (GDACS)
+    keep_point: trend point -> False to drop a stored point that no longer
+                counts (fire: points from a day FIRMS hadn't completed)
     """
     id: str
     category: str
@@ -78,6 +81,7 @@ class WatchSubject:
     value: float | None
     threshold: float | None
     source_updated_at: datetime | None
+    keep_point: Callable[[dict], bool] | None = None
 
 
 def _dt(value) -> datetime | None:

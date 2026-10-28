@@ -194,10 +194,19 @@ def test_districts_listed_busiest_first():
 
 # --- the stage: lifecycle against a fake Supabase ---------------------------------------------------
 
-def _results(day=DAY, firms_status="ok", alerts=(), gdacs_status="ok", day_data=True):
+def _firms_rows(day, times):
+    """FIRMS event rows acquired on day at these UTC times ("HH:MM")."""
+    return [{"id": f"FIRMS-{day}-{t}", "started_at": f"{day}T{t}:00+00:00", "raw": {"acq_date": day.isoformat()}}
+            for t in times]
+
+
+# A complete day: the day pass and two orbits of the night pass.
+COMPLETE = ("08:05", "18:45", "20:41")
+
+
+def _results(day=DAY, firms_status="ok", alerts=(), gdacs_status="ok", day_data=True, times=COMPLETE):
     acq = day if day_data else day + timedelta(days=1)
-    firms_rows = [{"id": "FIRMS-a", "started_at": f"{acq}T20:41:00+00:00", "raw": {"acq_date": acq.isoformat()}},
-                  {"id": "FIRMS-b", "started_at": f"{acq}T08:05:00+00:00", "raw": {"acq_date": acq.isoformat()}}]
+    firms_rows = _firms_rows(acq, times)
     return {"FIRMS": FetchResult("FIRMS", firms_rows, True, firms_status, None, 0.1),
             "GDACS": FetchResult("GDACS", [], True, gdacs_status, None, 0.1, {"alerts": list(alerts)})}
 
@@ -321,6 +330,103 @@ def test_gdacs_alert_opens_an_item_and_survives_a_gdacs_outage():
     assert item["severity_level"] == 1 and item["status"] == "open" and item["figures"]["gdacs_wildfire"] == []
 
 
+# --- complete days: the night pass ([fire.complete_day]) -------------------------------------
+
+D27 = date(2026, 10, 27)
+# The rule before 29 Oct 2026: any data for yesterday made it complete.
+LEGACY = copy.deepcopy(CFG)
+LEGACY["fire"]["complete_day"] = {"night_pass_from_hour_utc": 0, "min_night_span_minutes": 0}
+
+
+@pytest.mark.parametrize("times, next_day, why", [
+    # Edition 26: 27 Oct's data ended with the day pass.
+    (("05:44", "09:07"), (), "27 Oct incomplete in FIRMS (data to 09:07 UTC, no night pass yet)"),
+    # Only the night pass's first orbit, which can be a single hotspot.
+    (("06:01", "18:28"), (), "27 Oct incomplete in FIRMS (night pass partly in, data to 18:28 UTC)"),
+    (("06:01", "18:28", "20:08"), (), None),                     # two orbits, 100 min apart
+    # 28 Oct: FIRMS sent 27 Oct's last orbit and 28 Oct's day pass, not 27 Oct's main orbit.
+    (("05:44", "09:07", "21:27", "21:33"), ("07:01",),
+     "27 Oct incomplete in FIRMS (night pass partly in, data to 21:33 UTC)"),
+    # 12 Oct: the night pass never came, though the next day did.
+    (("05:44", "09:07"), ("05:50",), "27 Oct incomplete in FIRMS (data to 09:07 UTC, no night pass yet)"),
+])
+def test_a_day_is_complete_once_firms_holds_its_night_pass(times, next_day, why):
+    rows = _firms_rows(D27, times) + _firms_rows(D27 + timedelta(days=1), next_day)
+    assert fire_desk.night_pass_missing(rows, D27, CFG) == why
+
+
+def test_repo_config_has_the_night_pass_rule():
+    assert load()["fire"]["complete_day"] == {"night_pass_from_hour_utc": 14, "min_night_span_minutes": 60}
+
+
+def test_incomplete_day_keeps_the_last_complete_levels_as_last_known():
+    db = FakeSupabase()
+    _run(db, _events(15), run_id=5)                                        # 20 Oct, complete: opens at L2
+    now, day = _day(1)
+    s = _run(db, _events(2, day=day), now=now, run_id=6, times=("05:44", "09:07"))   # 21 Oct: day pass only
+    item = _item(db)
+    assert (item["status"], item["severity_level"], item["last_known"]) == ("open", 2, True)
+    assert item["figures"]["day"] == "2026-10-20" and item["figures"]["quiet_since"] is None
+    assert item["severity_reason"] == ("15 fire events on 20 Oct, 1.50× the seasonal norm (10/day) · last known: "
+                                       "21 Oct incomplete in FIRMS (data to 09:07 UTC, no night pass yet)")
+    assert _snap(db, 6)["change"] is None
+    assert (s["source_good"], s["day"], s["watch"], s["restored"]) == (False, None, [], [])
+
+    _run(db, _events(2, day=day), now=now + timedelta(hours=6), run_id=7)  # night pass in: 21 Oct counts
+    item = _item(db)
+    assert (item["severity_level"], item["last_known"], item["figures"]["day"]) == (1, False, "2026-10-21")
+    assert item["figures"]["quiet_since"] == "2026-10-21" and _snap(db, 7)["change"] == "deescalated"
+
+
+def test_items_levelled_on_an_incomplete_day_go_back_to_the_last_complete_day():
+    """Editions 26-27 levelled 27 Oct on its day pass. Restoring the last
+    complete day's level and quiet clock keeps that day from counting
+    toward closing the item."""
+    db = FakeSupabase()
+    _run(db, _events(15), run_id=5)                                        # 20 Oct, complete: L2
+    now, day = _day(1)
+    _run(db, _events(2, day=day), now=now, run_id=6, cfg=LEGACY, times=("05:44", "09:07"))   # as edition 26 did
+    assert (_item(db)["severity_level"], _item(db)["figures"]["quiet_since"]) == (1, "2026-10-21")
+
+    s = _run(db, _events(2, day=day), now=now + timedelta(hours=6), run_id=7, times=("05:44", "09:07"))
+    item = _item(db)
+    assert s["restored"] == ["fire:punjab"]
+    assert (item["severity_level"], item["last_known"], item["title"]) == (2, True, "Fire activity in 1 Punjab district")
+    assert item["figures"]["day"] == "2026-10-20" and item["figures"]["quiet_since"] is None
+    assert item["observed_at"] == item["source_updated_at"] == "2026-10-20T20:41:00+00:00"
+    assert item["severity_reason"].startswith("15 fire events on 20 Oct, 1.50× the seasonal norm (10/day) · last known: ")
+    assert (_snap(db, 7)["severity_level"], _snap(db, 7)["change"]) == (2, None)
+
+    now, day = _day(2)
+    _run(db, _events(2, day=day), now=now, run_id=8)                       # 22 Oct, complete and quiet
+    item = _item(db)
+    assert (item["status"], item["severity_level"], item["figures"]["quiet_since"]) == ("open", 1, "2026-10-22")
+    assert _snap(db, 8)["change"] == "deescalated"                        # the old rule would have closed it here
+    now, day = _day(3)
+    _run(db, [], now=now, run_id=9)                                        # 23 Oct: two complete quiet days
+    assert _item(db)["status"] == "closed"
+
+
+def test_no_complete_snapshot_to_restore_leaves_the_item():
+    db = FakeSupabase()
+    _run(db, _events(15), run_id=5, cfg=LEGACY, times=("05:44", "09:07"))  # opened on an incomplete day
+    now, _ = _day(1)
+    s = _run(db, [], now=now, run_id=6, times=("05:44", "09:07"))
+    assert s["restored"] == [] and (_item(db)["severity_level"], _item(db)["last_known"]) == (2, True)
+
+
+def test_watch_drops_trend_points_from_incomplete_days():
+    import watch
+    (subject,) = [w for w in fire_desk.watch_subjects([_candidate(_events(12))], [], NORMS, cfg=CFG, day=DAY,
+                                                      data_to=datetime(2026, 10, 20, 20, 41, tzinfo=timezone.utc))
+                  if w.title == "Punjab"]
+    trend = [{"at": "2026-10-18T21:53:00+00:00", "value": 6, "threshold": 13, "next_level": 2},
+             {"at": "2026-10-19T09:07:00+00:00", "value": 1, "threshold": 13, "next_level": 2}]   # day pass only
+    stored = {"id": "fire:punjab", "trend": trend, "source_updated_at": "2026-10-19T09:07:00+00:00"}
+    row = watch.update_row(subject, stored, CFG, NOW, 5)
+    assert [p["at"] for p in row["trend"]] == ["2026-10-18T21:53:00+00:00", "2026-10-20T20:41:00+00:00"]
+
+
 def test_dry_run_writes_nothing_and_tolerates_a_missing_table():
     db = FakeSupabase(missing={"desk_items"})
     summary = _run(db, _events(15), write=False)
@@ -329,8 +435,10 @@ def test_dry_run_writes_nothing_and_tolerates_a_missing_table():
 
 
 def test_rows_rebuilt_from_firms_when_the_fire_stage_failed():
-    # 15 separate fires (2 km apart) in the test Amritsar square on 20 Oct.
-    hotspots = [_hotspot_row(31.1 + i * 0.02, 74.5, acq_date="2026-10-20") for i in range(15)]
+    # 15 separate fires (2 km apart) in the test Amritsar square on 20 Oct,
+    # across the day pass and two orbits of the night pass.
+    hotspots = [_hotspot_row(31.1 + i * 0.02, 74.5, acq_date="2026-10-20", acq_time=("0812", "1845", "2041")[i % 3])
+                for i in range(15)]
     results = {"FIRMS": FetchResult("FIRMS", hotspots, True, "ok", None, 0.1),
                "GDACS": FetchResult("GDACS", [], True, "ok", None, 0.1, {"alerts": []})}
     db = FakeSupabase()

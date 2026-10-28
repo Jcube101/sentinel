@@ -141,9 +141,10 @@ events_retention_days = 14
 #   inside India's official boundary, filed under Ladakh in the source.
 excluded_district_ids = ["76128533B2782141712775"]
 # One desk item per state (fire_desk.py), levelled on the last complete UTC
-# day (yesterday): its fire events over the state's seasonal norm (mean
-# daily fire events for that calendar week, 2024-2025 baseline). Today's
-# events so far are shown as a partial count only; they never set the level.
+# day (yesterday, once [fire.complete_day] says FIRMS holds all of it): its
+# fire events over the state's seasonal norm (mean daily fire events for that
+# calendar week, 2024-2025 baseline). Today's events so far are shown as a
+# partial count only; they never set the level.
 # Ratio below level_2 = Level 1 ("at norm").
 # A single day's count is bursty (cloud, satellite swath): with the spec's
 # 1.25x / 2x and a minimum of 10, a replay of 2024-2025 kept ~6 fire items
@@ -170,6 +171,23 @@ level_4_min_population = 100000
 # GDACS wildfire alert can still lift an item to gdacs_wildfire_level.
 # 4 = no cap.
 calibration_cap = 2
+
+[fire.complete_day]
+# Yesterday sets fire levels only once FIRMS holds its night pass. NOAA-20
+# crosses India twice per UTC day: the day pass at 05:44-09:37 UTC and the
+# night pass at 18:21-22:18 UTC, in 2-3 orbits about 100 min apart; the
+# first orbit can hold a single hotspot (FIRMS rows, 29 Aug - 27 Oct 2026).
+# FIRMS delivered no night pass for 12 Oct; for 27 Oct, a day later, only
+# its last orbit (62 hotspots at 21:2x; the main orbit, ~300, never came).
+# Edition 26 levelled 27 Oct on day-pass data alone and de-escalated four
+# states. A day is complete when its FIRMS hotspots include the night pass:
+# some acquired at or after this hour (UTC)...
+night_pass_from_hour_utc = 14
+# ...spanning at least this many minutes, i.e. two orbits. In the complete
+# 2024-2025 archive 719 of 730 nights span 60+ min; the other 11 (no fires
+# under one orbit, mostly Jul-Sep) would stay incomplete, so the items keep
+# the levels of the last complete day, marked last-known, until the next.
+min_night_span_minutes = 60
 
 [fire.static_mask]
 # Hotspots in a static heat-source cell (steel plants, refineries, gas

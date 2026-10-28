@@ -59,6 +59,10 @@ class _Query:
         self.filters.append((col, lambda v: v in values))
         return self
 
+    def gte(self, col, value):
+        self.filters.append((col, lambda v, value=value: v is not None and v >= value))
+        return self
+
     def _matches(self, row):
         return all(test(row.get(col)) for col, test in self.filters)
 

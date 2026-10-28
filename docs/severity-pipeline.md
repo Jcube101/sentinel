@@ -22,6 +22,7 @@ which no longer does).
 | Air fallback never replaces a level with older data, plus the no-mean guard (decision 6 under *air source*) | 28 Oct | Offline tests and dry runs. Not yet exercised live: the feed has answered in every run since |
 | GDACS: no droughts, 90 s read timeout, each page's time logged | 28 Oct | Live since edition 25. Whether 90 s stays is **not decided yet** (*GDACS reliability* under *Follow-ups*) |
 | FIRMS fails the run only after 2 timeouts in a row | 28 Oct | Offline tests. Not yet exercised live: FIRMS hasn't timed out since edition 19 |
+| Fire levels only from complete days (night pass in), repair of editions 26-27 (*Decisions (29 Oct 2026)*) | 29 Oct | Offline tests, a dry run, and the fire desk run read-only against live data on 28 Oct 20:13 UTC: 27 Oct incomplete (one night orbit), five items restored to 26 Oct as last-known |
 | Wind speed in the cyclone reason; `last_known` in `desk_last_level3` | not built | Specified for the frontend phase (*Follow-ups*) |
 
 ## The problem
@@ -121,7 +122,8 @@ Draft thresholds, to be tuned:
 
 ## Decisions (21 Oct 2026)
 1. **Fire level from the last complete UTC day** (yesterday) vs its norm. Today's partial
-   count is shown in figures only, marked partial; it never sets the level.
+   count is shown in figures only, marked partial; it never sets the level. "Complete" now
+   means FIRMS holds the night pass (*Decisions (29 Oct 2026)*).
 2. **Calibration cap:** until the live-vs-archive comparison (follow-ups) is done,
    FIRMS-derived fire levels are capped at 2 (`fire.calibration_cap` in `severity.toml`).
    A current GDACS wildfire alert in the state can still lift an item to Level 3. The reason
@@ -177,6 +179,34 @@ From a health review of editions 11-24.
    droughts, so they are no longer requested. GDACS alone gets a 90 s read timeout
    (`config.GDACS_READ_TIMEOUT_S`; the connect timeout and every other source keep 30 s), and
    each page's time is logged. 90 s stays until the decision under *Follow-ups*.
+
+## Decisions (29 Oct 2026): complete fire days
+Edition 26 (28 Oct, 14:30 IST) levelled 27 Oct on FIRMS data that ended at 09:07 UTC, the
+day pass only, and de-escalated Telangana, Chhattisgarh, Maharashtra and Uttar Pradesh to
+Level 1 (Telangana on 1 fire event, Chhattisgarh on 0). Edition 27 repeated it. Their quiet
+clocks started on 27 Oct, so a quiet 28 Oct would have closed all four. No other fire item
+was opened, escalated, de-escalated or closed on an incomplete day: every other judged day
+(20-26 Oct) had its full night pass, the last orbit included.
+1. **A UTC day is complete once FIRMS holds its night pass** (`[fire.complete_day]`). FIRMS
+   rows, 29 Aug-27 Oct 2026: the day pass falls at 05:44-09:37 UTC, the night pass at
+   18:21-22:18 UTC in 2-3 orbits ~100 min apart, nothing in between; the first orbit can hold
+   a single hotspot. Rule: the day's hotspots from 14:00 UTC on span at least 60 min (two
+   orbits). Next-day data is no proof: on 28 Oct FIRMS delivered 27 Oct's last orbit
+   (62 hotspots, 21:2x UTC) and 28 Oct's day pass, but not 27 Oct's main orbit (~300).
+   In the complete 2024-2025 archive, 719 of 730 nights pass; the other 11 (one orbit with
+   no fires, mostly Jul-Sep) are skipped. A night/day count ratio can't tell partial from
+   complete (complete days go as low as 0.06).
+2. **Until yesterday is complete, open items keep the last complete day's levels**,
+   last-known, reason "… · last known: 27 Oct incomplete in FIRMS (night pass partly in,
+   data to 21:33 UTC)". Today is never judged: at the 21:00 UTC run at most its first orbit
+   is in.
+3. **Repair:** an open item whose stored level was set on an incomplete day (data time
+   before 14:00 UTC; only editions 26-27) goes back to its last snapshot from a complete
+   day (level, reason, figures and quiet clock, title, data time) before the run judges
+   anything. Fire trend points from such days are dropped from `desk_watch`. The snapshots
+   of editions 26-27 stay as they were: they record what those editions said.
+4. Known gap: a three-orbit night whose middle (main) orbit is missing while the first is
+   present still passes. Not seen so far.
 
 ## Build plan
 Rules: one work item at a time, each tested and committed separately; the existing

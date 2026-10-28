@@ -2,11 +2,15 @@
 
 Step 6 of docs/severity-pipeline.md. Each run:
 
-  1. Take the fire events (fire.py) of the last complete UTC day, which is
-     always yesterday: NOAA-20 crosses India about 07-09 UTC (day pass) and
-     19-21 UTC (night pass), so a UTC day is complete a few hours after
-     21:00 UTC, before the next day's first run at 09:00 UTC. Today's events
-     so far go into figures as a partial count and never set the level.
+  1. Take the fire events (fire.py) of yesterday (UTC), once that day is
+     complete in FIRMS. NOAA-20 crosses India about 06-10 UTC (day pass) and
+     18-22 UTC (night pass, 2-3 orbits). A day is complete when this run's
+     FIRMS rows hold its night pass ([fire.complete_day]); until then no
+     levels are set and open items keep the last complete day's levels as
+     last-known. FIRMS usually delivers the night pass by the next day's
+     09:00 UTC run, but never sent it for 12 Oct 2026, nor 27 Oct's main
+     orbit. Today's events so far go into figures as a partial count and
+     never set the level.
   2. Per state, the FIRMS-derived level:
        fire events / the state's norm for that calendar week
        (data/fire_baseline.csv, step 5), counted only at min_fire_events
@@ -20,7 +24,10 @@ Step 6 of docs/severity-pipeline.md. Each run:
   4. Reconcile with the stored fire:<state> items: open at
      lifecycle.open_min_level, escalate or de-escalate, close only after
      close_after_hours of complete days below the open level (no fire
-     events counts as below). If FIRMS failed, open items stay last-known.
+     events counts as below). If FIRMS failed, or yesterday isn't complete,
+     open items stay last-known. An open item whose stored level was set on
+     an incomplete day (editions 26-27, before the rule) goes back to its
+     last snapshot from a complete day first.
 
 Thresholds: severity.toml [fire]. Places: data/india_places.csv (GeoNames).
 """
@@ -29,7 +36,7 @@ import logging
 import math
 import re
 from collections import defaultdict
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from functools import lru_cache
 
 import baseline
@@ -50,12 +57,81 @@ def item_id(state: str) -> str:
 
 
 def complete_day(now: datetime) -> date:
-    """The last complete UTC day: yesterday (see the module docstring)."""
+    """The day fire levels come from: yesterday (UTC), and only once
+    night_pass_missing() finds it complete. Today is never complete: at
+    the 21:00 UTC run its night pass has at most its first orbit in."""
     return (now.astimezone(timezone.utc) - timedelta(days=1)).date()
 
 
 def _day_text(d: date) -> str:
     return f"{d.day} {d:%b}"
+
+
+# --- complete days ---------------------------------------------------------------------
+
+def night_pass_missing(rows: list[dict], day: date, cfg: dict) -> str | None:
+    """Why this run's FIRMS rows don't hold all of day yet, or None if they do.
+
+    Complete: hotspots acquired on day at or after night_pass_from_hour_utc
+    that span min_night_span_minutes, i.e. two of the night pass's orbits.
+    Data from the next day proves nothing: on 28 Oct 2026 FIRMS delivered
+    27 Oct's last orbit and 28 Oct's day pass, but not 27 Oct's main orbit.
+    """
+    c = cfg["fire"]["complete_day"]
+    start = datetime.combine(day, time(0), tzinfo=timezone.utc)
+    night_from = start + timedelta(hours=c["night_pass_from_hour_utc"])
+    on_day = [t for r in rows if (t := desk._dt(r.get("started_at"))) and start <= t < start + timedelta(days=1)]
+    night = [t for t in on_day if t >= night_from]
+    data_to = f"data to {max(on_day).astimezone(timezone.utc):%H:%M} UTC" if on_day else "no data"
+    if not night:
+        return f"{_day_text(day)} incomplete in FIRMS ({data_to}, no night pass yet)"
+    if max(night) - min(night) >= timedelta(minutes=c["min_night_span_minutes"]):
+        return None
+    return f"{_day_text(day)} incomplete in FIRMS (night pass partly in, {data_to})"
+
+
+def _before_night_pass(value, cfg: dict) -> bool:
+    """A fire item's data time (figures.data_to, a trend point's at) earlier
+    in its day than the night pass: levelled on an incomplete day."""
+    at = desk._dt(value)
+    return at is not None and at.astimezone(timezone.utc).hour < cfg["fire"]["complete_day"]["night_pass_from_hour_utc"]
+
+
+def restore_complete_levels(supabase, existing: dict[str, dict], cfg: dict, now: datetime) -> list[str]:
+    """Open fire items levelled on an incomplete day go back to their last
+    snapshot from a complete day: level, reason, figures (quiet clock
+    included), title and data time. Changes the items in existing in
+    place; returns their ids.
+
+    Only items from before the [fire.complete_day] rule qualify (editions
+    26-27 levelled 27 Oct on day-pass data); the rule sets no new ones.
+    """
+    stale = [i for i in existing.values() if i["category"] == CATEGORY and i["status"] == "open"
+             and _before_night_pass((i.get("figures") or {}).get("data_to"), cfg)]
+    if not stale:
+        return []
+    since = now - timedelta(days=cfg["fire"]["events_retention_days"])
+    snaps = (supabase.table(desk.SNAPSHOTS_TABLE)
+             .select("run_id,item_id,status,severity_level,severity_reason,figures")
+             .in_("item_id", [i["id"] for i in stale]).gte("taken_at", since.isoformat()).execute().data)
+    restored = []
+    for item in stale:
+        good = [s for s in snaps if s["item_id"] == item["id"]
+                and (s.get("figures") or {}).get("data_to")
+                and not _before_night_pass(s["figures"]["data_to"], cfg)]
+        last = max(good, key=lambda s: s["run_id"], default=None)
+        if last is None or last["status"] != "open":
+            logger.warning("fire desk: %s was levelled on an incomplete day and has no open snapshot from a "
+                           "complete day to restore; left as it is", item["id"])
+            continue
+        f = last["figures"]
+        item.update(severity_level=last["severity_level"],
+                    severity_reason=last["severity_reason"].split(desk.LAST_KNOWN_SEP)[0],
+                    figures=f, title=_title(f.get("state") or item["place_name"], f.get("district_count") or 0,
+                                            f.get("gdacs_wildfire")),
+                    observed_at=f["data_to"], source_updated_at=f["data_to"])
+        restored.append(item["id"])
+    return restored
 
 
 def _count(n: int, word: str) -> str:
@@ -143,6 +219,14 @@ def _norm_text(n: float) -> str:
     return f"{n:.0f}" if n >= 10 else f"{n:.1f}"
 
 
+def _title(state: str, districts: int, alerts) -> str:
+    if districts:
+        return f"Fire activity in {districts} {state} district" + ("" if districts == 1 else "s")
+    if alerts:
+        return f"Forest fire in {state}"
+    return f"No fire activity in {state}"
+
+
 def state_candidate(state: str, events: list[dict], today_events: list[dict], norm: dict | None,
                     alerts: list[dict], *, cfg: dict, day: date, today: date, places,
                     gdacs_checked: bool, data_to: datetime | None) -> desk.Candidate:
@@ -192,12 +276,7 @@ def state_candidate(state: str, events: list[dict], today_events: list[dict], no
                            key=lambda d: (-d["fire_events"], d["district"]))
 
     k = len(district_list)
-    if k:
-        title = f"Fire activity in {k} {state} district" + ("" if k == 1 else "s")
-    elif alerts:
-        title = f"Forest fire in {state}"
-    else:
-        title = f"No fire activity in {state}"
+    title = _title(state, k, alerts)
 
     if events:
         lat = round(sum(e["latitude"] for e in events) / n, 4)
@@ -317,12 +396,14 @@ def watch_subjects(candidates: list[desk.Candidate], items: list[dict], norms: d
     """Every state with a norm for the week, measured as fire events on the
     complete day against the count its next level needs:
     max(min_fire_events, that level's ratio x the norm). Only ratio levels
-    are measured (Level 4 has no distance), up to calibration_cap."""
+    are measured (Level 4 has no distance), up to calibration_cap. Trend
+    points from an incomplete day (stored by editions 26-27) are dropped."""
     f = cfg["fire"]
     week = baseline.week_of(day)
     by_state = {c.place_name: c for c in candidates}
     open_ids = {i["id"] for i in items if i["status"] == "open"}
     reachable = min(f["calibration_cap"], 3)
+    keep_point = lambda point: not _before_night_pass(point.get("at"), cfg)  # noqa: E731
     out = []
     for (state, w), norm in sorted(norms.items()):
         if w != week or state == baseline.NATIONAL:
@@ -340,7 +421,7 @@ def watch_subjects(candidates: list[desk.Candidate], items: list[dict], norms: d
         out.append(desk.WatchSubject(
             id=sid, category=CATEGORY, title=state, item_id=sid if sid in open_ids else None, level=level,
             next_level=next_level, metric=metric, value=c.figures["fire_events"] if c else 0,
-            threshold=threshold, source_updated_at=data_to))
+            threshold=threshold, source_updated_at=data_to, keep_point=keep_point))
     return out
 
 
@@ -369,6 +450,8 @@ def run_fire_desk(supabase, run_id: int | None, results: dict, now: datetime, *,
         day_spots = [r for r in firms.rows if (r.get("raw") or {}).get("acq_date") == day.isoformat()]
         if not day_spots:
             note = f"no FIRMS data for {_day_text(day)} in this run"
+        else:
+            note = night_pass_missing(firms.rows, day, cfg)
 
     day_rows, today_rows, alerts, unmatched = [], [], {}, 0
     if note is None:
@@ -383,11 +466,12 @@ def run_fire_desk(supabase, run_id: int | None, results: dict, now: datetime, *,
     try:
         ids = {item_id(r["state"]) for r in day_rows} | {item_id(s) for s in alerts}
         existing = desk.load_items(supabase, {CATEGORY}, sorted(ids))
+        restored = restore_complete_levels(supabase, existing, cfg, now)
     except Exception as exc:
         if write:
             raise
         logger.warning("dry-run: could not read desk items — %s", exc)
-        existing = {}
+        existing, restored = {}, []
 
     candidates, watch = [], []
     if note is None:
@@ -410,9 +494,10 @@ def run_fire_desk(supabase, run_id: int | None, results: dict, now: datetime, *,
     return {
         "items": items,
         "watch": watch,
-        "day": day.isoformat(),
+        "day": day.isoformat() if note is None else None,   # the day this run's levels come from
         "source_good": note is None,
         "note": note,
+        "restored": restored,
         "assessed": len(candidates),
         "open": [f"{i['place_name']} L{i['severity_level']}" + (" capped" if (i.get("figures") or {}).get("capped") else "")
                  + (" last-known" if i["last_known"] else "") for i in open_items],

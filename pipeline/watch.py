@@ -75,6 +75,8 @@ def update_row(subject: desk.WatchSubject, stored: dict | None, cfg: dict, now: 
     """The desk_watch row for a subject this run, building on its stored row."""
     w = cfg["watching"]
     trend = list((stored or {}).get("trend") or [])
+    if subject.keep_point is not None:
+        trend = [p for p in trend if subject.keep_point(p)]
     stored_at = desk._dt((stored or {}).get("source_updated_at"))
     at = subject.source_updated_at
     if stored is None or (at is not None and (stored_at is None or at > stored_at)):

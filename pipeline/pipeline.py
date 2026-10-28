@@ -420,6 +420,9 @@ def run(dry_run: bool = False):
                 supabase, run_id, results, datetime.now(tz=timezone.utc), rows=fire_rows, write=not dry_run)
             stages["fire_desk"] = summary
             prefix = "dry-run: " if dry_run else ""
+            if summary.get("restored"):
+                logger.warning("%sfire desk: levelled on an incomplete day, restored to the last complete day: %s",
+                               prefix, ", ".join(summary["restored"]))
             if summary["source_good"]:
                 logger.info(
                     "%sfire desk: %s assessed, %d states; open: %s; changes: %s; top ratios: %s%s",
