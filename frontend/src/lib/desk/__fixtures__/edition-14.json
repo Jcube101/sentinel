@@ -1,0 +1,624 @@
+{
+ "run": {
+  "id": 14,
+  "started_at": "2026-10-24T09:00:03.807957+00:00",
+  "finished_at": "2026-10-24T09:04:18.988428+00:00",
+  "status": "ok",
+  "duration_s": 255.2,
+  "sources": {
+   "USGS": {
+    "rows": 118,
+    "error": null,
+    "status": "ok",
+    "new_data": true,
+    "duration_s": 0.7,
+    "newest_observation_at": "2026-10-23T22:39:10.336000+00:00"
+   },
+   "EONET": {
+    "rows": 0,
+    "error": null,
+    "status": "ok",
+    "new_data": false,
+    "duration_s": 2.1,
+    "newest_observation_at": null
+   },
+   "FIRMS": {
+    "rows": 1362,
+    "error": null,
+    "status": "ok",
+    "new_data": true,
+    "duration_s": 2.1,
+    "newest_observation_at": "2026-10-24T06:40:00+00:00"
+   },
+   "GDACS": {
+    "rows": 0,
+    "error": "HTTPSConnectionPool(host='www.gdacs.org', port=443): Read timed out. (read timeout=30)",
+    "status": "timeout",
+    "new_data": false,
+    "duration_s": 111.2,
+    "newest_observation_at": null
+   },
+   "OPENAQ": {
+    "rows": 428,
+    "error": null,
+    "status": "ok",
+    "new_data": true,
+    "duration_s": 122.4,
+    "newest_observation_at": "2026-10-24T08:30:00+00:00"
+   },
+   "DATAGOV": {
+    "rows": 3752,
+    "error": null,
+    "status": "ok",
+    "new_data": true,
+    "duration_s": 4.3,
+    "newest_observation_at": "2026-10-24T14:00:00+05:30"
+   }
+  }
+ },
+ "snapshots": [
+  {
+   "run_id": 14,
+   "item_id": "air:IN",
+   "taken_at": "2026-10-24T09:04:08.842862+00:00",
+   "category": "air",
+   "status": "open",
+   "severity_level": 2,
+   "severity_reason": "Very poor in Baraut, Meerut, Gajraula (CPCB AQI, real-time (unvalidated); to 24 Oct, 14:00 IST)",
+   "last_known": false,
+   "new_data": true,
+   "change": null,
+   "figures": {
+    "cities": [
+     {
+      "aqi": 335,
+      "band": "very_poor",
+      "city": "Baraut",
+      "state": "Uttar Pradesh",
+      "stations": 1,
+      "prominent": [
+       "PM2.5"
+      ],
+      "counted_as": "very_poor"
+     },
+     {
+      "aqi": 323,
+      "band": "very_poor",
+      "city": "Meerut",
+      "state": "Uttar Pradesh",
+      "stations": 3,
+      "prominent": [
+       "PM2.5"
+      ],
+      "counted_as": "very_poor"
+     },
+     {
+      "aqi": 301,
+      "band": "very_poor",
+      "city": "Gajraula",
+      "state": "Uttar Pradesh",
+      "stations": 1,
+      "prominent": [
+       "PM2.5"
+      ],
+      "counted_as": "very_poor"
+     },
+     {
+      "aqi": 273,
+      "band": "poor",
+      "city": "Baghpat",
+      "state": "Uttar Pradesh",
+      "stations": 1,
+      "prominent": [
+       "PM2.5"
+      ],
+      "counted_as": "poor"
+     },
+     {
+      "aqi": 272,
+      "band": "poor",
+      "city": "Sonipat",
+      "state": "Haryana",
+      "stations": 1,
+      "prominent": [
+       "PM2.5"
+      ],
+      "counted_as": "poor"
+     },
+     {
+      "aqi": 244,
+      "band": "poor",
+      "city": "Muzaffarnagar",
+      "state": "Uttar Pradesh",
+      "stations": 1,
+      "prominent": [
+       "PM2.5"
+      ],
+      "counted_as": "poor"
+     },
+     {
+      "aqi": 239,
+      "band": "poor",
+      "city": "Ballabgarh",
+      "state": "Haryana",
+      "stations": 1,
+      "prominent": [
+       "PM2.5"
+      ],
+      "counted_as": "poor"
+     },
+     {
+      "aqi": 238,
+      "band": "poor",
+      "city": "Mehsana",
+      "state": "Gujarat",
+      "stations": 1,
+      "prominent": [
+       "PM2.5"
+      ],
+      "counted_as": "poor"
+     },
+     {
+      "aqi": 237,
+      "band": "poor",
+      "city": "Kurukshetra",
+      "state": "Haryana",
+      "stations": 1,
+      "prominent": [
+       "PM2.5"
+      ],
+      "counted_as": "poor"
+     },
+     {
+      "aqi": 228,
+      "band": "poor",
+      "city": "Modinagar",
+      "state": "Uttar Pradesh",
+      "stations": 1,
+      "prominent": [
+       "PM2.5"
+      ],
+      "counted_as": "poor"
+     },
+     {
+      "aqi": 222,
+      "band": "poor",
+      "city": "Ghaziabad",
+      "state": "Uttar Pradesh",
+      "stations": 7,
+      "prominent": [
+       "PM2.5"
+      ],
+      "counted_as": "poor"
+     },
+     {
+      "aqi": 211,
+      "band": "poor",
+      "city": "Mandideep",
+      "state": "Madhya Pradesh",
+      "stations": 1,
+      "prominent": [
+       "PM10"
+      ],
+      "counted_as": "poor"
+     },
+     {
+      "aqi": 201,
+      "band": "poor",
+      "city": "Karnal",
+      "state": "Haryana",
+      "stations": 1,
+      "prominent": [
+       "PM2.5"
+      ],
+      "counted_as": "poor"
+     }
+    ],
+    "counts": {
+     "poor": 10,
+     "severe": 0,
+     "very_poor": 3
+    },
+    "method": "CPCB AQI from CPCB's real-time sub-indices on data.gov.in: station AQI = highest sub-index (at least 3 pollutants incl. PM2.5 or PM10), city AQI = mean of its stations",
+    "source": "datagov",
+    "dataset": "https://data.gov.in/resource/real-time-air-quality-index-various-locations",
+    "requests": 4,
+    "data_as_of": "2026-10-24T14:00:00+05:30",
+    "quorum_met": true,
+    "approximate": false,
+    "snapshot_at": "2026-10-24T14:00:00+05:30",
+    "unvalidated": true,
+    "fresh_cities": 264,
+    "worst_cities": [
+     {
+      "aqi": 335,
+      "city": "Baraut"
+     },
+     {
+      "aqi": 323,
+      "city": "Meerut"
+     },
+     {
+      "aqi": 301,
+      "city": "Gajraula"
+     },
+     {
+      "aqi": 273,
+      "city": "Baghpat"
+     },
+     {
+      "aqi": 272,
+      "city": "Sonipat"
+     },
+     {
+      "aqi": 244,
+      "city": "Muzaffarnagar"
+     },
+     {
+      "aqi": 239,
+      "city": "Ballabgarh"
+     },
+     {
+      "aqi": 238,
+      "city": "Mehsana"
+     },
+     {
+      "aqi": 237,
+      "city": "Kurukshetra"
+     },
+     {
+      "aqi": 228,
+      "city": "Modinagar"
+     }
+    ],
+    "severe_streaks": {},
+    "stations_listed": 536,
+    "cities_reporting": 264,
+    "min_fresh_cities": 10,
+    "severe_unconfirmed": [],
+    "snapshot_age_hours": 0.6,
+    "stations_reporting": 510,
+    "severe_confirm_runs": 2,
+    "max_snapshot_age_hours": 6
+   },
+   "desk_items": {
+    "title": "Air quality: very poor in Panipat",
+    "source": "DATAGOV",
+    "latitude": null,
+    "longitude": null,
+    "place_name": "India",
+    "source_ref": null
+   }
+  },
+  {
+   "run_id": 14,
+   "item_id": "earthquake:USGS-us6000u43g",
+   "taken_at": "2026-10-24T09:04:08.57393+00:00",
+   "category": "earthquake",
+   "status": "open",
+   "severity_level": 4,
+   "severity_reason": "M7.0, 348 km from India (USGS)",
+   "last_known": false,
+   "new_data": true,
+   "change": null,
+   "figures": {
+    "tsunami": false,
+    "depth_km": 18.0,
+    "in_india": false,
+    "magnitude": 7.0,
+    "usgs_alert": "orange",
+    "felt_reports": 8,
+    "km_from_india": 347.9,
+    "magnitude_type": "mww"
+   },
+   "desk_items": {
+    "title": "M7.0 earthquake, 191 km ENE of Nagqu, China",
+    "source": "USGS",
+    "latitude": 32.3805,
+    "longitude": 93.7797,
+    "place_name": "191 km ENE of Nagqu, China",
+    "source_ref": "USGS-us6000u43g"
+   }
+  },
+  {
+   "run_id": 14,
+   "item_id": "earthquake:USGS-us6000u4f5",
+   "taken_at": "2026-10-24T09:04:08.57393+00:00",
+   "category": "earthquake",
+   "status": "open",
+   "severity_level": 1,
+   "severity_reason": "M4.6, 48 km from India (USGS)",
+   "last_known": false,
+   "new_data": true,
+   "change": "opened",
+   "figures": {
+    "tsunami": false,
+    "depth_km": 116.703,
+    "in_india": false,
+    "magnitude": 4.6,
+    "usgs_alert": null,
+    "felt_reports": null,
+    "km_from_india": 47.8,
+    "magnitude_type": "mb"
+   },
+   "desk_items": {
+    "title": "M4.6 earthquake, 91 km ESE of Tuensang, India",
+    "source": "USGS",
+    "latitude": 25.9295,
+    "longitude": 95.6545,
+    "place_name": "91 km ESE of Tuensang, India",
+    "source_ref": "USGS-us6000u4f5"
+   }
+  },
+  {
+   "run_id": 14,
+   "item_id": "fire:madhya-pradesh",
+   "taken_at": "2026-10-24T09:04:08.225638+00:00",
+   "category": "fire",
+   "status": "closed",
+   "severity_level": 1,
+   "severity_reason": "109 fire events on 23 Oct, 1.59× the seasonal norm (69/day)",
+   "last_known": false,
+   "new_data": true,
+   "change": "closed",
+   "figures": {
+    "day": "2026-10-23",
+    "week": 43,
+    "state": "Madhya Pradesh",
+    "today": {
+     "date": "2026-10-24",
+     "partial": true,
+     "hotspots": 0,
+     "fire_events": 0,
+     "district_count": 0
+    },
+    "capped": false,
+    "data_to": "2026-10-23T21:10:00+00:00",
+    "product": "VIIRS NOAA-20 NRT",
+    "hotspots": 132,
+    "districts": [
+     {
+      "frp_max": 11.68,
+      "district": "Ashoknagar",
+      "hotspots": 25,
+      "district_id": "76128533B75548370501185",
+      "fire_events": 21
+     },
+     {
+      "frp_max": 14.8,
+      "district": "Guna",
+      "hotspots": 18,
+      "district_id": "76128533B79048012717121",
+      "fire_events": 13
+     },
+     {
+      "frp_max": 4.08,
+      "district": "Sagar",
+      "hotspots": 12,
+      "district_id": "76128533B30447764775083",
+      "fire_events": 10
+     },
+     {
+      "frp_max": 6.78,
+      "district": "Seoni",
+      "hotspots": 13,
+      "district_id": "76128533B78482805703540",
+      "fire_events": 10
+     },
+     {
+      "frp_max": 11.72,
+      "district": "Hoshangabad",
+      "hotspots": 10,
+      "district_id": "76128533B45314020251888",
+      "fire_events": 9
+     },
+     {
+      "frp_max": 11.11,
+      "district": "Shivpuri",
+      "hotspots": 10,
+      "district_id": "76128533B66335428496945",
+      "fire_events": 9
+     },
+     {
+      "frp_max": 8.54,
+      "district": "Sehore",
+      "hotspots": 7,
+      "district_id": "76128533B39959897010345",
+      "fire_events": 6
+     },
+     {
+      "frp_max": 5.86,
+      "district": "Harda",
+      "hotspots": 4,
+      "district_id": "76128533B21179322085415",
+      "fire_events": 4
+     },
+     {
+      "frp_max": 4.41,
+      "district": "Damoh",
+      "hotspots": 4,
+      "district_id": "76128533B44250373880839",
+      "fire_events": 3
+     },
+     {
+      "frp_max": 3.39,
+      "district": "Datia",
+      "hotspots": 4,
+      "district_id": "76128533B80958502091898",
+      "fire_events": 3
+     },
+     {
+      "frp_max": 4.23,
+      "district": "Gwalior",
+      "hotspots": 3,
+      "district_id": "76128533B90551733723251",
+      "fire_events": 3
+     },
+     {
+      "frp_max": 12.9,
+      "district": "Sheopur",
+      "hotspots": 3,
+      "district_id": "76128533B82240600990321",
+      "fire_events": 3
+     },
+     {
+      "frp_max": 3.5,
+      "district": "Bhind",
+      "hotspots": 2,
+      "district_id": "76128533B57712033428660",
+      "fire_events": 2
+     },
+     {
+      "frp_max": 7.31,
+      "district": "Khandwa (East Nimar)",
+      "hotspots": 2,
+      "district_id": "76128533B71271011331008",
+      "fire_events": 2
+     },
+     {
+      "frp_max": 2.83,
+      "district": "Khargone (West Nimar)",
+      "hotspots": 2,
+      "district_id": "76128533B69481535535995",
+      "fire_events": 2
+     },
+     {
+      "frp_max": 9.4,
+      "district": "Narsimhapur",
+      "hotspots": 5,
+      "district_id": "76128533B20683890392439",
+      "fire_events": 2
+     },
+     {
+      "frp_max": 6.29,
+      "district": "Vidisha",
+      "hotspots": 2,
+      "district_id": "76128533B64834018186186",
+      "fire_events": 2
+     },
+     {
+      "frp_max": 3.72,
+      "district": "Chhindwara",
+      "hotspots": 1,
+      "district_id": "76128533B70646408240587",
+      "fire_events": 1
+     },
+     {
+      "frp_max": 6.24,
+      "district": "Dewas",
+      "hotspots": 2,
+      "district_id": "76128533B53549946596470",
+      "fire_events": 1
+     },
+     {
+      "frp_max": 3.15,
+      "district": "Katni",
+      "hotspots": 1,
+      "district_id": "76128533B16674973717653",
+      "fire_events": 1
+     },
+     {
+      "frp_max": 2.76,
+      "district": "Panna",
+      "hotspots": 1,
+      "district_id": "76128533B81607600692021",
+      "fire_events": 1
+     },
+     {
+      "frp_max": 1.05,
+      "district": "Singrauli",
+      "hotspots": 1,
+      "district_id": "76128533B50014751336341",
+      "fire_events": 1
+     }
+    ],
+    "norm_years": "2024-2025",
+    "fire_events": 109,
+    "firms_level": 1,
+    "gdacs_level": null,
+    "quiet_since": "2026-10-22",
+    "ratio_level": 1,
+    "gdacs_checked": false,
+    "ratio_counted": true,
+    "ratio_to_norm": 1.586,
+    "district_count": 22,
+    "gdacs_wildfire": [],
+    "calibration_cap": 2,
+    "min_fire_events": 25,
+    "norm_daily_events": 68.7381,
+    "norm_max_daily_events": 254,
+    "large_fires_near_people": []
+   },
+   "desk_items": {
+    "title": "Fire activity in 26 Madhya Pradesh districts",
+    "source": "FIRMS",
+    "latitude": 23.8395,
+    "longitude": 78.2371,
+    "place_name": "Madhya Pradesh",
+    "source_ref": null
+   }
+  }
+ ],
+ "status": [
+  {
+   "run_id": 14,
+   "category": "air",
+   "level": 2,
+   "open_items": 1,
+   "last_known": false,
+   "summary": "Air quality: very poor in 3 cities",
+   "source": "DATAGOV",
+   "source_status": "ok",
+   "watching": 0,
+   "taken_at": "2026-10-24T09:04:13.659767+00:00"
+  },
+  {
+   "run_id": 14,
+   "category": "cyclone",
+   "level": null,
+   "open_items": 0,
+   "last_known": true,
+   "summary": "No current GDACS cyclone alerts for India · last known: GDACS fetch failed this run",
+   "source": "GDACS",
+   "source_status": "timeout",
+   "watching": 0,
+   "taken_at": "2026-10-24T09:04:13.659767+00:00"
+  },
+  {
+   "run_id": 14,
+   "category": "earthquake",
+   "level": 4,
+   "open_items": 2,
+   "last_known": false,
+   "summary": "M7.0 earthquake, 191 km ENE of Nagqu, China (+1 more)",
+   "source": "USGS",
+   "source_status": "ok",
+   "watching": 0,
+   "taken_at": "2026-10-24T09:04:13.659767+00:00"
+  },
+  {
+   "run_id": 14,
+   "category": "fire",
+   "level": null,
+   "open_items": 0,
+   "last_known": false,
+   "summary": "No state at 2× its seasonal fire norm on 23 Oct",
+   "source": "FIRMS",
+   "source_status": "ok",
+   "watching": 0,
+   "taken_at": "2026-10-24T09:04:13.659767+00:00"
+  },
+  {
+   "run_id": 14,
+   "category": "flood",
+   "level": null,
+   "open_items": 0,
+   "last_known": true,
+   "summary": "No current GDACS flood alerts for India · last known: GDACS fetch failed this run",
+   "source": "GDACS",
+   "source_status": "timeout",
+   "watching": 0,
+   "taken_at": "2026-10-24T09:04:13.659767+00:00"
+  }
+ ]
+}

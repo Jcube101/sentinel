@@ -40,8 +40,9 @@ How the pages work:
 - **An edition is read from its snapshots, not from `desk_items`.** A run writes its
   stages one after another over 5-11 minutes, so `desk_items` can be half-updated during a
   run; a finished run's snapshots can't. The latest edition and past editions use the same
-  code. If a stage crashed in that run (no snapshots for its category), the latest edition
-  falls back to that category's open `desk_items` rows, shown as last-known.
+  code. If a stage crashed in that run (no snapshots for its category), the edition's late
+  notice names the category as last-known. Showing that category's open `desk_items` rows
+  on the latest edition instead is a follow-up for step 2.
 - **Latest edition** = the newest `pipeline_runs` row that isn't `running`. A failed
   edition is still shown, with what failed (from `pipeline_runs.sources`).
 - **Ranking:** level, then strength (fire `ratio_to_norm`, quake magnitude), then title:

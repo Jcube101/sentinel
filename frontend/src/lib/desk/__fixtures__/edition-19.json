@@ -1,0 +1,1066 @@
+{
+ "run": {
+  "id": 19,
+  "started_at": "2026-10-25T21:00:00.361476+00:00",
+  "finished_at": "2026-10-25T21:08:33.461984+00:00",
+  "status": "failed",
+  "duration_s": 513.1,
+  "sources": {
+   "USGS": {
+    "rows": 123,
+    "error": null,
+    "status": "ok",
+    "new_data": false,
+    "duration_s": 0.7,
+    "newest_observation_at": "2026-10-24T19:34:13.223000+00:00"
+   },
+   "EONET": {
+    "rows": 0,
+    "error": null,
+    "status": "ok",
+    "new_data": false,
+    "duration_s": 1.5,
+    "newest_observation_at": null
+   },
+   "FIRMS": {
+    "rows": 0,
+    "error": "HTTPSConnectionPool(host='firms.modaps.eosdis.nasa.gov', port=443): Read timed out. (read timeout=30)",
+    "status": "timeout",
+    "new_data": false,
+    "duration_s": 113.4,
+    "newest_observation_at": null
+   },
+   "GDACS": {
+    "rows": 0,
+    "error": "HTTPSConnectionPool(host='www.gdacs.org', port=443): Read timed out. (read timeout=30)",
+    "status": "timeout",
+    "new_data": false,
+    "duration_s": 248.5,
+    "newest_observation_at": null
+   },
+   "OPENAQ": {
+    "rows": 428,
+    "error": null,
+    "status": "ok",
+    "new_data": true,
+    "duration_s": 131.3,
+    "newest_observation_at": "2026-10-25T20:30:00+00:00"
+   },
+   "DATAGOV": {
+    "rows": 3675,
+    "error": null,
+    "status": "ok",
+    "new_data": true,
+    "duration_s": 8.0,
+    "newest_observation_at": "2026-10-26T02:00:00+05:30"
+   }
+  }
+ },
+ "snapshots": [
+  {
+   "run_id": 19,
+   "item_id": "air:IN",
+   "taken_at": "2026-10-25T21:08:19.184169+00:00",
+   "category": "air",
+   "status": "open",
+   "severity_level": 1,
+   "severity_reason": "Poor in Khairthal, Fatehpur Sikri, Visakhapatnam and 3 more (CPCB AQI, real-time (unvalidated); to 26 Oct, 02:00 IST)",
+   "last_known": false,
+   "new_data": true,
+   "change": null,
+   "figures": {
+    "cities": [
+     {
+      "aqi": 282,
+      "band": "poor",
+      "city": "Khairthal",
+      "state": "Rajasthan",
+      "stations": 1,
+      "prominent": [
+       "PM2.5"
+      ],
+      "counted_as": "poor"
+     },
+     {
+      "aqi": 261,
+      "band": "poor",
+      "city": "Fatehpur Sikri",
+      "state": "Uttar Pradesh",
+      "stations": 1,
+      "prominent": [
+       "PM2.5"
+      ],
+      "counted_as": "poor"
+     },
+     {
+      "aqi": 239,
+      "band": "poor",
+      "city": "Visakhapatnam",
+      "state": "Andhra Pradesh",
+      "stations": 1,
+      "prominent": [
+       "PM2.5"
+      ],
+      "counted_as": "poor"
+     },
+     {
+      "aqi": 213,
+      "band": "poor",
+      "city": "Agartala",
+      "state": "Tripura",
+      "stations": 1,
+      "prominent": [
+       "PM10"
+      ],
+      "counted_as": "poor"
+     },
+     {
+      "aqi": 212,
+      "band": "poor",
+      "city": "Mehsana",
+      "state": "Gujarat",
+      "stations": 1,
+      "prominent": [
+       "PM2.5"
+      ],
+      "counted_as": "poor"
+     },
+     {
+      "aqi": 208,
+      "band": "poor",
+      "city": "Sonipat",
+      "state": "Haryana",
+      "stations": 1,
+      "prominent": [
+       "PM2.5"
+      ],
+      "counted_as": "poor"
+     }
+    ],
+    "counts": {
+     "poor": 6,
+     "severe": 0,
+     "very_poor": 0
+    },
+    "method": "CPCB AQI from CPCB's real-time sub-indices on data.gov.in: station AQI = highest sub-index (at least 3 pollutants incl. PM2.5 or PM10), city AQI = mean of its stations",
+    "source": "datagov",
+    "dataset": "https://data.gov.in/resource/real-time-air-quality-index-various-locations",
+    "requests": 4,
+    "data_as_of": "2026-10-26T02:00:00+05:30",
+    "quorum_met": true,
+    "approximate": false,
+    "snapshot_at": "2026-10-26T02:00:00+05:30",
+    "unvalidated": true,
+    "fresh_cities": 263,
+    "worst_cities": [
+     {
+      "aqi": 282,
+      "city": "Khairthal"
+     },
+     {
+      "aqi": 261,
+      "city": "Fatehpur Sikri"
+     },
+     {
+      "aqi": 239,
+      "city": "Visakhapatnam"
+     },
+     {
+      "aqi": 213,
+      "city": "Agartala"
+     },
+     {
+      "aqi": 212,
+      "city": "Mehsana"
+     },
+     {
+      "aqi": 208,
+      "city": "Sonipat"
+     },
+     {
+      "aqi": 192,
+      "city": "Paradeep"
+     },
+     {
+      "aqi": 190,
+      "city": "Sawai Madhopur"
+     },
+     {
+      "aqi": 186,
+      "city": "Mathura"
+     },
+     {
+      "aqi": 181,
+      "city": "Mandideep"
+     }
+    ],
+    "severe_streaks": {},
+    "stations_listed": 525,
+    "cities_reporting": 263,
+    "min_fresh_cities": 10,
+    "severe_unconfirmed": [],
+    "snapshot_age_hours": 0.6,
+    "stations_reporting": 499,
+    "severe_confirm_runs": 2,
+    "max_snapshot_age_hours": 6
+   },
+   "desk_items": {
+    "title": "Air quality: very poor in Panipat",
+    "source": "DATAGOV",
+    "latitude": null,
+    "longitude": null,
+    "place_name": "India",
+    "source_ref": null
+   }
+  },
+  {
+   "run_id": 19,
+   "item_id": "earthquake:USGS-us6000u4f5",
+   "taken_at": "2026-10-25T21:08:18.981889+00:00",
+   "category": "earthquake",
+   "status": "closed",
+   "severity_level": 1,
+   "severity_reason": "M4.6, 48 km from India (USGS)",
+   "last_known": false,
+   "new_data": false,
+   "change": "closed",
+   "figures": {
+    "tsunami": false,
+    "depth_km": 116.703,
+    "in_india": false,
+    "magnitude": 4.6,
+    "usgs_alert": null,
+    "felt_reports": null,
+    "km_from_india": 47.8,
+    "magnitude_type": "mb"
+   },
+   "desk_items": {
+    "title": "M4.6 earthquake, 91 km ESE of Tuensang, India",
+    "source": "USGS",
+    "latitude": 25.9295,
+    "longitude": 95.6545,
+    "place_name": "91 km ESE of Tuensang, India",
+    "source_ref": "USGS-us6000u4f5"
+   }
+  },
+  {
+   "run_id": 19,
+   "item_id": "earthquake:USGS-us6000u4p1",
+   "taken_at": "2026-10-25T21:08:18.981889+00:00",
+   "category": "earthquake",
+   "status": "open",
+   "severity_level": 1,
+   "severity_reason": "M4.3, 74 km from India (USGS)",
+   "last_known": false,
+   "new_data": false,
+   "change": null,
+   "figures": {
+    "tsunami": false,
+    "depth_km": 10.0,
+    "in_india": false,
+    "magnitude": 4.3,
+    "usgs_alert": null,
+    "felt_reports": null,
+    "km_from_india": 73.5,
+    "magnitude_type": "mb"
+   },
+   "desk_items": {
+    "title": "M4.3 earthquake, 71 km SW of Rikaze, China",
+    "source": "USGS",
+    "latitude": 28.7603,
+    "longitude": 88.3994,
+    "place_name": "71 km SW of Rikaze, China",
+    "source_ref": "USGS-us6000u4p1"
+   }
+  },
+  {
+   "run_id": 19,
+   "item_id": "fire:gujarat",
+   "taken_at": "2026-10-25T21:08:18.765995+00:00",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "severity_reason": "46 fire events on 24 Oct, 8.19× the seasonal norm (5.6/day) · capped at Level 2 pending calibration (would be Level 3) · last known: FIRMS fetch failed this run",
+   "last_known": true,
+   "new_data": false,
+   "change": null,
+   "figures": {
+    "day": "2026-10-24",
+    "week": 43,
+    "state": "Gujarat",
+    "today": {
+     "date": "2026-10-25",
+     "partial": true,
+     "hotspots": 7,
+     "fire_events": 6,
+     "district_count": 5
+    },
+    "capped": true,
+    "data_to": "2026-10-24T20:51:00+00:00",
+    "product": "VIIRS NOAA-20 NRT",
+    "hotspots": 197,
+    "districts": [
+     {
+      "frp_max": 67.43,
+      "district": "Surendranagar",
+      "hotspots": 74,
+      "district_id": "76128533B7851306475665",
+      "fire_events": 15
+     },
+     {
+      "frp_max": 13.85,
+      "district": "Bhavnagar",
+      "hotspots": 20,
+      "district_id": "76128533B93450974047240",
+      "fire_events": 10
+     },
+     {
+      "frp_max": 76.94,
+      "district": "Banas Kantha",
+      "hotspots": 66,
+      "district_id": "76128533B52902360321344",
+      "fire_events": 5
+     },
+     {
+      "frp_max": 5.19,
+      "district": "Ahmadabad",
+      "hotspots": 2,
+      "district_id": "76128533B93113981386565",
+      "fire_events": 2
+     },
+     {
+      "frp_max": 13.73,
+      "district": "Kachchh",
+      "hotspots": 14,
+      "district_id": "76128533B91881382098572",
+      "fire_events": 2
+     },
+     {
+      "frp_max": 4.83,
+      "district": "Morbi",
+      "hotspots": 2,
+      "district_id": "76128533B2080752988715",
+      "fire_events": 2
+     },
+     {
+      "frp_max": 61.68,
+      "district": "Patan",
+      "hotspots": 11,
+      "district_id": "76128533B42839853072341",
+      "fire_events": 2
+     },
+     {
+      "frp_max": 1.93,
+      "district": "Vadodara",
+      "hotspots": 2,
+      "district_id": "76128533B33151011563565",
+      "fire_events": 2
+     },
+     {
+      "frp_max": 2.9,
+      "district": "Amreli",
+      "hotspots": 1,
+      "district_id": "76128533B43737470294384",
+      "fire_events": 1
+     },
+     {
+      "frp_max": 2.82,
+      "district": "Devbhumi Dwarka",
+      "hotspots": 1,
+      "district_id": "76128533B74381554567803",
+      "fire_events": 1
+     },
+     {
+      "frp_max": 1.85,
+      "district": "Jamnagar",
+      "hotspots": 1,
+      "district_id": "76128533B35205406647638",
+      "fire_events": 1
+     },
+     {
+      "frp_max": 3.6,
+      "district": "Narmada",
+      "hotspots": 1,
+      "district_id": "76128533B46866455993508",
+      "fire_events": 1
+     },
+     {
+      "frp_max": 2.23,
+      "district": "Panch Mahals",
+      "hotspots": 1,
+      "district_id": "76128533B16476001647323",
+      "fire_events": 1
+     },
+     {
+      "frp_max": 2.44,
+      "district": "Surat",
+      "hotspots": 1,
+      "district_id": "76128533B97372652494648",
+      "fire_events": 1
+     }
+    ],
+    "norm_years": "2024-2025",
+    "fire_events": 46,
+    "firms_level": 3,
+    "gdacs_level": null,
+    "quiet_since": null,
+    "ratio_level": 3,
+    "gdacs_checked": false,
+    "ratio_counted": true,
+    "ratio_to_norm": 8.187,
+    "district_count": 14,
+    "gdacs_wildfire": [],
+    "calibration_cap": 2,
+    "min_fire_events": 25,
+    "norm_daily_events": 5.619,
+    "norm_max_daily_events": 26,
+    "large_fires_near_people": []
+   },
+   "desk_items": {
+    "title": "Fire activity in 3 Gujarat districts",
+    "source": "FIRMS",
+    "latitude": 22.6774,
+    "longitude": 69.4391,
+    "place_name": "Gujarat",
+    "source_ref": null
+   }
+  },
+  {
+   "run_id": 19,
+   "item_id": "fire:madhya-pradesh",
+   "taken_at": "2026-10-25T21:08:18.765995+00:00",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "severity_reason": "185 fire events on 24 Oct, 2.69× the seasonal norm (69/day) · last known: FIRMS fetch failed this run",
+   "last_known": true,
+   "new_data": false,
+   "change": null,
+   "figures": {
+    "day": "2026-10-24",
+    "week": 43,
+    "state": "Madhya Pradesh",
+    "today": {
+     "date": "2026-10-25",
+     "partial": true,
+     "hotspots": 410,
+     "fire_events": 311,
+     "district_count": 32
+    },
+    "capped": false,
+    "data_to": "2026-10-24T20:51:00+00:00",
+    "product": "VIIRS NOAA-20 NRT",
+    "hotspots": 215,
+    "districts": [
+     {
+      "frp_max": 13.32,
+      "district": "Guna",
+      "hotspots": 41,
+      "district_id": "76128533B79048012717121",
+      "fire_events": 36
+     },
+     {
+      "frp_max": 10.49,
+      "district": "Ashoknagar",
+      "hotspots": 28,
+      "district_id": "76128533B75548370501185",
+      "fire_events": 23
+     },
+     {
+      "frp_max": 16.14,
+      "district": "Hoshangabad",
+      "hotspots": 24,
+      "district_id": "76128533B45314020251888",
+      "fire_events": 19
+     },
+     {
+      "frp_max": 7.98,
+      "district": "Seoni",
+      "hotspots": 18,
+      "district_id": "76128533B78482805703540",
+      "fire_events": 16
+     },
+     {
+      "frp_max": 8.98,
+      "district": "Vidisha",
+      "hotspots": 18,
+      "district_id": "76128533B64834018186186",
+      "fire_events": 16
+     },
+     {
+      "frp_max": 13.16,
+      "district": "Shivpuri",
+      "hotspots": 18,
+      "district_id": "76128533B66335428496945",
+      "fire_events": 12
+     },
+     {
+      "frp_max": 7.02,
+      "district": "Sagar",
+      "hotspots": 7,
+      "district_id": "76128533B30447764775083",
+      "fire_events": 7
+     },
+     {
+      "frp_max": 5.43,
+      "district": "Damoh",
+      "hotspots": 7,
+      "district_id": "76128533B44250373880839",
+      "fire_events": 6
+     },
+     {
+      "frp_max": 7.88,
+      "district": "Datia",
+      "hotspots": 8,
+      "district_id": "76128533B80958502091898",
+      "fire_events": 6
+     },
+     {
+      "frp_max": 5.26,
+      "district": "Sheopur",
+      "hotspots": 6,
+      "district_id": "76128533B82240600990321",
+      "fire_events": 6
+     },
+     {
+      "frp_max": 3.25,
+      "district": "Bhind",
+      "hotspots": 4,
+      "district_id": "76128533B57712033428660",
+      "fire_events": 4
+     },
+     {
+      "frp_max": 6.14,
+      "district": "Sehore",
+      "hotspots": 4,
+      "district_id": "76128533B39959897010345",
+      "fire_events": 4
+     },
+     {
+      "frp_max": 3.45,
+      "district": "Dewas",
+      "hotspots": 3,
+      "district_id": "76128533B53549946596470",
+      "fire_events": 3
+     },
+     {
+      "frp_max": 7.72,
+      "district": "Jabalpur",
+      "hotspots": 3,
+      "district_id": "76128533B27615708126939",
+      "fire_events": 3
+     },
+     {
+      "frp_max": 4.75,
+      "district": "Khandwa (East Nimar)",
+      "hotspots": 4,
+      "district_id": "76128533B71271011331008",
+      "fire_events": 3
+     },
+     {
+      "frp_max": 4.36,
+      "district": "Betul",
+      "hotspots": 2,
+      "district_id": "76128533B82559220423608",
+      "fire_events": 2
+     },
+     {
+      "frp_max": 5.36,
+      "district": "Gwalior",
+      "hotspots": 2,
+      "district_id": "76128533B90551733723251",
+      "fire_events": 2
+     },
+     {
+      "frp_max": 4.09,
+      "district": "Harda",
+      "hotspots": 3,
+      "district_id": "76128533B21179322085415",
+      "fire_events": 2
+     },
+     {
+      "frp_max": 3.88,
+      "district": "Khargone (West Nimar)",
+      "hotspots": 2,
+      "district_id": "76128533B69481535535995",
+      "fire_events": 2
+     },
+     {
+      "frp_max": 5.06,
+      "district": "Neemuch",
+      "hotspots": 2,
+      "district_id": "76128533B77191913035963",
+      "fire_events": 2
+     },
+     {
+      "frp_max": 0.38,
+      "district": "Chhindwara",
+      "hotspots": 1,
+      "district_id": "76128533B70646408240587",
+      "fire_events": 1
+     },
+     {
+      "frp_max": 5.78,
+      "district": "Dhar",
+      "hotspots": 1,
+      "district_id": "76128533B42880544505675",
+      "fire_events": 1
+     },
+     {
+      "frp_max": 2.26,
+      "district": "Indore",
+      "hotspots": 1,
+      "district_id": "76128533B60360721573267",
+      "fire_events": 1
+     },
+     {
+      "frp_max": 2.06,
+      "district": "Jhabua",
+      "hotspots": 1,
+      "district_id": "76128533B67004768724668",
+      "fire_events": 1
+     },
+     {
+      "frp_max": 2.69,
+      "district": "Mandsaur",
+      "hotspots": 1,
+      "district_id": "76128533B25679991785711",
+      "fire_events": 1
+     },
+     {
+      "frp_max": 3.56,
+      "district": "Morena",
+      "hotspots": 1,
+      "district_id": "76128533B12343314564708",
+      "fire_events": 1
+     },
+     {
+      "frp_max": 1.64,
+      "district": "Narsimhapur",
+      "hotspots": 1,
+      "district_id": "76128533B20683890392439",
+      "fire_events": 1
+     },
+     {
+      "frp_max": 3.16,
+      "district": "Panna",
+      "hotspots": 1,
+      "district_id": "76128533B81607600692021",
+      "fire_events": 1
+     },
+     {
+      "frp_max": 3.62,
+      "district": "Rajgarh",
+      "hotspots": 1,
+      "district_id": "76128533B28521131010314",
+      "fire_events": 1
+     },
+     {
+      "frp_max": 6.3,
+      "district": "Satna",
+      "hotspots": 1,
+      "district_id": "76128533B39705008578419",
+      "fire_events": 1
+     },
+     {
+      "frp_max": 1.84,
+      "district": "Singrauli",
+      "hotspots": 1,
+      "district_id": "76128533B50014751336341",
+      "fire_events": 1
+     }
+    ],
+    "norm_years": "2024-2025",
+    "fire_events": 185,
+    "firms_level": 2,
+    "gdacs_level": null,
+    "quiet_since": null,
+    "ratio_level": 2,
+    "gdacs_checked": false,
+    "ratio_counted": true,
+    "ratio_to_norm": 2.691,
+    "district_count": 31,
+    "gdacs_wildfire": [],
+    "calibration_cap": 2,
+    "min_fire_events": 25,
+    "norm_daily_events": 68.7381,
+    "norm_max_daily_events": 254,
+    "large_fires_near_people": []
+   },
+   "desk_items": {
+    "title": "Fire activity in 26 Madhya Pradesh districts",
+    "source": "FIRMS",
+    "latitude": 23.8395,
+    "longitude": 78.2371,
+    "place_name": "Madhya Pradesh",
+    "source_ref": null
+   }
+  },
+  {
+   "run_id": 19,
+   "item_id": "fire:maharashtra",
+   "taken_at": "2026-10-25T21:08:18.765995+00:00",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "severity_reason": "26 fire events on 24 Oct, 3.86× the seasonal norm (6.7/day) · last known: FIRMS fetch failed this run",
+   "last_known": true,
+   "new_data": false,
+   "change": null,
+   "figures": {
+    "day": "2026-10-24",
+    "week": 43,
+    "state": "Maharashtra",
+    "today": {
+     "date": "2026-10-25",
+     "partial": true,
+     "hotspots": 90,
+     "fire_events": 47,
+     "district_count": 18
+    },
+    "capped": false,
+    "data_to": "2026-10-24T20:51:00+00:00",
+    "product": "VIIRS NOAA-20 NRT",
+    "hotspots": 27,
+    "districts": [
+     {
+      "frp_max": 1.66,
+      "district": "Solapur",
+      "hotspots": 4,
+      "district_id": "76128533B62490300334729",
+      "fire_events": 4
+     },
+     {
+      "frp_max": 3.85,
+      "district": "Ahmadnagar",
+      "hotspots": 4,
+      "district_id": "76128533B47816398970283",
+      "fire_events": 3
+     },
+     {
+      "frp_max": 4.02,
+      "district": "Jalgaon",
+      "hotspots": 3,
+      "district_id": "76128533B40156838070",
+      "fire_events": 3
+     },
+     {
+      "frp_max": 5.76,
+      "district": "Pune",
+      "hotspots": 3,
+      "district_id": "76128533B71380851181380",
+      "fire_events": 3
+     },
+     {
+      "frp_max": 3.29,
+      "district": "Nagpur",
+      "hotspots": 2,
+      "district_id": "76128533B3026318797185",
+      "fire_events": 2
+     },
+     {
+      "frp_max": 3.2,
+      "district": "Nashik",
+      "hotspots": 2,
+      "district_id": "76128533B50056157736049",
+      "fire_events": 2
+     },
+     {
+      "frp_max": 2.66,
+      "district": "Aurangabad",
+      "hotspots": 1,
+      "district_id": "76128533B39329594544563",
+      "fire_events": 1
+     },
+     {
+      "frp_max": 4.17,
+      "district": "Bhandara",
+      "hotspots": 1,
+      "district_id": "76128533B14243635342908",
+      "fire_events": 1
+     },
+     {
+      "frp_max": 8.37,
+      "district": "Buldana",
+      "hotspots": 1,
+      "district_id": "76128533B70021405538438",
+      "fire_events": 1
+     },
+     {
+      "frp_max": 1.26,
+      "district": "Chandrapur",
+      "hotspots": 1,
+      "district_id": "76128533B31342633028465",
+      "fire_events": 1
+     },
+     {
+      "frp_max": 2.25,
+      "district": "Hingoli",
+      "hotspots": 1,
+      "district_id": "76128533B86424887513424",
+      "fire_events": 1
+     },
+     {
+      "frp_max": 3.71,
+      "district": "Jalna",
+      "hotspots": 1,
+      "district_id": "76128533B55603381222870",
+      "fire_events": 1
+     },
+     {
+      "frp_max": 1.87,
+      "district": "Osmanabad",
+      "hotspots": 1,
+      "district_id": "76128533B20474666262371",
+      "fire_events": 1
+     },
+     {
+      "frp_max": 1.48,
+      "district": "Sangli",
+      "hotspots": 1,
+      "district_id": "76128533B9892158671522",
+      "fire_events": 1
+     },
+     {
+      "frp_max": 1.39,
+      "district": "Yavatmal",
+      "hotspots": 1,
+      "district_id": "76128533B61814103412294",
+      "fire_events": 1
+     }
+    ],
+    "norm_years": "2024-2025",
+    "fire_events": 26,
+    "firms_level": 2,
+    "gdacs_level": null,
+    "quiet_since": null,
+    "ratio_level": 2,
+    "gdacs_checked": false,
+    "ratio_counted": true,
+    "ratio_to_norm": 3.859,
+    "district_count": 15,
+    "gdacs_wildfire": [],
+    "calibration_cap": 2,
+    "min_fire_events": 25,
+    "norm_daily_events": 6.7381,
+    "norm_max_daily_events": 32,
+    "large_fires_near_people": []
+   },
+   "desk_items": {
+    "title": "Fire activity in 12 Maharashtra districts",
+    "source": "FIRMS",
+    "latitude": 19.258,
+    "longitude": 76.3424,
+    "place_name": "Maharashtra",
+    "source_ref": null
+   }
+  },
+  {
+   "run_id": 19,
+   "item_id": "fire:telangana",
+   "taken_at": "2026-10-25T21:08:18.765995+00:00",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "severity_reason": "34 fire events on 24 Oct, 5.33× the seasonal norm (6.4/day) · capped at Level 2 pending calibration (would be Level 3) · last known: FIRMS fetch failed this run",
+   "last_known": true,
+   "new_data": false,
+   "change": null,
+   "figures": {
+    "day": "2026-10-24",
+    "week": 43,
+    "state": "Telangana",
+    "today": {
+     "date": "2026-10-25",
+     "partial": true,
+     "hotspots": 70,
+     "fire_events": 53,
+     "district_count": 21
+    },
+    "capped": true,
+    "data_to": "2026-10-24T20:51:00+00:00",
+    "product": "VIIRS NOAA-20 NRT",
+    "hotspots": 42,
+    "districts": [
+     {
+      "frp_max": 19.15,
+      "district": "Nizamabad",
+      "hotspots": 20,
+      "district_id": "76128533B58493775523243",
+      "fire_events": 16
+     },
+     {
+      "frp_max": 5.99,
+      "district": "Kamareddy",
+      "hotspots": 4,
+      "district_id": "76128533B21068662878849",
+      "fire_events": 3
+     },
+     {
+      "frp_max": 5.34,
+      "district": "Adilabad",
+      "hotspots": 2,
+      "district_id": "76128533B38354309367879",
+      "fire_events": 2
+     },
+     {
+      "frp_max": 3.91,
+      "district": "Rangareddy",
+      "hotspots": 2,
+      "district_id": "76128533B31175522938788",
+      "fire_events": 2
+     },
+     {
+      "frp_max": 7.36,
+      "district": "Vikarabad",
+      "hotspots": 3,
+      "district_id": "76128533B74887942950962",
+      "fire_events": 2
+     },
+     {
+      "frp_max": 4.0,
+      "district": "Warangal (U)",
+      "hotspots": 2,
+      "district_id": "76128533B34824326075805",
+      "fire_events": 2
+     },
+     {
+      "frp_max": 2.66,
+      "district": "Bhadradri",
+      "hotspots": 2,
+      "district_id": "76128533B30246762498957",
+      "fire_events": 1
+     },
+     {
+      "frp_max": 5.42,
+      "district": "Jagtial",
+      "hotspots": 1,
+      "district_id": "76128533B67054925852429",
+      "fire_events": 1
+     },
+     {
+      "frp_max": 1.44,
+      "district": "Mahabubnagar",
+      "hotspots": 1,
+      "district_id": "76128533B58170186574016",
+      "fire_events": 1
+     },
+     {
+      "frp_max": 4.27,
+      "district": "Medak",
+      "hotspots": 1,
+      "district_id": "76128533B97126567441665",
+      "fire_events": 1
+     },
+     {
+      "frp_max": 4.8,
+      "district": "Nalgonda",
+      "hotspots": 1,
+      "district_id": "76128533B8892495882090",
+      "fire_events": 1
+     },
+     {
+      "frp_max": 3.44,
+      "district": "Nirmal",
+      "hotspots": 2,
+      "district_id": "76128533B25280172436550",
+      "fire_events": 1
+     },
+     {
+      "frp_max": 7.59,
+      "district": "Siddipet",
+      "hotspots": 1,
+      "district_id": "76128533B31111781432113",
+      "fire_events": 1
+     }
+    ],
+    "norm_years": "2024-2025",
+    "fire_events": 34,
+    "firms_level": 3,
+    "gdacs_level": null,
+    "quiet_since": null,
+    "ratio_level": 3,
+    "gdacs_checked": false,
+    "ratio_counted": true,
+    "ratio_to_norm": 5.328,
+    "district_count": 13,
+    "gdacs_wildfire": [],
+    "calibration_cap": 2,
+    "min_fire_events": 25,
+    "norm_daily_events": 6.381,
+    "norm_max_daily_events": 44,
+    "large_fires_near_people": []
+   },
+   "desk_items": {
+    "title": "Fire activity in 17 Telangana districts",
+    "source": "FIRMS",
+    "latitude": 18.1531,
+    "longitude": 78.496,
+    "place_name": "Telangana",
+    "source_ref": null
+   }
+  }
+ ],
+ "status": [
+  {
+   "run_id": 19,
+   "category": "air",
+   "level": 1,
+   "open_items": 1,
+   "last_known": false,
+   "summary": "Air quality: poor in 6 cities",
+   "source": "DATAGOV",
+   "source_status": "ok",
+   "watching": 0,
+   "taken_at": "2026-10-25T21:08:27.586747+00:00"
+  },
+  {
+   "run_id": 19,
+   "category": "cyclone",
+   "level": null,
+   "open_items": 0,
+   "last_known": true,
+   "summary": "No current GDACS cyclone alerts for India · last known: GDACS fetch failed this run",
+   "source": "GDACS",
+   "source_status": "timeout",
+   "watching": 0,
+   "taken_at": "2026-10-25T21:08:27.586747+00:00"
+  },
+  {
+   "run_id": 19,
+   "category": "earthquake",
+   "level": 1,
+   "open_items": 1,
+   "last_known": false,
+   "summary": "M4.3 earthquake, 71 km SW of Rikaze, China",
+   "source": "USGS",
+   "source_status": "ok",
+   "watching": 0,
+   "taken_at": "2026-10-25T21:08:27.586747+00:00"
+  },
+  {
+   "run_id": 19,
+   "category": "fire",
+   "level": 2,
+   "open_items": 4,
+   "last_known": true,
+   "summary": "Fire activity in 14 Gujarat districts (+3 more) · last known: FIRMS fetch failed this run",
+   "source": "FIRMS",
+   "source_status": "timeout",
+   "watching": 1,
+   "taken_at": "2026-10-25T21:08:27.586747+00:00"
+  },
+  {
+   "run_id": 19,
+   "category": "flood",
+   "level": null,
+   "open_items": 0,
+   "last_known": true,
+   "summary": "No current GDACS flood alerts for India · last known: GDACS fetch failed this run",
+   "source": "GDACS",
+   "source_status": "timeout",
+   "watching": 0,
+   "taken_at": "2026-10-25T21:08:27.586747+00:00"
+  }
+ ]
+}
