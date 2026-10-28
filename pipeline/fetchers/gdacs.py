@@ -2,6 +2,7 @@ import logging
 import time
 from datetime import datetime, timedelta, timezone
 
+import requests
 from dateutil import parser as dateutil_parser
 
 from fetchers.http import DEFAULT_TIMEOUT_S, get_with_retry
@@ -12,14 +13,25 @@ logger = logging.getLogger(__name__)
 ENDPOINT = "https://www.gdacs.org/gdacsapi/api/events/geteventlist/SEARCH"
 
 # The API returns at most 100 features per page, whatever pageSize asks for,
-# and `country=IND` also matches Indonesia, so one page held only ~4 of the
-# ~13 India events in the 90-day window. fetch() pages until a short page or
-# a 204 (no content). MAX_PAGES is a runaway guard: 90 days is ~6 pages.
+# and `country=IND` also matches Indonesia. Each query pages until a short
+# page or a 204 (no content). MAX_PAGES is a runaway guard.
 PAGE_SIZE = 100
 MAX_PAGES = 50
 
-# Event types asked for. Droughts (DR) are not: nothing reads them.
-EVENT_TYPES = "EQ,TC,FL,WF"
+# Three queries over the same 90-day window, in this order (fetch_detailed):
+#   floods_cyclones  TC;FL  what desk.py levels: ~11 features, one page. Its
+#                           failure is GDACS's failure for the run.
+#   wildfires        WF     the fire desk's forest-fire trigger: ~2 pages
+#                           (Indonesia's wildfires match country=IND). All or
+#                           nothing; a failure leaves fire items their last
+#                           known alerts, and the run goes on.
+#   earthquakes      EQ     the events table only (USGS levels quakes): best
+#                           effort; a failure keeps the pages it got.
+# The API filters on `eventlist` (semicolons). Until 29 Oct 2026 the fetcher
+# sent `eventtypes`, which the API ignores: every run got all types, droughts
+# and volcanoes included, ~536 features in 6 pages, and one failed page cost
+# the desk everything. Each query also keeps only its own types, in case the
+# filter is ignored again.
 
 # WF and unknown types map to None → excluded from results.
 # WF (wildfire) is kept out of `events`: EONET already carries the same
@@ -40,14 +52,14 @@ SEVERITY_MAP = {
 
 
 def _build_params(start_date: str | None = None, end_date: str | None = None) -> dict:
+    """The window and filters every query shares (not the event types)."""
     today = datetime.now(timezone.utc)
     from_date = start_date or (today - timedelta(days=90)).strftime("%Y-%m-%d")
     to_date = end_date or today.strftime("%Y-%m-%d")
     return {
-        "eventtypes": EVENT_TYPES,
         "fromDate": from_date,
         "toDate": to_date,
-        "alertlevel": "Green,Orange,Red",
+        "alertlevel": "Green;Orange;Red",
         "country": "IND",
     }
 
@@ -90,16 +102,15 @@ def _is_closed(props: dict) -> bool:
         return False
 
 
-def _fetch_features(params: dict) -> list[dict]:
-    """Fetch every page of results for params.
+def _fetch_features(params: dict, label: str, out: list[dict]) -> None:
+    """Fetch every page of results for params into out.
 
-    Request/parse failures on any page propagate — a broken endpoint must
-    fail the run, not silently return a partial or empty list.
+    Request/parse failures on any page propagate; out keeps the pages
+    fetched before the failure (only the best-effort query uses them).
 
     Each page's time is logged (with retries, and the last request alone) to
     measure how slow the search API is.
     """
-    features: list[dict] = []
     for page in range(1, MAX_PAGES + 1):
         t0 = time.monotonic()
         resp = get_with_retry(
@@ -110,21 +121,39 @@ def _fetch_features(params: dict) -> list[dict]:
         last = getattr(resp, "elapsed", None)
         last_text = f", last request {last.total_seconds():.1f} s" if last is not None else ""
         if resp.status_code == 204:  # past the last page (or no events at all)
-            logger.info("GDACS: page %d: no content, %.1f s%s", page, took, last_text)
+            logger.info("GDACS: %s page %d: no content, %.1f s%s", label, page, took, last_text)
             break
         resp.raise_for_status()
         page_features = resp.json().get("features", [])
-        logger.info("GDACS: page %d: %d features, %.1f s%s", page, len(page_features), took, last_text)
-        features.extend(page_features)
+        logger.info("GDACS: %s page %d: %d features, %.1f s%s", label, page, len(page_features), took, last_text)
+        out.extend(page_features)
         if len(page_features) < PAGE_SIZE:
             break
     else:
-        logger.warning("GDACS: stopped after %d pages, results may be truncated", MAX_PAGES)
-    return features
+        logger.warning("GDACS: %s stopped after %d pages, results may be truncated", label, MAX_PAGES)
 
 
-# Event types the severity desk reads from GDACS alerts (EQ comes from USGS).
-ALERT_TYPES = {"FL", "TC", "WF", "EQ"}
+def _query(name: str, eventlist: str, params: dict, parts: dict) -> tuple[list[dict], Exception | None]:
+    """One query's features (only its own event types) and its error, if
+    any; records {status, features, duration_s[, error]} in parts[name]."""
+    t0 = time.monotonic()
+    got: list[dict] = []
+    error = None
+    try:
+        _fetch_features({**params, "eventlist": eventlist}, name.replace("_", "/"), got)
+    except Exception as exc:
+        error = exc
+    types = set(eventlist.split(";"))
+    kept = [f for f in got if (f.get("properties") or {}).get("eventtype") in types]
+    status = "ok" if error is None else ("timeout" if isinstance(error, requests.exceptions.Timeout) else "error")
+    parts[name] = {"status": status, "features": len(kept), "duration_s": round(time.monotonic() - t0, 1)}
+    if error is not None:
+        parts[name]["error"] = str(error)[:300]
+    return kept, error
+
+
+# Event types the severity desk reads from GDACS alerts (quakes come from USGS).
+ALERT_TYPES = {"FL", "TC", "WF"}
 
 
 def _float(value) -> float | None:
@@ -185,21 +214,35 @@ def fetch(start_date: str | None = None, end_date: str | None = None) -> list[di
 
 
 def fetch_detailed(start_date: str | None = None, end_date: str | None = None) -> tuple[list[dict], dict]:
-    """(events rows, {"alerts": [...]}) from one paged fetch.
+    """(events rows, {"alerts", "wildfires_ok", "parts"}) from the three queries above.
 
-    alerts holds every India-affecting FL/TC/WF/EQ event (see _to_alert) for
-    the severity desk; the events rows are unchanged by it.
+    Raises only when the floods/cyclones query fails (GDACS failed for the
+    run). alerts holds every India-affecting FL/TC event and, when
+    wildfires_ok, every WF event (see _to_alert). The events rows come from
+    the floods/cyclones query plus whatever the earthquake query got. parts:
+    each query's status, feature count, time and error, for pipeline_runs.
     """
     params = _build_params(start_date, end_date)
     logger.info(
         "GDACS: fetching events from=%s to=%s", params["fromDate"], params["toDate"]
     )
 
-    features = _fetch_features(params)
-    logger.info("GDACS: received %d features", len(features))
+    parts: dict[str, dict] = {}
+    floods_cyclones, error = _query("floods_cyclones", "TC;FL", params, parts)
+    if error is not None:
+        raise error
+    wildfires, wf_error = _query("wildfires", "WF", params, parts)
+    if wf_error is not None:
+        logger.warning("GDACS: wildfire alerts failed, fire items keep their last known alerts — %s", wf_error)
+        wildfires = []
+    earthquakes, eq_error = _query("earthquakes", "EQ", params, parts)
+    if eq_error is not None:
+        logger.warning("GDACS: earthquake events failed, keeping the %d fetched before it (best effort) — %s",
+                       len(earthquakes), eq_error)
+    logger.info("GDACS: received %s", ", ".join(f"{n} {p['features']} ({p['status']})" for n, p in parts.items()))
 
     alerts = {}
-    for feature in features:
+    for feature in floods_cyclones + wildfires:
         try:
             alert = _to_alert(feature)
         except Exception as exc:
@@ -214,7 +257,7 @@ def fetch_detailed(start_date: str | None = None, end_date: str | None = None) -
     skipped_old = 0
 
     events = {}
-    for feature in features:
+    for feature in floods_cyclones + earthquakes:
         try:
             props = feature.get("properties", {})
             geometry = feature.get("geometry", {})
@@ -297,7 +340,8 @@ def fetch_detailed(start_date: str | None = None, end_date: str | None = None) -
         "GDACS: transformed %d events (skipped %d that started more than %d days ago), %d India alerts",
         len(events), skipped_old, SHORT_RETENTION_DAYS, len(alerts),
     )
-    return list(events.values()), {"alerts": list(alerts.values())}
+    return list(events.values()), {"alerts": list(alerts.values()), "wildfires_ok": wf_error is None,
+                                   "parts": parts}
 
 
 if __name__ == "__main__":

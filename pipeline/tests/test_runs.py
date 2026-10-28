@@ -122,6 +122,18 @@ def test_quiet_sparse_source_is_good_without_observation():
     assert summary["GDACS"]["newest_observation_at"] is None
 
 
+def test_gdacs_query_parts_reach_the_run_summary_redacted(monkeypatch):
+    monkeypatch.setattr(config, "FIRMS_MAP_KEY", "a" * 32)
+    parts = {"floods_cyclones": {"status": "ok", "features": 11, "duration_s": 2.5},
+             "wildfires": {"status": "error", "features": 0, "duration_s": 3.1,
+                           "error": "400 for url: /SEARCH?key=" + "a" * 32}}
+    result = FetchResult("GDACS", [], True, "ok", None, 5.6, {"alerts": [], "parts": parts})
+    _, summary = _updates([result, _result("USGS", [])])
+    assert summary["GDACS"]["parts"]["floods_cyclones"] == parts["floods_cyclones"]
+    assert summary["GDACS"]["parts"]["wildfires"]["error"] == "400 for url: /SEARCH?key=***"
+    assert "parts" not in summary["USGS"]
+
+
 def test_openaq_maps_to_sources_id():
     updates, summary = _updates([_result("OpenAQ", [{"recorded_at": NOW.isoformat()}])])
     assert set(updates) == set(summary) == {"OPENAQ"}

@@ -20,7 +20,8 @@ which no longer does).
 | Steps 0-7: runs, desk, air item, fire events, baseline, fire desk, quiet-day desk | 20-21 Oct | Steps 0-2 since edition 1 (20 Oct), all eight since 21 Oct |
 | data.gov.in as the primary air source (`datagov.py`, migration 006) | 23 Oct | Live since edition 9. The feed returned HTTP 500 in editions 21-22 and recovered by itself; it set the air level in editions 23-25 |
 | Air fallback never replaces a level with older data, plus the no-mean guard (decision 6 under *air source*) | 28 Oct | Offline tests and dry runs. Not yet exercised live: the feed has answered in every run since |
-| GDACS: no droughts, 90 s read timeout, each page's time logged | 28 Oct | Live since edition 25. Whether 90 s stays is **not decided yet** (*GDACS reliability* under *Follow-ups*) |
+| GDACS: 90 s read timeout, each page's time logged | 28 Oct | Live since edition 25; 90 s kept (*Decisions (29 Oct 2026): GDACS*) |
+| GDACS: floods/cyclones query first, wildfires and earthquakes after it and unable to fail the run (*Decisions (29 Oct 2026): GDACS*) | 29 Oct | Offline tests and a dry run |
 | FIRMS fails the run only after 2 timeouts in a row | 28 Oct | Offline tests. Not yet exercised live: FIRMS hasn't timed out since edition 19 |
 | Fire levels only from complete days (night pass in), repair of editions 26-27 (*Decisions (29 Oct 2026)*) | 29 Oct | Offline tests, a dry run, and the fire desk run read-only against live data on 28 Oct 20:13 UTC: 27 Oct incomplete (one night orbit), five items restored to 26 Oct as last-known |
 | Wind speed in the cyclone reason; `last_known` in `desk_last_level3` | not built | Specified for the frontend phase (*Follow-ups*) |
@@ -208,6 +209,29 @@ was opened, escalated, de-escalated or closed on an incomplete day: every other 
 4. Known gap: a three-orbit night whose middle (main) orbit is missing while the first is
    present still passes. Not seen so far.
 
+## Decisions (29 Oct 2026): GDACS
+GDACS is the only source for floods and cyclones (cyclone ARNAB-26 was live). In editions
+11–24, at a 30 s read timeout, it returned no data in 5 of 14 runs.
+1. **Keep the 90 s read timeout.** Editions 25–27 all got GDACS data; 4 of their 18 page
+   requests answered between 30 and 90 s (33.8, 48.8, 60.2, 78.0 s), and the 4 that hit
+   90 s worked on retry.
+2. **The desk's alerts come first, from their own small query** (Job). A second failure mode
+   besides timeouts: GDACS answered HTTP 400 on page 6 (edition 10, and a dry run on 28 Oct),
+   which failed the whole fetch, so the run too, and cost the desk everything. And the
+   fetcher's `eventtypes` filter had never worked: the API ignores it, so every run fetched
+   all types (droughts and volcanoes included, ~536 features, 6 pages); the API's filter
+   is `eventlist`. Now three queries, same 90-day window (`fetchers/gdacs.py`):
+   - floods and cyclones (`TC;FL`, ~11 features, one page): what `desk.py` levels. Only this
+     query can fail GDACS for the run (a timeout stays soft, an HTTP error fails the run, as
+     before); when it fails, the other two are not tried.
+   - wildfires (`WF`, ~2 pages: Indonesia's wildfires match `country=IND`): the fire desk's
+     forest-fire trigger. All or nothing; when it fails, fire items keep their last known
+     alerts (`gdacs_checked` false) and the run goes on.
+   - earthquakes (`EQ`): rows for `events` only (USGS levels quakes). Best effort: a failure
+     keeps the pages it got and never fails the run.
+   Each query keeps only its own event types, in case the filter is ignored again. Each
+   query's status, feature count, time and error go into `pipeline_runs.sources.GDACS.parts`.
+
 ## Build plan
 Rules: one work item at a time, each tested and committed separately; the existing
 `events` / `aqi_readings` output keeps working until the new output is verified (new
@@ -323,15 +347,9 @@ Open as of 28 Oct 2026 (first listed 21 Oct, when the spec was completed).
   and again from 23 Oct 21:00 to 27 Oct 09:00 IST (the gap wasn't backfilled). Since then
   it has run about 1–2 h behind real time, not the 2–3 days `air.fresh_within_hours` (72)
   was set for.
-- **GDACS reliability (added 28 Oct 2026; decision pending):** GDACS is the only source for
-  floods and cyclones. In editions 11–24 it returned no data in 5 of 14 runs, and a request
-  ran past the 30 s read timeout in 11 of them. Droughts are no longer requested, the read
-  timeout is 90 s (`config.GDACS_READ_TIMEOUT_S`), and each page's time is logged.
-  Edition 25, the first run with these changes: three of six pages answered in 30–90 s
-  (49, 60 and 78 s), three requests hit the 90 s cap and were retried, and GDACS took
-  499 of the run's 662 s. **Decide after editions 25–27:** if no request answers between
-  30 and 90 s, go back to 30 s and lead with a separate small query for the current alerts
-  the desk needs; otherwise keep 90 s and decide whether that query is still worth adding.
+- ~~**GDACS reliability**~~: decided 29 Oct 2026, see *Decisions (29 Oct 2026): GDACS*.
+  Still to watch: how often the wildfire and earthquake queries fail
+  (`pipeline_runs.sources.GDACS.parts`).
 - **Grants on `sources` (added 23 Oct 2026):** an anon-key update of the DATAGOV row returned
   HTTP 200 and changed nothing, where a revoked grant gives "permission denied". So RLS
   blocks the write, but anon probably still holds write grants on this older table (it

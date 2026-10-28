@@ -162,6 +162,10 @@ def source_updates(
             "newest_observation_at": newest.isoformat() if newest else None,
             "new_data": new_data,
         }
+        parts = (result.extras or {}).get("parts")
+        if parts:  # GDACS: each query's own result (fetchers/gdacs.py)
+            summary[sid]["parts"] = {name: {**p, "error": redact(p.get("error"))} if p.get("error") else dict(p)
+                                     for name, p in parts.items()}
     return updates, summary
 
 

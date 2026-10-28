@@ -56,7 +56,7 @@ due to the relative import of `config`.
 - OpenAQ rate limiting: some sensor requests return 429 (3 in edition 25). Mitigated with
   `time.sleep(0.5)` between requests and a cap of `MAX_LOCATIONS` (120) stations, the most
   recently reporting first.
-- GDACS is slow, and sometimes hangs for hours: see *Data Sources* and the GDACS follow-up
+- GDACS is slow, and sometimes hangs for hours: see *Data Sources* and *Decisions (29 Oct 2026): GDACS*
   in docs/severity-pipeline.md.
 - aqi_readings upserts need a unique constraint on (location_id, parameter, recorded_at).
   It is in place (every run's upsert on that conflict key succeeds); for a fresh database:
@@ -183,9 +183,14 @@ and the Windows scheduled task has been disabled.
 ## Data Sources
 - FIRMS: fire hotspots (India bbox: 68.7,8.4,97.4,37.1)
 - EONET: cyclones + wildfires (category filter + India bbox)
-- GDACS: floods, cyclones, earthquakes, wildfire alerts (search API, ~6 pages a run;
-  droughts not requested; read timeout `config.GDACS_READ_TIMEOUT_S`, 90 s, the
-  others keep 30 s; each page's time is logged)
+- GDACS: three queries a run on the search API (`fetchers/gdacs.py`), filtered with
+  `eventlist` (the API ignores `eventtypes`): floods and cyclones first (~11
+  features, one page; what the desk levels, and the only one that can fail GDACS
+  for the run), then wildfires (~2 pages, Indonesia's match `country=IND`; if it
+  fails, fire items keep their last known alerts), then earthquakes for `events`
+  only (best effort, keeps the pages it got). Each query's status, count and time go
+  into `pipeline_runs.sources.GDACS.parts`. Read timeout `config.GDACS_READ_TIMEOUT_S`,
+  90 s (the others keep 30 s); each page's time is logged
 - USGS: earthquakes (India bbox, min magnitude 4.0)
 - OpenAQ: AQI readings for Indian cities (PM2.5, PM10, NO2); the map's aqi_readings
 - data.gov.in (CPCB real-time AQI, `datagov.py`): the air desk item's primary source,
@@ -348,7 +353,8 @@ created_at: timestamptz
 - Timeouts (after the retries): GDACS never fails the run; FIRMS fails it only if
   FIRMS also timed out in the previous run (`FAIL_ON_SECOND_TIMEOUT` in pipeline.py,
   read from its `sources.last_status`); other sources fail at once. Any other
-  fetch error fails the run at once.
+  fetch error fails the run at once; for GDACS that means only its floods and
+  cyclones query (the wildfire and earthquake queries never fail the run).
 - A run that fails, or where FIRMS/USGS/OpenAQ go stale, sends an alert via
   notify.py if NOTIFY_WEBHOOK_URL is set; EONET/GDACS are event-driven and
   are never alerted on row age, only on the fetch itself failing

@@ -439,7 +439,8 @@ def run_fire_desk(supabase, run_id: int | None, results: dict, now: datetime, *,
     day = complete_day(now)
     today = now.astimezone(timezone.utc).date()
     firms, gdacs = results["FIRMS"], results.get("GDACS")
-    gdacs_good = gdacs is not None and gdacs.status == "ok"
+    # GDACS answered, and its wildfire query too (fetchers/gdacs.py)
+    gdacs_good = gdacs is not None and gdacs.status == "ok" and gdacs.extras.get("wildfires_ok", True)
 
     note, day_spots = None, []
     if firms.status == "empty":

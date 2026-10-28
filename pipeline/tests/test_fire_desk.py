@@ -204,11 +204,13 @@ def _firms_rows(day, times):
 COMPLETE = ("08:05", "18:45", "20:41")
 
 
-def _results(day=DAY, firms_status="ok", alerts=(), gdacs_status="ok", day_data=True, times=COMPLETE):
+def _results(day=DAY, firms_status="ok", alerts=(), gdacs_status="ok", day_data=True, times=COMPLETE,
+             wildfires_ok=True):
     acq = day if day_data else day + timedelta(days=1)
     firms_rows = _firms_rows(acq, times)
     return {"FIRMS": FetchResult("FIRMS", firms_rows, True, firms_status, None, 0.1),
-            "GDACS": FetchResult("GDACS", [], True, gdacs_status, None, 0.1, {"alerts": list(alerts)})}
+            "GDACS": FetchResult("GDACS", [], True, gdacs_status, None, 0.1,
+                                 {"alerts": list(alerts), "wildfires_ok": wildfires_ok})}
 
 
 def _run(db, rows, *, now=NOW, run_id=5, write=True, cfg=CFG, **results_kw):
@@ -425,6 +427,17 @@ def test_watch_drops_trend_points_from_incomplete_days():
     stored = {"id": "fire:punjab", "trend": trend, "source_updated_at": "2026-10-19T09:07:00+00:00"}
     row = watch.update_row(subject, stored, CFG, NOW, 5)
     assert [p["at"] for p in row["trend"]] == ["2026-10-18T21:53:00+00:00", "2026-10-20T20:41:00+00:00"]
+
+
+def test_failed_wildfire_query_keeps_the_last_known_alerts():
+    # GDACS answered (floods and cyclones are fine) but its wildfire query failed:
+    # the fire item keeps its alert rather than losing it.
+    db = FakeSupabase()
+    _run(db, _events(3), run_id=5, alerts=[_wildfire(1)])
+    _run(db, _events(3), run_id=6, now=NOW + timedelta(hours=6), wildfires_ok=False)
+    item = _item(db)
+    assert item["severity_level"] == 3 and item["figures"]["gdacs_checked"] is False
+    assert item["figures"]["gdacs_wildfire"][0]["id"] == "GDACS-WF-1"
 
 
 def test_dry_run_writes_nothing_and_tolerates_a_missing_table():
