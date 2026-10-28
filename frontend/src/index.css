@@ -70,3 +70,27 @@ a {
 .leaflet-tile-pane {
   filter: brightness(0.4) contrast(1.1);
 }
+
+/* The Situation Report's paper map: Esri's light grey canvas, warmed toward
+   the paper palette. More specific than the old dark .leaflet-tile-pane
+   filter above, which goes with the old pages at the switch-over. */
+.paper-map {
+  background: var(--panel);
+}
+.paper-map .leaflet-tile-pane {
+  filter: sepia(0.22) saturate(0.75) contrast(0.96) brightness(1.01);
+}
+.paper-map .leaflet-control-attribution {
+  background: rgba(243, 240, 232, 0.85);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+}
+.paper-map .leaflet-tooltip {
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  box-shadow: none;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+}

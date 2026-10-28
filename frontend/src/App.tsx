@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import Desk from './pages/Desk'
 import About from './pages/About'
 import Item from './pages/Item'
+import MapPage from './pages/MapPage'
 import Placeholder from './pages/Placeholder'
 
 // The Situation Report redesign (docs/situation-report-plan.md). The old
@@ -13,10 +14,7 @@ export default function App() {
       <Route path="/" element={<Desk />} />
       <Route path="/edition/:n" element={<Desk />} />
       <Route path="/item/:category/:ref" element={<Item />} />
-      <Route
-        path="/map"
-        element={<Placeholder title="Map" line="The map of this edition's items, with fire activity by district. Coming in a later step of the redesign." />}
-      />
+      <Route path="/map" element={<MapPage />} />
       <Route
         path="/archive"
         element={

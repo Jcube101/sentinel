@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { WINDOW_HOURS } from '@/lib/desk/changes'
 import { STRIP_DAYS } from '@/lib/desk/quiet'
+import type { FirePoint } from '@/components/paper/PaperMap'
 import { missingCategories } from '@/lib/desk/entries'
 import type {
   Category,
@@ -304,5 +305,82 @@ export function useFireDaily(state: string | null) {
     },
     staleTime: 5 * 60_000,
     enabled: !!supabase && !!state,
+  })
+}
+
+/**
+ * Fire events for one UTC day (fire_events keeps 14 days, and rebuilds today
+ * and yesterday each run): the map's fire layer.
+ */
+export function useFirePoints(day: string | null) {
+  return useQuery({
+    queryKey: ['fire-points', day],
+    queryFn: async (): Promise<FirePoint[]> => {
+      if (!supabase || !day) return []
+      const { data, error } = await supabase
+        .from('fire_events')
+        .select('latitude,longitude,hotspot_count,frp_max,district,state')
+        .eq('acq_date', day)
+        .limit(5000)
+      if (error) throw error
+      return (data ?? []) as FirePoint[]
+    },
+    staleTime: 10 * 60_000,
+    enabled: !!supabase && !!day,
+  })
+}
+
+/** The 21 editions up to this one, each with its highest open level (the map's edition strip). */
+export function useEditionStrip(run: Edition | null) {
+  return useQuery({
+    queryKey: ['edition-strip', run?.id],
+    queryFn: async (): Promise<{ id: number; started_at: string; level: number }[]> => {
+      if (!supabase || !run) return []
+      const runs = await supabase
+        .from('pipeline_runs')
+        .select('id,started_at')
+        .lte('id', run.id)
+        .neq('status', 'running')
+        .order('id', { ascending: false })
+        .limit(21)
+      if (runs.error) throw runs.error
+      const list = ((runs.data ?? []) as RunRef[]).reverse()
+      if (list.length === 0) return []
+      const snaps = await supabase
+        .from('desk_item_snapshots')
+        .select('run_id,severity_level')
+        .eq('status', 'open')
+        .gte('run_id', list[0].id)
+        .lte('run_id', run.id)
+      if (snaps.error) throw snaps.error
+      const max = new Map<number, number>()
+      for (const s of (snaps.data ?? []) as { run_id: number; severity_level: number }[]) {
+        max.set(s.run_id, Math.max(max.get(s.run_id) ?? 0, s.severity_level))
+      }
+      return list.map((r) => ({ id: r.id, started_at: r.started_at, level: max.get(r.id) ?? 0 }))
+    },
+    staleTime: Infinity,
+    enabled: !!supabase && run !== null && run.status !== 'running',
+  })
+}
+
+/** Items closed in the 21 editions up to this one, with their closing snapshot (the map's "incl. closed"). */
+export function useRecentClosed(run: Edition | null, enabled: boolean) {
+  return useQuery({
+    queryKey: ['recent-closed', run?.id],
+    queryFn: async (): Promise<Snapshot[]> => {
+      if (!supabase || !run) return []
+      const { data, error } = await supabase
+        .from('desk_item_snapshots')
+        .select(SNAPSHOT_SELECT)
+        .eq('change', 'closed')
+        .gt('run_id', run.id - 21)
+        .lte('run_id', run.id)
+        .order('run_id', { ascending: false })
+      if (error) throw error
+      return (data ?? []) as unknown as Snapshot[]
+    },
+    staleTime: Infinity,
+    enabled: !!supabase && run !== null && enabled,
   })
 }

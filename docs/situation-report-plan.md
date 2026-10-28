@@ -1,6 +1,6 @@
 # Sentinel — "Situation Report" frontend (Phase 7): plan
 
-Status: **plan updated 28 Oct 2026 with Job's answers; steps 1 to 4 done; the copy follows `docs/style-guide.md` (2b, 2c).** Branch
+Status: **plan updated 28 Oct 2026 with Job's answers; steps 1 to 6 done; the copy follows `docs/style-guide.md` (2b–2d).** Branch
 `frontend/situation-report`, worktree `../sentinel-situation-report`. Design reference:
 `docs/design/` (DeskSeverity, DeskQuiet, DeskPhone, MapView, ItemFire), read as visual and
 copy spec, not code. Data model: `docs/severity-pipeline.md` and
@@ -264,13 +264,25 @@ checked on the Pi preview against live data. Smallest shippable step first.
    this merges.
 5. **Item page.** Generic parts first (header, reason, labels, history from snapshots,
    also on the desk, previous/next, permalink); then fire (districts, daily chart vs norm,
-   count funnel, locator map); then air, quake, cyclone and flood.
+   count funnel, locator map); then air, quake, cyclone and flood. **Done.** `/item/:category/:ref`,
+   `?edition=n` for an item as of an edition (snapshots up to n). The fire chart takes
+   `fire_state_daily` for days before the shown one and the edition's own count for its
+   day, so it matches what the edition said; older days come from snapshot figures. The
+   fire roundup has no page of its own: its state table links to each state.
 6. **Map.** Paper basemap (Esri World Light Gray Canvas, keyless, same `{z}/{y}/{x}` order
    as today's tiles, warmed with a CSS filter); desk items as numbered markers; side list;
    level and open/closed filters; fire modes (fires: `fire_events` clustered with the
    existing Supercluster code; activity: a grid; vs norm: a state map, which needs a
    simplified state-outline file in `frontend/public`, credited); the edition strip. The
-   Desk's map image becomes a small non-interactive map.
+   Desk's map image becomes a small non-interactive map. **Done, in part.** `/map`
+   (`?edition=n`, `?item=id`): numbered markers by desk row, side list with the selected
+   item opened, level and open/incl.-closed filters, layer toggles, the day's fires as
+   dots (`fire_events`, about 400–650 a day, drawn on a canvas, so no clustering needed),
+   the 21-edition strip; a small still map in the Desk's sidebar and on item pages.
+   Not yet: the activity grid and vs-norm state map modes (need a state outline file),
+   an OpenAQ station layer. Past editions show no item markers whose position a later
+   run moved (P1); fire dots go back 14 days (P4). Leaflet adds about 75 KB gzipped: split
+   the map pages into their own chunk in step 9.
 7. **Sources page.** Freshness table, per-run status grid, which categories depend on
    which source.
 8. **Archive and Date.** `/date/YYYY-MM-DD` with the day's other editions; the Archive's

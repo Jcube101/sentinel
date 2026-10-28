@@ -1,7 +1,7 @@
 import { useEffect, useMemo, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
-import { useChangeWindow, useDeskHistory, useEdition, useLatestEditionId, useWatching } from '@/hooks/useEdition'
+import { useChangeWindow, useDeskHistory, useEdition, useFirePoints, useLatestEditionId, useWatching } from '@/hooks/useEdition'
 import { sinceLabel, sinceYesterday, type Movement } from '@/lib/desk/changes'
 import { deskEntries } from '@/lib/desk/entries'
 import { copyContext, itemCopy, pageHeadline, sinceLines } from '@/lib/desk/copy'
@@ -17,7 +17,8 @@ import DeskHero from '@/components/paper/DeskHero'
 import NoteBox from '@/components/paper/NoteBox'
 import PhoneWire from '@/components/paper/PhoneWire'
 import QuietDesk from '@/components/paper/QuietDesk'
-import MapSlot from '@/components/paper/MapSlot'
+import MiniMap from '@/components/paper/MiniMap'
+import { fireDayOf, mapItems } from '@/lib/desk/mapdata'
 import SinceYesterday from '@/components/paper/SinceYesterday'
 
 function EditionLine({ run, latestId }: { run: Edition; latestId: number | null }) {
@@ -103,6 +104,11 @@ export default function Desk() {
   const isLatestEdition = !!data && data.run.id === latestId
   const history = useDeskHistory(finished, quiet)
   const watching = useWatching(quiet && isLatestEdition)
+  const firePoints = useFirePoints(data ? fireDayOf(data.snapshots, data.run) : null)
+  const miniMap =
+    data && ctx ? (
+      <MiniMap items={mapItems(entries, ctx)} fires={firePoints.data ?? []} to={`/map${editionQuery(data.run.id, latestId)}`} />
+    ) : null
   const notice = data ? lateNotice(data.run, data.status) : null
 
   useEffect(() => {
@@ -195,6 +201,7 @@ export default function Desk() {
               watching={watching.data ?? null}
               latest={isLatestEdition}
               ctx={ctx}
+              map={miniMap}
             />
           </>
         ) : (
@@ -222,7 +229,7 @@ export default function Desk() {
                 )}
               </main>
               <aside className="flex-[1_1_340px] min-w-0 flex flex-col gap-8 sm:pt-6">
-                <MapSlot />
+                {miniMap}
                 <SinceYesterday
                   label={changeWindow.data ? sinceLabel(changeWindow.data.ref, data.run) : 'Since yesterday'}
                   lines={ctx && since ? sinceLines(entries, ctx) : null}

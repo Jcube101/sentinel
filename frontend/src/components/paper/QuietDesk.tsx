@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import {
   allClearRows,
@@ -15,7 +16,6 @@ import { closedSummaries, daysSinceLevel3, quietStreak, stripDays, type StripDay
 import type { CategoryStatus, DeskHistory, Edition, WatchRow } from '@/lib/desk/types'
 import { numberWord } from '@/lib/desk/words'
 import LevelSquares from './LevelSquares'
-import MapSlot from './MapSlot'
 
 const head = 'm-0 font-mono font-normal text-[11px] sm:text-[12px] tracking-[0.08em] uppercase pb-2 sm:pb-2.5 border-b border-ink flex justify-between gap-3'
 const meta = 'font-mono text-[11px] sm:text-[12px] leading-[1.5]'
@@ -211,10 +211,12 @@ interface Props {
   watching: WatchRow[] | null
   latest: boolean
   ctx: CopyContext
+  /** The small map for the sidebar. */
+  map: ReactNode
 }
 
 /** The Desk on a quiet day (DeskQuiet): nothing open above Level 1. */
-export default function QuietDesk({ run, entries, status, history, watching, latest, ctx }: Props) {
+export default function QuietDesk({ run, entries, status, history, watching, latest, ctx, map }: Props) {
   const days = stripDays(history, run)
   const since = daysSinceLevel3(history.lastLevel3, run)
   const last = history.lastLevel3
@@ -240,7 +242,7 @@ export default function QuietDesk({ run, entries, status, history, watching, lat
         </main>
         <aside className="flex-[1_1_340px] min-w-0 flex flex-col gap-8">
           <DayStrip days={days} lastText={lastText} />
-          <MapSlot />
+          {map}
           <RecentlyClosed history={history} />
         </aside>
       </div>

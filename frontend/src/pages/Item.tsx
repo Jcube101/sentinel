@@ -1,6 +1,6 @@
 import { useEffect, useMemo, type ReactNode } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { useChangeWindow, useEdition, useFireDaily, useItem, useLatestEditionId } from '@/hooks/useEdition'
+import { useChangeWindow, useEdition, useFireDaily, useFirePoints, useItem, useLatestEditionId } from '@/hooks/useEdition'
 import { cityReading, entryCard, normText, worstCities } from '@/lib/desk/cards'
 import { sinceYesterday, type Movement } from '@/lib/desk/changes'
 import { closedLine, copyContext, itemCopy } from '@/lib/desk/copy'
@@ -15,7 +15,8 @@ import { placeOf, placeText } from '@/lib/desk/where'
 import { lastKnownWords } from '@/lib/desk/words'
 import PaperShell from '@/components/paper/PaperShell'
 import LevelSquares from '@/components/paper/LevelSquares'
-import MapSlot from '@/components/paper/MapSlot'
+import MiniMap from '@/components/paper/MiniMap'
+import { fireDayOf, mapItems } from '@/lib/desk/mapdata'
 import { Chips, Strip } from '@/components/paper/DeskEntryRow'
 
 const head = 'm-0 font-mono font-normal text-[11px] sm:text-[12px] tracking-[0.08em] uppercase pb-2 sm:pb-2.5 border-b border-ink flex justify-between gap-3'
@@ -304,6 +305,7 @@ export default function Item() {
   const q = (n: number) => editionQuery(n, latestId)
   const query = run ? q(run.id) : ''
 
+  const firePoints = useFirePoints(edition.data && run ? fireDayOf(edition.data.snapshots, run) : null)
   const pageTitle = copy?.title ?? null
   useEffect(() => {
     document.title = pageTitle ? `Sentinel · ${pageTitle}` : 'Sentinel · Item'
@@ -399,7 +401,13 @@ export default function Item() {
         </main>
         <aside className="flex-[1_1_340px] min-w-0 flex flex-col gap-8">
           {entry.category === 'fire' && <CountFunnel f={entry.figures} />}
-          <MapSlot />
+          <MiniMap
+            items={ctx ? mapItems(entries, ctx) : []}
+            fires={firePoints.data ?? []}
+            selected={id}
+            to={`/map?item=${encodeURIComponent(id)}${query ? `&${query.slice(1)}` : ''}`}
+            note={entry.coords ? null : entry.category === 'air' ? 'Air has no place on the map yet.' : 'No position for this item in this edition.'}
+          />
           <Section title={`Elsewhere in No. ${run.id}`}>
             {others.length === 0 ? (
               <p className="m-0 text-[15px] text-ink-muted">Nothing else is open.</p>

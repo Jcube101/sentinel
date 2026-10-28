@@ -169,6 +169,9 @@ export default function About() {
             <Source name="GeoNames" href="https://www.geonames.org/">
               towns and cities, under CC BY 4.0.
             </Source>
+            <Source name="Esri" href="https://www.esri.com/">
+              the map's light grey basemap (Esri, HERE, Garmin, © OpenStreetMap contributors).
+            </Source>
           </ul>
         </Section>
       </main>
