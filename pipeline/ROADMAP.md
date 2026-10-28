@@ -30,13 +30,29 @@
       OnFailure= systemd hook for failures the process can't self-report
 
 ## Phase 2 — Pipeline Improvements (PLANNED 📋)
-- [ ] OpenAQ pagination (currently capped at 50 locations)
+- [x] OpenAQ pagination: pages through every Indian location, then pulls sensors
+      for up to 120, most recently reporting first (Sep 2026)
 - [ ] Tighter India bbox to reduce border noise
-- [ ] Retry logic for transient API failures
+- [x] Retry logic for transient API failures: every fetcher tries 3 times on
+      timeouts and connection errors (Sep 2026); GDACS timeouts don't fail the
+      run, FIRMS timeouts only on a second one in a row (Oct 2026)
 - [x] Webhook alert on pipeline failure or dense-source staleness (see above),
       live end to end: `NOTIFY_WEBHOOK_URL` points at an n8n workflow that
       emails Job via Gmail, tested for real from the Pi
 - [ ] FIRMS backfill beyond 30 days (SP source coverage gaps investigation)
+
+## Severity desk (COMPLETE ✅, Oct 2026)
+Spec, decisions, status and follow-ups: `docs/severity-pipeline.md`.
+- [x] Editions (`pipeline_runs`) and per-source freshness on `sources`
+- [x] Desk items for quakes, floods and cyclones, with a snapshot per run
+- [x] National air item: CPCB real-time AQI from data.gov.in, OpenAQ fallback
+- [x] Fire events: FIRMS hotspots clustered by district, static heat-source mask
+- [x] Seasonal fire norm from the 2024–2025 archive; one fire item per state
+- [x] Quiet-day desk: watching list, category status, 14-day strip
+- [x] Reliability fixes (28 Oct): air fallback never uses older data, GDACS 90 s
+      read timeout and no droughts, FIRMS fails only on a second timeout
+- [ ] Open follow-ups: see the spec (fire calibration, threshold tuning, mask
+      gaps, older tables' grants, GDACS timeout decision, frontend items)
 
 ## Phase 3 — Pipeline Enhancements (FUTURE 💡)
 - [ ] Additional data source for floods (GDACS coverage is thin)

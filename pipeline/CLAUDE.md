@@ -1,22 +1,43 @@
 # Sentinel Pipeline
 
-Python data pipeline for the Sentinel natural disaster tracker.
-Fetches from 5 APIs and upserts to Supabase three times daily via a systemd timer on the Raspberry Pi (jobpi).
+Python data pipeline for the Sentinel natural disaster tracker. Five fetchers (FIRMS,
+EONET, GDACS, USGS, OpenAQ) write `events` and `aqi_readings`; the severity stages then
+build the severity desk from the same fetch results, plus CPCB's real-time AQI from
+data.gov.in for the air item. It runs on the Raspberry Pi (jobpi) from a systemd timer at
+09:00, 15:00 and 21:00 UTC (14:30, 20:30 and 02:30 IST). Each run is an edition: a
+`pipeline_runs` row whose id is the edition number.
 
-## Status
-All 5 fetchers complete and validated. pipeline.py and backfill.py working end-to-end.
-systemd timer deployed on the Raspberry Pi (jobpi), three times daily at 09:00, 15:00, 21:00 UTC.
-- FIRMS → ~5,800 fire hotspot events (pipeline); ~97,245 events backfilled (30 days)
-- EONET → ~93 events (wildfires + severe storms)
-- GDACS → ~47 events (floods, cyclones, earthquakes)
-- USGS → ~102 earthquake events
-- OpenAQ → ~200 AQI readings
+## Status (28 Oct 2026)
+Severity pipeline complete (build steps 0-7, 21 Oct) and migrations 001-006 applied. Spec,
+decisions, what has been verified live and the open follow-ups: `docs/severity-pipeline.md`
+(*Where things stand*). Edition 25 (28 Oct, 02:30 IST), for scale: ok in 662 s; FIRMS
+2,477 hotspot rows, EONET 1, GDACS 9 events, USGS 124 quakes, OpenAQ 424 readings, and
+3,780 records from the data.gov.in feed (read by the air stage, not stored). GDACS took
+499 s of that run (*Data Sources*).
+
+## Run order
+`pipeline.run()`, in order. Stages 4-8 are each isolated: one that fails marks the run
+failed (so it alerts) while the others still run.
+1. `runs.start_run()`: the `pipeline_runs` row (edition); skipped by `--dry-run`
+2. Fetchers: FIRMS, EONET, GDACS, USGS, OpenAQ (`FETCHERS`), then the FIRMS timeout rule
+   (`_tolerate_first_timeouts`, see *Key Rules*)
+3. Upserts to `events` and `aqi_readings`; `runs.record_sources()` writes freshness on `sources`
+4. `fire.py`: fire events
+5. `fire_desk.py`: fire desk items, one per state
+6. `desk.py`: quake, flood and cyclone items
+7. `air.py`: the national air item (data.gov.in, OpenAQ fallback)
+8. `watch.py`: watching list and `category_status`
+9. `archive.run()`, then `_cleanup()` only if the archive succeeded
+10. `_check_staleness()`, then `runs.finish_run()` closes the edition as ok or failed
 
 ## How to Run
 
-Full pipeline (from pipeline/ directory):
+Full pipeline (from pipeline/ directory). A real run creates an edition and writes to
+Supabase; `--dry-run` fetches and logs what would happen without writing (no
+`pipeline_runs` row, no cleanup):
 ```bash
-PYTHONPATH=. python pipeline.py
+PYTHONPATH=. .venv/bin/python pipeline.py --dry-run
+PYTHONPATH=. .venv/bin/python pipeline.py
 ```
 
 Individual fetchers:
@@ -32,24 +53,36 @@ Note: use `python -m fetchers.firms` (module syntax), not `python fetchers/firms
 due to the relative import of `config`.
 
 ## Known Issues
-- OpenAQ rate limiting: ~10-20% of location sensor requests return 429.
-  Mitigated with `time.sleep(0.5)` between requests and limit=50 locations.
-- aqi_readings upsert requires a unique constraint on (location_id, parameter, recorded_at).
-  Run this SQL in Supabase once: `ALTER TABLE aqi_readings ADD CONSTRAINT aqi_readings_location_param_time_key UNIQUE (location_id, parameter, recorded_at);`
+- OpenAQ rate limiting: some sensor requests return 429 (3 in edition 25). Mitigated with
+  `time.sleep(0.5)` between requests and a cap of `MAX_LOCATIONS` (120) stations, the most
+  recently reporting first.
+- GDACS is slow, and sometimes hangs for hours: see *Data Sources* and the GDACS follow-up
+  in docs/severity-pipeline.md.
+- aqi_readings upserts need a unique constraint on (location_id, parameter, recorded_at).
+  It is in place (every run's upsert on that conflict key succeeds); for a fresh database:
+  `ALTER TABLE aqi_readings ADD CONSTRAINT aqi_readings_location_param_time_key UNIQUE (location_id, parameter, recorded_at);`
+
 ### Supabase Data API grants (from October 30, 2026)
 New tables created in the `public` schema after October 30, 2026 require
 explicit grants before supabase-js or the REST API can access them.
 Existing tables (events, aqi_readings, sources, categories) are unaffected.
 
-When adding a new table, include these grants in its migration:
+The rule (Job): only the service role (the pipeline) writes; anon and
+authenticated are read-only. Every migration that adds a table uses this
+pattern (as in migrations 002-005):
 
+  alter table public.your_table enable row level security;
+  drop policy if exists "your_table readable by everyone" on public.your_table;
+  create policy "your_table readable by everyone"
+    on public.your_table for select to anon, authenticated using (true);
+  revoke all on public.your_table from anon, authenticated;
   grant select on public.your_table to anon;
   grant select, insert, update, delete on public.your_table to service_role;
 
-Without these, the API returns "permission denied" on the new table.
-anon and authenticated are read-only: never grant them insert/update/delete.
-Only the service role (the pipeline) writes. Also enable RLS with a select
-policy, as in migrations/001.
+A view gets the same `revoke all`, then `grant select` to anon and to
+service_role. Without the grants, the API returns "permission denied". The
+older tables predate this pattern; checking their grants is a follow-up in
+docs/severity-pipeline.md.
 
 ## Tests
 
@@ -58,6 +91,31 @@ Offline tests (no network, no credentials), from pipeline/:
 .venv/bin/pip install -r requirements-dev.txt   # once; pytest is dev-only
 .venv/bin/python -m pytest
 ```
+Supabase is a fake (`tests/fakes.py`) and the fetchers are stubbed, so tests never write
+real rows or create `pipeline_runs` rows; `tests/conftest.py` also blocks data.gov.in
+outright. If you pipe the output (into `tail`, say), use `set -o pipefail` so a failing
+run still fails.
+
+## Working on the pipeline
+The timer runs `pipeline/.venv/bin/python pipeline.py` straight from the main checkout:
+whatever is there at the next firing runs, uncommitted edits and packages installed into
+its `.venv` included. So:
+- Keep the main checkout on `main`. Never switch branches or install packages in it.
+- Build each work item in its own git worktree (`git worktree add -b fix/x
+  ../sentinel-x main`) with its own `pipeline/.venv`. Symlink its `pipeline/.env` and
+  `pipeline/sentinel_archive.db` to the main checkout's: a non-dry run archives and then
+  deletes from Supabase, so a separate archive file would strand the deleted rows.
+- One work item at a time: test (`.venv/bin/python -m pytest`, then
+  `PYTHONPATH=. .venv/bin/python pipeline.py --dry-run`), commit, then in the main
+  checkout `git merge --ff-only <branch>`. Code that needs a migration merges only after
+  Job has applied it.
+- Check the next live edition. Revert only if the changed stage itself fails; an outage at
+  an unrelated source (GDACS, FIRMS, OpenAQ, data.gov.in) is not a reason to revert. Keep
+  the merge and report the outage.
+- Removing a worktree after merging and pushing: check it is clean and merged, delete its
+  two symlinks first (so nothing can reach their targets), then `git worktree remove
+  <path>` (no `--force`) and `git branch -d <branch>`.
+- Before pushing: no secrets (`.env`, keys) and no raw FIRMS archive in the repo.
 
 ## Severity thresholds
 
@@ -75,8 +133,8 @@ PYTHONPATH=. python backfill.py --source usgs --days 365
 ```
 
 Note: FIRMS NRT product only covers the last ~10 days. The SP (Standard Processing)
-product has a ~2-month processing lag, so chunks in the Mar-Apr 2026 window return 0
-rows — this is expected, not a bug.
+product lags by roughly 2-3 months, so chunks in that gap return 0 rows — this is
+expected, not a bug.
 
 ## Archive
 
@@ -104,7 +162,7 @@ and the Windows scheduled task has been disabled.
 - AQI readings: keep 7 days
 
 ## Stack
-- Python 3.11
+- Python 3.13 on the Pi (3.11 or later: `severity_config.py` uses `tomllib`)
 - supabase-py
 - requests
 - python-dotenv
@@ -156,12 +214,13 @@ today and yesterday in fire_events and keeps 14 days.
 ## Fire baseline (one-off)
 The static mask and the seasonal norm come from the FIRMS VIIRS NOAA-20 SP
 archive, 2024-2025 (~147 five-day requests, ~1,300 FIRMS transactions,
-paced on the key's transaction count; raw CSV kept outside the repo):
+paced on the key's transaction count; raw CSV kept outside the repo, in
+`<firms-archive-dir>`):
 ```bash
 PYTHONPATH=. .venv/bin/python tools/pull_firms_archive.py --start 2024-01-01 \
-    --end 2025-12-31 --cache-dir /home/jcube/projects/sentinel-data/firms_sp
+    --end 2025-12-31 --cache-dir <firms-archive-dir>
 PYTHONPATH=. .venv/bin/python tools/build_fire_baseline.py \
-    --cache-dir /home/jcube/projects/sentinel-data/firms_sp --upload
+    --cache-dir <firms-archive-dir> --upload
 ```
 Outputs data/static_heat_cells.json, data/fire_baseline.csv and the
 fire_baseline table (migration 004). Rerun only to change years or parameters.
@@ -223,6 +282,11 @@ Schema changes are numbered SQL files in `migrations/`. There is no DB URL or
 psql on the Pi: Job pastes each file into the Supabase SQL editor. Write them
 idempotent, with the Data API grants above, and merge code that needs a
 migration only after it has been applied.
+
+Applied (checked 28 Oct 2026, every table and view answers): 001 pipeline_runs and
+source freshness, 002 desk_items and snapshots, 003 fire_events, 004 fire_baseline,
+005 quiet-day desk, 006 the DATAGOV sources row. Planned next, with the frontend phase:
+a `last_known` column in the `desk_last_level3` view (docs/severity-pipeline.md).
 
 ## Schema — events table
 id: text (primary key, deterministic)

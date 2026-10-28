@@ -25,6 +25,21 @@ no pipeline or schema changes. Full execution spec (6 sub-steps) in
 ## Phase 5 — Enhancements (FUTURE 💡)
 Light mode, alerts/subscribe, public API, expanded coverage.
 
+## Phase 6 — Severity desk pipeline (COMPLETE ✅)
+Every desk item on one 1–4 severity scale with a reason, so fire hotspots no
+longer swamp every count: editions and per-source freshness, quake / flood /
+cyclone items, a national air item (CPCB real-time AQI from data.gov.in, OpenAQ
+as fallback), FIRMS hotspots clustered into fire events with a seasonal norm per
+state, a snapshot of every item per run, and a quiet-day desk. Pipeline and
+Supabase only; the live site is unchanged. Spec, decisions, verification status
+and open follow-ups: [docs/severity-pipeline.md](docs/severity-pipeline.md).
+
+## Phase 7 — Severity desk frontend (NEXT 🔜)
+The redesign that reads the desk tables (mock-ups in [docs/design/](docs/design/)),
+with the About-page data credits and two small pipeline changes that go in with
+it (wind speed in the cyclone reason; `last_known` in `desk_last_level3`). Not
+started.
+
 ---
 
 ## Build Log
@@ -46,15 +61,24 @@ Light mode, alerts/subscribe, public API, expanded coverage.
 | Jul 2026 | Alerting live end to end (n8n webhook to Gmail, tested for real from the Pi); Windows Task Scheduler archival fully retired, `setup_task_scheduler.ps1` removed |
 | Jul 2026 | Frontend map migrated from MapLibre (WebGL) to Leaflet (DOM tiles) so it works without WebGL |
 | Jul 2026 | Phase 4 UI/IA revamp shipped — new IA (Home/Live Map/Insights/Event detail/About), design tokens, live Active Threats feed, client-side severity scoring, Recharts insights page, command palette |
+| Sep 2026 | Every fetcher retries timeouts and connection errors; GDACS timeouts no longer fail the run; OpenAQ picks stations by recency |
+| Oct 2026 | Map basemap moved from CARTO to keyless Esri Dark Gray Canvas |
+| Oct 2026 | Severity desk pipeline (Phase 6, steps 0–7) built and live: editions, desk items, fire events and seasonal baseline, quiet-day desk |
+| Oct 2026 | CPCB real-time AQI from data.gov.in becomes the air item's primary source |
+| Oct 2026 | Reliability fixes after a health review of editions 11–24: the air fallback never uses older data, GDACS gets a 90 s read timeout and no droughts, FIRMS fails a run only on a second timeout in a row |
 
 ---
 
 ## Follow-ups / Known Issues
 
 Recorded so these aren't lost or re-raised from scratch next time someone
-looks at this project.
+looks at this project. Severity desk follow-ups (fire calibration and
+thresholds, static mask gaps, grants on the older tables, GDACS timeout
+decision, frontend items) are in
+[docs/severity-pipeline.md](docs/severity-pipeline.md), *Follow-ups*.
 
-- **`supabase` 2.15.0 to 2.31.0 upgrade.** 16 minor versions behind, and the
+- **`supabase` 2.15.0 to 2.31.0 upgrade.** Still pinned at 2.15.0 (28 Oct
+  2026). When last checked it was 16 minor versions behind, and the
   sub-packages (`postgrest`, `realtime`, `storage3`) are pinned well below
   what 2.31.0 expects. Do this as a reviewed run, not unattended: the writes
   this pipeline depends on could break in a way that only shows up against

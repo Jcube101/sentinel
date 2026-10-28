@@ -160,10 +160,11 @@ service. For a job that runs once and exits, the right pattern is a **timer
 
 Two things that aren't obvious until you hit them:
 - `Type=oneshot` makes `systemctl start sentinel-pipeline.service` **block
-  until the run finishes** (~60s here) instead of returning immediately.
+  until the run finishes** (~60s at the time; several minutes since the
+  severity stages and GDACS's slow pages) instead of returning immediately.
   That's correct behaviour for a batch job, not a hang.
 - Point `ExecStart` straight at the venv's interpreter
-  (`/home/jcube/projects/sentinel/pipeline/.venv/bin/python pipeline.py`)
+  (`/path/to/sentinel/pipeline/.venv/bin/python pipeline.py`)
   with `WorkingDirectory` set. There's no need to "activate" the venv —
   the absolute path to its Python binary is all systemd needs.
 
@@ -349,3 +350,45 @@ zero code. The cost is one more hop and one more thing (n8n, the workflow
 itself) that has to stay up for alerts to land, which is a reasonable
 trade for keeping credentials and delivery logic out of a data pipeline
 that has no other reason to know about either.
+
+---
+
+## A Timer That Runs the Checkout Makes the Checkout Production
+
+The Pi's service runs `pipeline/.venv/bin/python pipeline.py` straight from
+the git checkout, with no deploy step. Whatever is on disk at the next firing
+runs, uncommitted edits included. During the severity build a half-finished
+step nearly went live this way (it would have shown GDACS events wrongly as
+open).
+
+The fix is a working rule, not code: the main checkout stays on `main`, each
+piece of work is built and tested in its own `git worktree`, and only tested
+steps are fast-forward merged. A worktree that does real runs must symlink
+the main checkout's `.env` and `sentinel_archive.db`: a run archives and then
+deletes from Supabase, so a second archive file would strand the deleted rows.
+
+---
+
+## Some APIs Hang on Python's Default User Agent
+
+The data.gov.in API doesn't reject requests that carry `python-requests`'
+default `User-Agent`; it just never answers them, so they look like a slow
+server until the timeout. Sending our own user agent (`datagov.USER_AGENT`)
+fixed it: the feed's four requests now take seconds. If an API hangs from
+Python but works elsewhere, try the user agent before raising the timeout.
+
+---
+
+## A Fallback Must Not Replace Newer Data With Older Data
+
+In edition 21 the air item's primary source (CPCB's real-time feed) returned
+HTTP 500, and the OpenAQ fallback raised air from Level 1 to Level 2. Its 24 h
+means ended three days before the feed's reading that it replaced, and
+edition 23 dropped the level back. A fallback is only safe when its data is
+at least as new as what it replaces: now an OpenAQ reading counts only if it
+is no older than the data behind the current level; otherwise the item stays
+"last-known" with a reason saying why.
+
+The same goes for "no data" read as "all clear". When OpenAQ came back after
+a 3.5-day gap with too few hourly values for any 24 h mean, the fallback
+would have closed the item. Now a missing mean keeps it last-known.

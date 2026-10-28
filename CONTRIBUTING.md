@@ -14,6 +14,12 @@ source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
 # fill in your API keys in .env
+pip install -r requirements-dev.txt   # pytest, for the offline tests
+```
+
+Run the tests (no network or credentials needed):
+```bash
+python -m pytest
 ```
 
 Run the full pipeline:
@@ -55,13 +61,18 @@ Create `pipeline/fetchers/your_source.py`. The interface contract is simple:
 5. **Never write to Supabase** — fetchers only fetch and transform; `pipeline.py` handles all writes
 6. **Log clearly**: use `logger.info` for counts, `logger.warning` for skipped rows, `logger.error` before letting a request/parse failure propagate
 
-Then in `pipeline/pipeline.py`:
-- Import your fetcher
-- Add a `_run_fetcher("YourSource", your_source)` call
-- Add the results to `all_events` (or handle a new table separately)
+Then:
+- In `pipeline/pipeline.py`, import your fetcher and add it to `FETCHERS`. If it returns events, add its name to `EVENT_SOURCES` so its rows go into the `events` upsert
 - Add a line to the summary print block
+- In `pipeline/runs.py`, add it to `SOURCE_IDS`. Each run records freshness by updating the source's row in the `sources` table, so add that row with a migration (like `pipeline/migrations/006_datagov_source.sql`)
+- Make requests through `fetchers.http.get_with_retry` (3 tries on timeouts and connection errors)
+- Add offline tests under `pipeline/tests/` (fakes, no network)
 
 If your fetcher writes to a different table (like `openaq.py` writes to `aqi_readings`), add a separate `_upsert()` call with the appropriate conflict key.
+
+## Schema Changes
+
+Add a numbered SQL file to `pipeline/migrations/`: idempotent, with the grant pattern in `pipeline/CLAUDE.md` (anon and authenticated read only, the service role writes). The maintainer pastes it into the Supabase SQL editor; code that needs it is merged after it has been applied. Severity thresholds go in `pipeline/severity.toml`, never in code.
 
 ---
 
@@ -79,7 +90,7 @@ If your fetcher writes to a different table (like `openaq.py` writes to `aqi_rea
 
 1. Fork the repo and create a branch: `git checkout -b feat/your-feature`
 2. Make your changes
-3. Test pipeline changes: `cd pipeline && PYTHONPATH=. python pipeline.py --dry-run` first, then a real run
+3. Test pipeline changes: `cd pipeline && python -m pytest`, then `PYTHONPATH=. python pipeline.py --dry-run`, then a real run
 4. Test frontend changes: `cd frontend && npm run build` (must pass with zero errors)
 5. Open a PR with a clear description of what you changed and why
 

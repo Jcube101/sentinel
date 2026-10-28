@@ -4,14 +4,22 @@
 
 ## Project Overview
 
-Sentinel is a real-time natural disaster tracker for India. The pipeline
-fetches data from five public APIs daily, normalises it into a consistent
-schema, and upserts it into Supabase. A Vite + React frontend visualises
-active events on a map.
+Sentinel is a natural disaster tracker for India. The pipeline fetches five
+public APIs three times a day, normalises the data into a consistent schema,
+and upserts it into Supabase. Severity stages then turn the same data, plus
+CPCB's real-time AQI from data.gov.in, into a severity desk: one item per
+hazard with a level from 1 to 4 and a reason, snapshotted every run (an
+edition). A Vite + React frontend visualises active events on a map; it
+doesn't read the desk yet.
+
+This file covers the base pipeline and the current frontend. The severity
+desk has its own spec, with decisions, status and follow-ups:
+[docs/severity-pipeline.md](docs/severity-pipeline.md).
 
 **Goals:**
 - Aggregate fire, flood, cyclone, earthquake, and air quality data for India
   into a single queryable database
+- Rank hazards on one shared 1-4 severity scale, never by raw counts
 - Deduplicate correctly across pipeline runs using deterministic IDs
 - Never let one data source failure affect the others
 - Keep the pipeline simple enough to extend with new sources in under an hour
@@ -22,9 +30,17 @@ active events on a map.
 
 ```
 sentinel/
+├── docs/                  — severity desk spec (severity-pipeline.md), design mock-ups
 ├── pipeline/              — Python data pipeline
 │   ├── fetchers/          — one module per data source
-│   ├── pipeline.py        — orchestrator (fetch → upsert → cleanup)
+│   ├── pipeline.py        — orchestrator (fetch → upsert → severity stages → archive → cleanup)
+│   ├── runs.py            — editions (pipeline_runs) and per-source freshness
+│   ├── fire.py, baseline.py, fire_desk.py, desk.py, air.py, datagov.py, watch.py
+│   │                      — severity stages (see docs/severity-pipeline.md)
+│   ├── severity.toml      — every severity threshold
+│   ├── migrations/        — numbered SQL, pasted into the Supabase SQL editor
+│   ├── data/, tools/      — reference data and the scripts that build it
+│   ├── tests/             — offline pytest suite
 │   ├── backfill.py        — historical data loader
 │   ├── archive.py         — Supabase → local SQLite archiver
 │   ├── config.py          — env vars + India bbox constants
@@ -45,20 +61,26 @@ sentinel/
 ## Architecture
 
 ```
-backfill.py (one-time)         Pi systemd timer (daily)
+backfill.py (one-time)         Pi systemd timer (09:00, 15:00, 21:00 UTC)
   ├── firms.fetch_range()         └── pipeline/pipeline.py
-  ├── eonet.fetch()                     ├── fetchers/firms.py    → events table
-  ├── gdacs.fetch()                     ├── fetchers/eonet.py    → events table
-  └── usgs.fetch()                      ├── fetchers/gdacs.py    → events table
+  ├── eonet.fetch()                     ├── runs.start_run()     → pipeline_runs (edition)
+  ├── gdacs.fetch()                     ├── fetchers/firms.py    → events table
+  └── usgs.fetch()                      ├── fetchers/eonet.py    → events table
+         │                              ├── fetchers/gdacs.py    → events table
          │                              ├── fetchers/usgs.py     → events table
-         │                              ├── fetchers/openaq.py  → aqi_readings table
+         │                              ├── fetchers/openaq.py   → aqi_readings table
+         │                              ├── runs.record_sources() → sources (freshness)
+         │                              ├── severity stages      → fire_events, desk_items,
+         │                              │   (fire, fire_desk,       desk_item_snapshots,
+         │                              │    desk, air, watch)      desk_watch, category_status
+         │                              ├── archive.run()        → sentinel_archive.db
          │                              └── _cleanup()           → delete stale rows
          └──────────────────────────────────────┐
                                                 ▼
                                          Supabase (Postgres)
-                                           │           │
-                                           ▼           ▼
-                                    Frontend    archive.py → sentinel_archive.db
+                                                │
+                                                ▼
+                                    Frontend (events, aqi_readings)
 ```
 
 ---
@@ -93,8 +115,15 @@ backfill.py (one-time)         Pi systemd timer (daily)
 - **Auth:** None
 - **Format:** GeoJSON FeatureCollection
 - **Provides:** Floods, cyclones, earthquakes, wildfires with alert levels (Green/Orange/Red)
-- **Parameters:** `eventtypes=EQ,TC,FL,WF`, `country=IND`, rolling 90-day window
-- **Note:** Country filter is not strict — requires post-fetch bbox filter
+- **Parameters:** `eventtypes=EQ,TC,FL,WF` (droughts not requested since 28 Oct 2026),
+  `country=IND`, `alertlevel=Green,Orange,Red`, rolling 90-day window
+- **Paging:** the API returns at most 100 rows a page; a 90-day window is ~6 pages
+- **Timeouts:** 90 s read timeout for GDACS only (`config.GDACS_READ_TIMEOUT_S`; 30 s
+  connect), 3 tries on timeouts and connection errors, each page's time logged. A GDACS
+  timeout never fails the run. Whether 90 s stays is pending (docs/severity-pipeline.md)
+- **Note:** Country filter is not strict (it also matches Indonesia) — requires post-fetch bbox filter
+- **Wildfire alerts** are kept out of `events` (EONET carries the same fires); the fire
+  desk uses them only to lift a state to Level 3
 - **Update frequency:** Event-driven
 
 ### USGS Earthquake Hazards Program
@@ -111,8 +140,25 @@ backfill.py (one-time)         Pi systemd timer (daily)
 - **Format:** JSON
 - **Provides:** PM2.5, PM10, NO2, SO2, O3 readings from ground stations
 - **Country ID:** `9` (India) — numeric, not ISO code
-- **Limit:** 50 locations per run, 0.5s delay between sensor requests
+- **Locations:** pages through every Indian location, keeps those that reported in the
+  last 96 h, and pulls sensors for up to 120 of them, most recent first; 0.5 s delay
+  between sensor requests
+- **Also:** fallback source for the severity desk's air item (24 h means at reference
+  monitors, `air.py`)
 - **Update frequency:** Hourly per station
+
+### data.gov.in (CPCB real-time AQI)
+- **Endpoint:** `https://api.data.gov.in/resource/3b01bcb8-0b14-4abf-b6f2-c1bfd384ba69`
+  (dataset "Real time Air Quality Index from various locations")
+- **Auth:** API key as the `api-key` query parameter (`DATA_GOV_IN_API_KEY`)
+- **Format:** JSON, paged (~4 requests a run)
+- **Provides:** CPCB's AQI sub-index per pollutant per station
+- **Used by:** the air stage only (`datagov.py`, `air.py`), as the air item's primary
+  source. Its readings aren't stored as rows; what reaches Supabase is the air item
+  (level, reason, figures) and the DATAGOV row's freshness on `sources`
+- **Note:** the API hangs requests that carry Python's default user agent, so the
+  client sends its own
+- **Update frequency:** Hourly, usually 0.5-1.5 h behind real time
 
 ---
 
@@ -166,6 +212,24 @@ backfill.py (one-time)         Pi systemd timer (daily)
 ALTER TABLE aqi_readings ADD CONSTRAINT aqi_readings_location_param_time_key
 UNIQUE (location_id, parameter, recorded_at);
 ```
+
+### Run record and severity desk tables
+
+Created or extended by `pipeline/migrations/001`-`006` (all applied; `sources` is older
+and gained its freshness columns in 001). Columns are in the SQL files and summarised in
+`pipeline/CLAUDE.md` (*Supabase Tables*). Grant rule for the new tables: anon and
+authenticated read only, the service role writes.
+
+| Table / view | One row per |
+|--------------|-------------|
+| `pipeline_runs` | run (edition), with each source's status and duration |
+| `sources` | source, plus freshness columns written every run |
+| `fire_events` (+ views `fire_district_daily`, `fire_state_daily`) | fire event per UTC day |
+| `fire_baseline` | state and calendar week: mean daily fire events (the seasonal norm) |
+| `desk_items` | desk item, with its 1-4 level, reason and status |
+| `desk_item_snapshots` (+ views `desk_daily_max`, `desk_last_level3`) | desk item per run |
+| `desk_watch` | watched subject, with its trend toward the next level |
+| `category_status` (+ view `category_status_latest`) | category per run |
 
 ---
 
@@ -223,8 +287,13 @@ affect the others or the pipeline exit code.
   internally (see Fetcher Interface Contract above); a request or
   response-parse failure propagates out of `fetch()` and is caught here,
   which marks that source failed for the run without halting the others.
-- Exit code is `1` if any fetcher, upsert, or archive failed, `0` on full
-  success.
+- Timeouts are softer than other errors: a GDACS timeout never fails the
+  run, and a FIRMS timeout fails it only if FIRMS's previous fetch timed out
+  too (`FAIL_ON_SECOND_TIMEOUT`). HTTP and parse errors fail at once.
+- Each severity stage runs in its own `try/except`: a failed stage marks the
+  run failed but doesn't stop the other stages or undo earlier writes.
+- Exit code is `1` if any fetcher (after the timeout rules above), upsert,
+  archive, the run record or a severity stage failed, `0` on full success.
 - `_check_staleness()` runs at the end of every call, regardless of exit
   code, and never affects it: staleness is a notification concern (see
   Alerting below), not a hard failure.
@@ -293,6 +362,9 @@ Two call sites:
 | EONET | `EONET-{eonet_event_id}` |
 | GDACS | `GDACS-{eventtype}-{eventid}` |
 | USGS | `USGS-{geojson_feature_id}` |
+
+Desk items: `earthquake:USGS-…`, `flood:GDACS-FL-…`, `cyclone:GDACS-TC-…`,
+`fire:<state slug>`, `air:IN`.
 
 ---
 
@@ -419,6 +491,7 @@ Pi.
 | `SUPABASE_SERVICE_KEY` | Service role key from Project Settings → API |
 | `FIRMS_MAP_KEY` | NASA FIRMS MAP key |
 | `OPENAQ_API_KEY` | OpenAQ v3 API key |
+| `DATA_GOV_IN_API_KEY` | Optional. data.gov.in key for CPCB's real-time AQI; without it the air item uses OpenAQ |
 | `NOTIFY_WEBHOOK_URL` | Optional. Failure/staleness alert webhook, see Alerting above |
 
 ---
@@ -428,8 +501,8 @@ Pi.
 **Pipeline:** Raspberry Pi (`jobpi`)
 - Host: self-hosted Raspberry Pi 5
 - Scheduler: systemd timer pair (`sentinel-pipeline.service` + `sentinel-pipeline.timer`)
-- Schedule: three times daily at 09:00, 15:00, 21:00 UTC (`OnCalendar=*-*-*
-  09,15,21:00:00 UTC`), `Persistent=true` to catch missed runs. Chosen to
+- Schedule: three times daily at 09:00, 15:00, 21:00 UTC = 14:30, 20:30, 02:30 IST
+  (`OnCalendar=*-*-* 09,15,21:00:00 UTC`), `Persistent=true` to catch missed runs. Chosen to
   land after the ~06:00-08:00 UTC VIIRS overpass FIRMS depends on; the
   original single 01:00 UTC run predated that overpass every day (see
   LEARNINGS.md).
