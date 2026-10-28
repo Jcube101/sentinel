@@ -34,11 +34,13 @@ state, a snapshot of every item per run, and a quiet-day desk. Pipeline and
 Supabase only; the live site is unchanged. Spec, decisions, verification status
 and open follow-ups: [docs/severity-pipeline.md](docs/severity-pipeline.md).
 
-## Phase 7 — Severity desk frontend (NEXT 🔜)
-The redesign that reads the desk tables (mock-ups in [docs/design/](docs/design/)),
-with the About-page data credits and two small pipeline changes that go in with
-it (wind speed in the cyclone reason; `last_known` in `desk_last_level3`). Not
-started.
+## Phase 7 — Severity desk frontend: the Situation Report (COMPLETE ✅)
+The site rebuilt as a newspaper front page over the desk tables (mock-ups in
+[docs/design/](docs/design/)): a Desk per edition with stories ranked by level and
+written as news ([docs/style-guide.md](docs/style-guide.md)), Since yesterday, a quiet-day
+desk, item pages, a map with a symbol per hazard, an archive by day, a Sources page and
+About with the data credits. Every edition reads as it was published. Plan, decisions and
+the requests to the pipeline (P1–P8): [docs/situation-report-plan.md](docs/situation-report-plan.md).
 
 ---
 
@@ -66,6 +68,7 @@ started.
 | Oct 2026 | Severity desk pipeline (Phase 6, steps 0–7) built and live: editions, desk items, fire events and seasonal baseline, quiet-day desk |
 | Oct 2026 | CPCB real-time AQI from data.gov.in becomes the air item's primary source |
 | Oct 2026 | Reliability fixes after a health review of editions 11–24: the air fallback never uses older data, GDACS gets a 90 s read timeout and no droughts, FIRMS fails a run only on a second timeout in a row |
+| Oct 2026 | The Situation Report (Phase 7) replaces the old site: the desk as a newspaper front page, an archive of every edition, hazard map symbols, copy written to a style guide |
 
 ---
 

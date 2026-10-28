@@ -223,6 +223,9 @@ export default function PaperMap({
           position={[m.lat, m.lon]}
           icon={itemIcon(m, m.key === selected, scale)}
           interactive={interactive}
+          // On the still maps markers aren't buttons; on the full map each is one, named by its title.
+          keyboard={interactive}
+          title={interactive ? m.title : undefined}
           eventHandlers={onSelect ? { click: () => onSelect(m.key) } : undefined}
           zIndexOffset={m.key === selected ? 1000 : m.level * 100}
         >

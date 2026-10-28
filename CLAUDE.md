@@ -1,20 +1,22 @@
 # Sentinel Monorepo
 
 Sentinel tracks natural hazards in India. A Python pipeline on a Raspberry Pi reads six
-public sources three times a day and writes to Supabase: raw `events` and `aqi_readings`
-(what the live site shows today) and a **severity desk**, where every item (quake, flood,
-cyclone, fire activity per state, national air quality) has a level from 1 to 4 and a
-reason. Each run is an **edition**, numbered in `pipeline_runs`. The frontend phase that
-shows the desk is next; the live site doesn't read the desk tables yet.
+public sources three times a day and writes to Supabase: raw `events` and `aqi_readings`,
+and a **severity desk**, where every item (quake, flood, cyclone, fire activity per state,
+national air quality) has a level from 1 to 4 and a reason. Each run is an **edition**,
+numbered in `pipeline_runs`. The site, the **Situation Report**, prints each edition as a
+newspaper front page from the desk tables; it no longer reads `events` or `aqi_readings`.
 
 ## Structure
 - pipeline/: Python pipeline, runs on the Raspberry Pi (jobpi) via a systemd timer at
   09:00, 15:00 and 21:00 UTC (14:30, 20:30 and 02:30 IST). Details: pipeline/CLAUDE.md
 - frontend/ — Vite + React frontend, Render static site (live at sentinel-frontend-8hem.onrender.com)
 - docs/severity-pipeline.md: the severity desk's spec, decisions, current status and open
-  follow-ups (including the pipeline changes planned for the frontend phase)
-- docs/design/: design mock-ups for the desk frontend (DeskSeverity, DeskQuiet, DeskPhone,
-  ItemFire, MapView)
+  follow-ups
+- docs/situation-report-plan.md: the frontend's plan, decisions and the requests to the
+  pipeline (P1–P8); docs/style-guide.md: how the site writes (every generated line follows it)
+- docs/design/: design mock-ups for the site (DeskSeverity, DeskQuiet, DeskPhone, ItemFire,
+  MapView, MapSymbols), read as visual and copy spec, not code
 
 ## Rules
 - Never mix pipeline and frontend dependencies
@@ -61,49 +63,61 @@ earlier writes stand.
 
 ## Frontend
 
+The Situation Report: one responsive site (the phone is the same site at narrow width),
+read-only through the anon key. Plan and decisions: docs/situation-report-plan.md.
+
 ### Stack
-- Vite + React 19 + TypeScript
-- Tailwind CSS, Leaflet (react-leaflet v5), Supercluster, Recharts
-- React Query (@tanstack/react-query) + @supabase/supabase-js
-- Lucide React for icons
+- Vite 8 + React 19 + TypeScript, Tailwind CSS 3
+- Leaflet (react-leaflet v5), raster tiles, no WebGL
+- React Query (@tanstack/react-query) + @supabase/supabase-js, React Router 7
+- Vitest for the desk logic (`npm test`)
 
 ### Dev
 ```bash
 cd frontend
 npm install
 cp .env.example .env.local
-npm run dev
+npm run dev            # includes /dev/symbols
+npm test
+npm run build:preview  # the preview on the Pi: a build with /dev/symbols in it
 ```
+Render runs the plain `npm run build`, which leaves the dev pages out.
 
 ### Environment Variables
 - VITE_SUPABASE_URL
 - VITE_SUPABASE_ANON_KEY
+- VITE_DEV_PAGES=1 (optional): include `/dev/symbols` in a build
 
 ### Routes
-`/` Home, `/map` Live Map, `/insights` Insights, `/event/:id` Event detail,
-`/about` About — `/dashboard` redirects to `/map` for old bookmarks/links.
-Full IA history and ground rules in `frontend/ROADMAP.md` Phase 4.
+`/` the latest edition's Desk, `/edition/:n` any edition as published, `/date/YYYY-MM-DD`
+a day's edition (the first from 20:30 IST), `/item/:category/:ref` an item (`?edition=n`
+for a past edition), `/map`, `/archive` (`?month=YYYY-MM`), `/sources`, `/about`.
+Old addresses: `/insights` → `/archive`, `/dashboard` → `/map`, `/event/:id` → the desk
+item whose `source_ref` is that event (else a short note). `/dev/symbols` draws every map
+symbol (not linked, noindex).
 
 ### Key Patterns
-- Per-category query limits in useNaturalEvents: fire 2000, earthquake 1000, flood/cyclone 500
-- Home page uses 4 separate useNaturalEvents calls (one per category) for accurate stat counts,
-  and reuses that same combined data for the Active Threats feed and mini-map preview
-- SentinelMap accepts isLoading, interactive (disables drag/zoom for preview/locator use), and
-  optional center/zoom overrides
-- Design tokens live in `src/index.css` `:root` (`--bg`, `--surface`, `--border`, `--text`,
-  `--muted`, `--accent`, `--cat-*` category hues, `--sev-*` severity ramp) and are aliased in
-  `tailwind.config.js`. Tailwind can't apply opacity modifiers (e.g. `bg-accent/20`) to colors
-  sourced from CSS variables — translucent chip backgrounds use inline hex + alpha suffix
-  (`color + '33'`) instead, matching the pre-existing convention
-- `lib/time.ts` (relativeTime, formatDate) and `lib/severity.ts` (severityScore/severityBucket,
-  a 0-100 cross-category ranking blending each event's normalized `severity` label with
-  recency) are shared by ThreatFeed, EventDetailPanel, and the EventDetail page
-- Map tiles: Esri Dark Gray Canvas raster, no API key (base + Reference label layer,
-  `{z}/{y}/{x}` order), darkened to the old CARTO Dark Matter look by a
-  `.leaflet-tile-pane` filter in `index.css`. CARTO's dark_all now needs a key and
-  watermarks every keyless tile. Leaflet renders raster tiles on the DOM, so the
-  map needs no WebGL and works in every browser (the earlier MapLibre map showed
-  a blank void when WebGL was unavailable)
-- useAqiReadings queries aqi_readings directly (last 24h); AqiPanel is the only consumer,
-  toggled from FilterBar, slides in from the left so it never collides with EventDetailPanel
-  on the right
+- **Reads only the desk tables:** `pipeline_runs`, `desk_item_snapshots` (with
+  `desk_items` embedded), `category_status`, `desk_watch`, `fire_events`,
+  `fire_state_daily`. Hooks in `src/hooks/useEdition.ts`.
+- **Every line rebuilds for past editions:** templates in `src/lib/desk/` (copy, notes,
+  words) read only the edition's own snapshots, its run time and the comparison with the
+  edition about a day earlier (`changes.ts`), so `/edition/:n` prints the same words it
+  did when published. `copy.test.ts` and `notes.test.ts` hold real editions' copy to the
+  letter; fixtures in `src/lib/desk/__fixtures__/`.
+- **Copy follows docs/style-guide.md:** news for ordinary readers, facts said plainly;
+  caveats in each item's source line, the "As of" kicker and the page's Notes.
+- **Ranking** (`entries.ts`): level, then cyclone, flood, earthquake, air, fire, then
+  strength. Level 1 quakes are one row; fire states are one roundup unless Level 3+ or
+  alone.
+- **The level scale** is a copy of `pipeline/severity.toml` in `src/lib/desk/scale.ts`
+  until the pipeline stores it per edition (plan P3).
+- **Map** (`components/paper/PaperMap.tsx`, `mapSymbols.ts`): Esri World Light Gray tiles
+  (keyless), warmed by a `.paper-map` filter in `index.css`; hazard symbols per
+  docs/design/MapSymbols.dc.html; India's outline from `src/lib/desk/geo/india-coast.json`.
+  Leaflet loads lazily, after the page's text.
+- **Design tokens:** the paper palette in `src/index.css` `:root` (`--paper`, `--ink`,
+  `--ink-muted`, `--rule`, `--fill`, `--fill-strong`, `--panel`, `--note`, `--accent`),
+  aliased in `tailwind.config.js`.
+- **Bundles:** the Desk is in the main chunk; other pages load on first visit; React,
+  Supabase, React Query and Leaflet are chunks of their own (`vite.config.ts`).

@@ -8,7 +8,7 @@ interface Props {
   line: string
 }
 
-/** Pages of the redesign not built yet (plan steps 4-8), and the not-found page. */
+/** A one-line page: the not-found page. */
 export default function Placeholder({ title, line }: Props) {
   useEffect(() => {
     document.title = `Sentinel · ${title}`

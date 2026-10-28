@@ -128,9 +128,14 @@ export default function PaperShell({ children, footer, notes }: Props) {
   const { pathname } = useLocation()
   return (
     <div className="min-h-screen bg-paper text-ink font-serif pb-[calc(4rem+env(safe-area-inset-bottom))] sm:pb-0">
+      <a href="#content" className="skip-link">
+        Skip to the report
+      </a>
       <div className="max-w-[1360px] mx-auto px-5 sm:px-10 pb-6 sm:pb-14">
         <Masthead path={pathname} />
-        {children}
+        <div id="content" tabIndex={-1} className="focus:outline-none">
+          {children}
+        </div>
         {notes}
         {pathname !== '/about' && <Legend afterNotes={!!notes} />}
         <footer className={`${pathname !== '/about' ? 'mt-0' : 'mt-12'} pt-3 border-t border-ink flex flex-wrap justify-between gap-3 font-mono text-[10px] sm:text-[11px] leading-relaxed text-ink-muted tracking-[0.04em]`}>

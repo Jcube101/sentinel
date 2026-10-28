@@ -121,6 +121,7 @@ export default function MapPage() {
 
   return (
     <PaperShell>
+      <h1 className="sr-only">The map, No. {run.id}</h1>
       <div className="flex flex-wrap justify-between items-center gap-3 py-2 sm:py-2.5 border-b border-ink font-mono text-[11px] sm:text-[12px] tracking-[0.04em] uppercase">
         <span>
           <Link to={run.id === latestId ? '/' : `/edition/${run.id}`} className="hover:text-accent">

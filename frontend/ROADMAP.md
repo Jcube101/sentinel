@@ -192,6 +192,14 @@ root; this section is the self-contained execution spec.
       at common desktop widths and hid the count, so it became an icon
       button instead.
 
+## Phase 7 — The Situation Report (COMPLETE ✅)
+
+The site rebuilt over the severity desk, replacing the Phase 1–4 pages (Home, Live Map,
+Insights, Event detail): a newspaper front page per edition, item pages, a map with a
+symbol per hazard, an archive by day, Sources and About. Steps 0–9, decisions and the
+requests to the pipeline: [docs/situation-report-plan.md](../docs/situation-report-plan.md).
+The copy follows [docs/style-guide.md](../docs/style-guide.md).
+
 ## Phase 5 — Future (💡)
 - [ ] Light mode (tokens already in place from Phase 4.1 — flip via a
       `[data-theme]` override + toggle)

@@ -1,6 +1,6 @@
 # Sentinel — "Situation Report" frontend (Phase 7): plan
 
-Status: **plan updated 28 Oct 2026 with Job's answers; steps 1 to 8 done; the copy follows `docs/style-guide.md` (2b–2d); caveats moved out of the stories and per-hazard map symbols (decisions 11–12).** Branch
+Status: **steps 1 to 9 done (28 Oct 2026); ready for Job's review and the switch-over (a fast-forward merge into `main`). The copy follows `docs/style-guide.md`; caveats sit in source lines and Notes; map symbols follow `docs/design/MapSymbols.dc.html` (decisions 11–13).** Branch
 `frontend/situation-report`, worktree `../sentinel-situation-report`. Design reference:
 `docs/design/` (DeskSeverity, DeskQuiet, DeskPhone, MapView, ItemFire), read as visual and
 copy spec, not code. Data model: `docs/severity-pipeline.md` and
@@ -302,11 +302,31 @@ checked on the Pi preview against live data. Smallest shippable step first.
    month's slim rows: three reads a month), the edition and how many others ran; then
    the month's closings from the closing snapshots (an item that reopened keeps its
    closing), with peak level and days open. The edition line's date links to its day.
-9. **Switch-over prep.** Redirects for old routes (`/insights` → `/archive`, `/event/:id`,
-   `/dashboard`); remove the old pages, components and unused dependencies (Recharts if
-   nothing uses it); meta tags and favicon; accessibility and phone pass. Job reviews the
-   preview and approves; fast-forward merge into `main`; Render deploys. Update `CLAUDE.md`
-   (Frontend), `frontend/README.md` and both roadmaps.
+9. **Switch-over prep.** Done on the branch (28 Oct):
+   - Old routes: `/insights` → `/archive`, `/dashboard` → `/map`, and `/event/:id` → the
+     desk item whose `source_ref` is that event (`useItemForEvent`), else a short note
+     linking today's report and the map (fire events and NASA's event tracker never
+     became items).
+   - The old site is gone: Landing, LiveMap, Insights, EventDetail, the layout, map and
+     ui components, `useNaturalEvents` / `useAqiReadings` / `useEvent`, `lib/severity`,
+     `lib/time`, `lib/types`, `icons.svg`, the dark tokens and tile filter in `index.css`
+     and `tailwind.config.js`, and four packages (lucide-react, recharts, supercluster,
+     @types/supercluster). The site now reads only the desk tables (CLAUDE.md, Frontend).
+   - Bundles: every page but the Desk loads on first visit, the mini map's Leaflet loads
+     after the page's text, and React, Supabase, React Query and Leaflet are chunks of
+     their own. The site's own code on the front page fell from ~770 kB in one file to
+     123 kB (39 kB gzipped) plus the cached library chunks; no chunk over 500 kB.
+   - Meta: title, description and Open Graph tags for the Situation Report; a paper
+     favicon (the level squares, the fourth in red); a `<noscript>` line.
+   - Accessibility and phone pass: axe (WCAG 2.1 A/AA) clean on every route at 1440 and
+     390 px, no horizontal scroll, no console errors; a skip link to the content; one
+     focus ring on paper; the map page has a heading; the still maps' markers are no
+     longer keyboard stops, and the full map's are buttons named by their item.
+   - CLAUDE.md (intro, Structure, Frontend), `frontend/README.md` and both roadmaps
+     describe the new site as it will be once merged.
+   - **For Job:** review the preview; then fast-forward `main` to this branch and push, and
+     Render deploys the site (`render.yaml` runs `npm run build`, without the dev pages).
+     The branch changes nothing under `pipeline/`, so the timer's runs are unaffected.
 
 ## 5. Labels: last-known, air, fire cap
 

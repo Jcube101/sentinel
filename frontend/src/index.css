@@ -5,26 +5,7 @@
 @tailwind utilities;
 
 :root {
-  --bg: #0a0a0f;
-  --surface: #16161f;
-  --surface-2: #111118;
-  --border: #2a2a3a;
-  --text: #f0f0f5;
-  --muted: #7070a0;
-  --accent-hover: #ea6a0a;
-
-  --cat-fire: #ef4444;
-  --cat-flood: #3b82f6;
-  --cat-cyclone: #8b5cf6;
-  --cat-earthquake: #f59e0b;
-
-  --sev-low: #22c55e;
-  --sev-mid: #f59e0b;
-  --sev-high: #ef4444;
-
-  /* Situation Report: the paper palette (docs/design). The tokens above
-     belong to the old dark site and go when its pages are removed (plan
-     step 9). */
+  /* The paper palette (docs/design). */
   --paper: #F3F0E8;
   --ink: #17171B;
   --ink-muted: #5C5A55;
@@ -52,28 +33,31 @@ a {
   box-sizing: border-box;
 }
 
-@keyframes pulse-ring {
-  0% { box-shadow: 0 0 0 0 rgba(255,255,255,0.3); }
-  70% { box-shadow: 0 0 0 6px rgba(255,255,255,0); }
-  100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); }
-}
-.marker-pulse {
-  animation: pulse-ring 2s infinite;
+/* One focus ring for links, buttons and form controls, visible on paper. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
-/* Esri's Dark Gray Canvas is much lighter than the CARTO Dark Matter tiles the
-   UI was designed around, so darken the basemap (both tile layers) back to
-   that near-black. Only the tile pane is filtered: markers and clusters live
-   in .leaflet-marker-pane, and the legend and AQI panel sit outside the map.
-   0.4 brings Esri's #3f3f41 land to ~#0f0f10 (CARTO was #090909) while keeping
-   street lines and labels readable at zoom 14; 0.35 starts losing them. */
-.leaflet-tile-pane {
-  filter: brightness(0.4) contrast(1.1);
+/* A skip link, shown only when focused (PaperShell). */
+.skip-link {
+  position: absolute;
+  left: 8px;
+  top: -40px;
+  z-index: 2000;
+  padding: 8px 12px;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.skip-link:focus {
+  top: 8px;
 }
 
-/* The Situation Report's paper map: Esri's light grey canvas, warmed toward
-   the paper palette. More specific than the old dark .leaflet-tile-pane
-   filter above, which goes with the old pages at the switch-over. */
+/* The paper map: Esri's light grey canvas, warmed toward the paper palette. */
 .paper-map {
   background: var(--panel);
 }

@@ -544,3 +544,22 @@ export function useClosedInMonth(month: string | null) {
     enabled: !!supabase && !!month,
   })
 }
+
+/**
+ * The desk item an old site's event became, for `/event/:id` links: desk
+ * items keep the event's id as `source_ref`. null when it never reached the
+ * desk (fires are per state now; NASA's event tracker isn't levelled).
+ */
+export function useItemForEvent(eventId: string | null) {
+  return useQuery({
+    queryKey: ['item-for-event', eventId],
+    queryFn: async (): Promise<string | null> => {
+      if (!supabase || !eventId) return null
+      const { data, error } = await supabase.from('desk_items').select('id').eq('source_ref', eventId).limit(1)
+      if (error) throw error
+      return (data?.[0]?.id as string | undefined) ?? null
+    },
+    staleTime: Infinity,
+    enabled: !!supabase && !!eventId,
+  })
+}
