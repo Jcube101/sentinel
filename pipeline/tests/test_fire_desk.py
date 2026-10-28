@@ -193,6 +193,23 @@ def test_districts_listed_busiest_first():
     assert c.figures["districts"][2]["frp_max"] == 12.5
 
 
+def test_state_ranks_share_ties():
+    ranks = fire_desk.state_ranks({"Punjab": 53, "Haryana": 20, "Madhya Pradesh": 145, "Bihar": 20, "Kerala": 0})
+    assert ranks == {"Madhya Pradesh": (1, False), "Punjab": (2, False), "Haryana": (3, True), "Bihar": (3, True)}
+
+
+def test_candidates_carry_their_national_rank():
+    # No. 25: Punjab had 53 fires but no item; the rank counts every state with fires.
+    rows = (_events(60, state="Madhya Pradesh", district="Guna", did="D3") + _events(53)
+            + _events(20, state="Haryana", district="Karnal", did="D2"))
+    cands = {c.place_name: c for c in fire_desk.build_candidates(
+        rows, [], {}, {}, cfg=CFG, day=DAY, today=TODAY, norms=NORMS, places=PLACES, gdacs_checked=True,
+        data_to=NOW)}
+    mp, pb = cands["Madhya Pradesh"].figures, cands["Punjab"].figures
+    assert (mp["state_rank"], mp["rank_shared"], mp["states_with_fires"]) == (1, False, 3)
+    assert (pb["state_rank"], cands["Haryana"].figures["state_rank"]) == (2, 3)
+
+
 # --- the stage: lifecycle against a fake Supabase ---------------------------------------------------
 
 def _firms_rows(day, times):

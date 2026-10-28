@@ -289,7 +289,9 @@ events; a large fire near a city (`data/india_places.csv`) is Level 4. These
 FIRMS-derived levels are capped at `fire.calibration_cap` (2) until live
 counts are calibrated against the archive; a current GDACS wildfire alert in
 the state lifts the item to Level 3 regardless. Today's events so far are in
-`figures.today` (marked partial) and never set the level. Items close after
+`figures.today` (marked partial) and never set the level. `figures.state_rank` is the
+state's national rank by fire events that day among every state with fires
+(`states_with_fires`; equal counts share a rank, `rank_shared`). Items close after
 `fire.lifecycle.close_after_hours` of complete days below Level 2
 (`figures.quiet_since`). If FIRMS fails, has no rows for yesterday, or
 yesterday is incomplete, open items stay last-known; if GDACS fails, they keep

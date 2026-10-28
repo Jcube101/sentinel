@@ -374,8 +374,20 @@ def build_candidates(day_rows: list[dict], today_rows: list[dict], alerts: dict[
                         gdacs_checked=gdacs_checked, data_to=data_to)
         for state in sorted(set(by_state) | set(alerts) | set(open_states))
     ]
+    ranks = state_ranks({state: len(rows) for state, rows in by_state.items()})
+    for c in candidates:
+        rank, shared = ranks.get(c.place_name, (None, False))
+        c.figures.update(state_rank=rank, rank_shared=shared, states_with_fires=len(ranks))
     start_quiet_clock(candidates, existing, day, cfg)
     return candidates
+
+
+def state_ranks(fire_events: dict[str, int]) -> dict[str, tuple[int, bool]]:
+    """{state: (rank, shared)} by fire events on the day, most first, over every
+    state with any (not only those on the desk), so copy can say "the most fires
+    of any state". Equal counts share a rank (1, 2, 2, 4)."""
+    counts = sorted((n for n in fire_events.values() if n > 0), reverse=True)
+    return {state: (counts.index(n) + 1, counts.count(n) > 1) for state, n in fire_events.items() if n > 0}
 
 
 def reconcile_items(existing: dict[str, dict], candidates: list[desk.Candidate], *, cfg: dict, day: date,
