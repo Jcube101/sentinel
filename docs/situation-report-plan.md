@@ -443,18 +443,23 @@ Also:
     the plain multiple ("run at twice the usual") and the standfirst gives it against the
     average ("about double the late-October average but normal for the season"), as in
     Job's example.
-12. Map symbols per hazard ("A2 · Map symbols" sheet, 28 Oct): ink on paper, red only at
-    Level 3 and up. Fire stays dots, in warm ember (#B4532A, ~0.65), red in a state at
-    Level 3+; a fire state shows only its rank badge, at the centre of its fires. An
-    earthquake is ripple rings, one per level, sized by magnitude, labelled with the USGS
-    class words (light, moderate, strong, major). A flood is wave lines, one per level. A
-    cyclone is a spiral sized by wind speed, red from Level 3, with a faint halo and one
-    slow pulse at Level 4 (no pulse with reduced motion). The rank number is a small badge
-    on the symbol. The map page's Layers list is the key. Air, once P5 lands: soft
-    band-tinted squares for cities at poor or worse, under every hazard (its own pane,
-    below the fire dots), the worst city labelled, its own layer toggle (on). The squares
-    are built (`airSquareHtml`, `PaperMap`'s `air` prop) and shown only on `/dev/symbols`
-    until the pipeline's field names arrive.
+12. Map symbols per hazard, after `docs/design/MapSymbols.dc.html` ("A2 · Map symbols",
+    28 Oct): ink for Levels 1–2, red from Level 3, size carries strength. Fire: dots in
+    warm ember (#B4532A), 0.55 at or near normal, 0.75 above it, red 0.8 from Level 3; the
+    state's rank badge at the centre of its fires, none at Level 1; at Level 4 the large
+    fire near a town is ringed (matched by `fire_events.id`). Earthquake: ripples, one
+    ring more than the level (2 to 5, 5 px apart, fading outward); the key and labels use
+    the USGS class words. A group of small quakes has one badge, on its largest quake.
+    Flood: wave lines, one per level, flood blue (#1F4E8C) below Level 3, wider at 3 and
+    4, a faint halo at 4. Cyclone: Sentinel's spiral (Job kept it over the sheet's),
+    sized by wind, red from Level 3, a faint halo and one slow pulse at Level 4 (no pulse
+    with reduced motion). The rank number is a small badge on the symbol; the map page's
+    Layers list is the key. Air, once P5 lands: a soft square per city at poor or worse,
+    sized and tinted by band in slate blue (Job kept these over the sheet's ochre), red
+    for Severe, under every hazard (its own pane below the fire dots); only the worst
+    city is named, left of its square, else on the first side clear of every marker, else
+    not at all. Built (`airSquareHtml`, `placeLabel`, `PaperMap`'s `air` prop) and shown
+    only on `/dev/symbols` until the pipeline's field names arrive.
 13. `/dev/symbols` draws every symbol at every level, the size ramps, selected and closed
     markers, the air squares and a made-up busy day, so quake and flood symbols can be
     checked without a real event. Not linked from the site, `noindex`. It is in

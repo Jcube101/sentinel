@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sentinel — Map symbols</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans+Condensed:wght@500;600;700&amp;family=IBM+Plex+Serif:ital,wght@0,400;0,500;1,400&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F3F0E8}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1180px; box-sizing: border-box; background: #F3F0E8; color: #17171B; font-family: 'IBM Plex Serif', Georgia, serif; padding: 48px 56px; display: flex; flex-direction: column; gap: 28px">
+
+<header style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 4px solid #17171B; padding-bottom: 14px">
+<div style="display: flex; align-items: baseline; gap: 18px">
+<span style="font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 700; font-size: 36px; letter-spacing: 0.04em">SENTINEL</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase">Map symbols · one per hazard</span>
+</div>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #5C5A55">INK FOR LEVELS 1–2 · RED FROM LEVEL 3 · SIZE CARRIES STRENGTH</span>
+</header>
+
+<div style="display: flex; gap: 48px; flex: 1; min-height: 0">
+
+<section style="flex: 1 1 800px; display: flex; flex-direction: column">
+<div style="display: grid; grid-template-columns: 150px repeat(4, minmax(0, 1fr)); border-bottom: 1px solid #17171B; padding-bottom: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase">
+<span></span><span>Level 1 · minor</span><span>Level 2 · elevated</span><span>Level 3 · high</span><span style="color: #A8221B">Level 4 · severe</span>
+</div>
+
+<div style="display: grid; grid-template-columns: 150px repeat(4, minmax(0, 1fr)); align-items: center; border-bottom: 1px solid #CFC9BC; height: 150px">
+<div style="display: flex; flex-direction: column; gap: 4px"><span style="font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 600; font-size: 20px">Cyclone</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #5C5A55">spiral · size = wind</span></div>
+<div style="display: flex; flex-direction: column; align-items: flex-start; gap: 6px">
+<svg width="120" height="100" viewBox="-60 -50 120 100" role="img" aria-label="Cyclone level 1"><g transform="scale(1.4)" fill="none" stroke="#17171B" stroke-linecap="round"><circle r="3" fill="#17171B" stroke="none"></circle><circle r="7" stroke-width="1.5"></circle><path d="M 7 0 C 7 -9, 0 -15, -9 -14" stroke-width="2.2"></path><path d="M -7 0 C -7 9, 0 15, 9 14" stroke-width="2.2"></path></g></svg>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #5C5A55">green · ~80 km/h</span></div>
+<div style="display: flex; flex-direction: column; align-items: flex-start; gap: 6px">
+<svg width="120" height="100" viewBox="-60 -50 120 100" role="img" aria-label="Cyclone level 2"><g transform="scale(1.8)" fill="none" stroke="#17171B" stroke-linecap="round"><circle r="3" fill="#17171B" stroke="none"></circle><circle r="7" stroke-width="1.4"></circle><path d="M 7 0 C 7 -9, 0 -15, -9 -14" stroke-width="2"></path><path d="M -7 0 C -7 9, 0 15, 9 14" stroke-width="2"></path></g></svg>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #5C5A55">green, rising · ~110</span></div>
+<div style="display: flex; flex-direction: column; align-items: flex-start; gap: 6px">
+<svg width="120" height="100" viewBox="-60 -50 120 100" role="img" aria-label="Cyclone level 3"><g transform="scale(2.2)" fill="none" stroke="#A8221B" stroke-linecap="round"><circle r="3" fill="#A8221B" stroke="none"></circle><circle r="7" stroke-width="1.3"></circle><path d="M 7 0 C 7 -9, 0 -15, -9 -14" stroke-width="1.9"></path><path d="M -7 0 C -7 9, 0 15, 9 14" stroke-width="1.9"></path></g></svg>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #5C5A55">orange · ~150</span></div>
+<div style="display: flex; flex-direction: column; align-items: flex-start; gap: 6px">
+<svg width="140" height="100" viewBox="-70 -50 140 100" role="img" aria-label="Cyclone level 4"><circle r="38" fill="#A8221B" opacity="0.08"></circle><g transform="scale(2.6)" fill="none" stroke="#A8221B" stroke-linecap="round"><circle r="3" fill="#A8221B" stroke="none"></circle><circle r="7" stroke-width="1.2"></circle><path d="M 7 0 C 7 -9, 0 -15, -9 -14" stroke-width="1.8"></path><path d="M -7 0 C -7 9, 0 15, 9 14" stroke-width="1.8"></path></g></svg>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A8221B">red · 200+ · slow pulse</span></div>
+</div>
+
+<div style="display: grid; grid-template-columns: 150px repeat(4, minmax(0, 1fr)); align-items: center; border-bottom: 1px solid #CFC9BC; height: 150px">
+<div style="display: flex; flex-direction: column; gap: 4px"><span style="font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 600; font-size: 20px">Earthquake</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #5C5A55">ripples · rings = magnitude</span></div>
+<div style="display: flex; flex-direction: column; align-items: flex-start; gap: 6px">
+<svg width="120" height="100" viewBox="-60 -50 120 100" role="img" aria-label="Earthquake level 1"><g fill="none" stroke="#17171B" stroke-width="1.4"><circle r="2.5" fill="#17171B" stroke="none"></circle><circle r="8"></circle><circle r="14" opacity="0.45"></circle></g></svg>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #5C5A55">M4.6 · light</span></div>
+<div style="display: flex; flex-direction: column; align-items: flex-start; gap: 6px">
+<svg width="120" height="100" viewBox="-60 -50 120 100" role="img" aria-label="Earthquake level 2"><g fill="none" stroke="#17171B" stroke-width="1.4"><circle r="3" fill="#17171B" stroke="none"></circle><circle r="9"></circle><circle r="17" opacity="0.6"></circle><circle r="25" opacity="0.3"></circle></g></svg>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #5C5A55">M5.4 · moderate</span></div>
+<div style="display: flex; flex-direction: column; align-items: flex-start; gap: 6px">
+<svg width="120" height="100" viewBox="-60 -50 120 100" role="img" aria-label="Earthquake level 3"><g fill="none" stroke="#A8221B" stroke-width="1.5"><circle r="3.5" fill="#A8221B" stroke="none"></circle><circle r="10"></circle><circle r="19" opacity="0.7"></circle><circle r="28" opacity="0.45"></circle><circle r="37" opacity="0.2"></circle></g></svg>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #5C5A55">M6.4 · strong</span></div>
+<div style="display: flex; flex-direction: column; align-items: flex-start; gap: 6px">
+<svg width="140" height="100" viewBox="-70 -50 140 100" role="img" aria-label="Earthquake level 4"><g fill="none" stroke="#A8221B" stroke-width="1.7"><circle r="4" fill="#A8221B" stroke="none"></circle><circle r="10"></circle><circle r="20" opacity="0.8"></circle><circle r="30" opacity="0.55"></circle><circle r="40" opacity="0.3"></circle><circle r="48" opacity="0.15"></circle></g></svg>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A8221B">M7.2 · major</span></div>
+</div>
+
+<div style="display: grid; grid-template-columns: 150px repeat(4, minmax(0, 1fr)); align-items: center; border-bottom: 1px solid #CFC9BC; height: 150px">
+<div style="display: flex; flex-direction: column; gap: 4px"><span style="font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 600; font-size: 20px">Flood</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #5C5A55">waves · count = level</span></div>
+<div style="display: flex; flex-direction: column; align-items: flex-start; gap: 6px">
+<svg width="120" height="100" viewBox="-60 -50 120 100" role="img" aria-label="Flood level 1"><g fill="none" stroke="#1F4E8C" stroke-width="2.2" stroke-linecap="round"><path d="M -18 0 q 4.5 -6 9 0 t 9 0 t 9 0 t 9 0"></path></g></svg>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #5C5A55">green</span></div>
+<div style="display: flex; flex-direction: column; align-items: flex-start; gap: 6px">
+<svg width="120" height="100" viewBox="-60 -50 120 100" role="img" aria-label="Flood level 2"><g fill="none" stroke="#1F4E8C" stroke-width="2.2" stroke-linecap="round"><path d="M -18 -5 q 4.5 -6 9 0 t 9 0 t 9 0 t 9 0"></path><path d="M -18 5 q 4.5 -6 9 0 t 9 0 t 9 0 t 9 0"></path></g></svg>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #5C5A55">green, rising</span></div>
+<div style="display: flex; flex-direction: column; align-items: flex-start; gap: 6px">
+<svg width="120" height="100" viewBox="-60 -50 120 100" role="img" aria-label="Flood level 3"><g fill="none" stroke="#A8221B" stroke-width="2.4" stroke-linecap="round"><path d="M -22 -10 q 5.5 -7 11 0 t 11 0 t 11 0 t 11 0"></path><path d="M -22 0 q 5.5 -7 11 0 t 11 0 t 11 0 t 11 0"></path><path d="M -22 10 q 5.5 -7 11 0 t 11 0 t 11 0 t 11 0"></path></g></svg>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #5C5A55">orange</span></div>
+<div style="display: flex; flex-direction: column; align-items: flex-start; gap: 6px">
+<svg width="140" height="100" viewBox="-70 -50 140 100" role="img" aria-label="Flood level 4"><rect x="-34" y="-26" width="68" height="52" fill="#A8221B" opacity="0.08"></rect><g fill="none" stroke="#A8221B" stroke-width="2.6" stroke-linecap="round"><path d="M -26 -15 q 6.5 -8 13 0 t 13 0 t 13 0 t 13 0"></path><path d="M -26 -5 q 6.5 -8 13 0 t 13 0 t 13 0 t 13 0"></path><path d="M -26 5 q 6.5 -8 13 0 t 13 0 t 13 0 t 13 0"></path><path d="M -26 15 q 6.5 -8 13 0 t 13 0 t 13 0 t 13 0"></path></g></svg>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A8221B">red</span></div>
+</div>
+
+<div style="display: grid; grid-template-columns: 150px repeat(4, minmax(0, 1fr)); align-items: center; border-bottom: 1px solid #CFC9BC; height: 150px">
+<div style="display: flex; flex-direction: column; gap: 4px"><span style="font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 600; font-size: 20px">Fire</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #5C5A55">ember dots · badge at state centre</span></div>
+<div style="display: flex; flex-direction: column; align-items: flex-start; gap: 6px">
+<svg width="120" height="100" viewBox="-60 -50 120 100" role="img" aria-label="Fire, at or near normal"><g fill="#B4532A" opacity="0.55"><circle cx="-20" cy="-8" r="2"></circle><circle cx="6" cy="10" r="2"></circle><circle cx="18" cy="-14" r="2"></circle><circle cx="-4" cy="-18" r="2"></circle><circle cx="-14" cy="16" r="2"></circle></g></svg>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #5C5A55">normal · no badge</span></div>
+<div style="display: flex; flex-direction: column; align-items: flex-start; gap: 6px">
+<svg width="120" height="100" viewBox="-60 -50 120 100" role="img" aria-label="Fire level 2"><g fill="#B4532A" opacity="0.75"><circle cx="-24" cy="-10" r="2"></circle><circle cx="-16" cy="-4" r="2"></circle><circle cx="-10" cy="-14" r="2"></circle><circle cx="-4" cy="6" r="2"></circle><circle cx="4" cy="-8" r="2"></circle><circle cx="10" cy="12" r="2"></circle><circle cx="16" cy="-2" r="2"></circle><circle cx="22" cy="-16" r="2"></circle><circle cx="-18" cy="14" r="2"></circle><circle cx="2" cy="18" r="2"></circle><circle cx="26" cy="8" r="2"></circle><circle cx="-6" cy="-22" r="2"></circle></g><rect x="-8" y="-8" width="16" height="16" fill="#17171B"></rect><text x="0" y="4" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" font-weight="600" fill="#FFFFFF">2</text></svg>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #5C5A55">2–4× usual · ink badge</span></div>
+<div style="display: flex; flex-direction: column; align-items: flex-start; gap: 6px">
+<svg width="120" height="100" viewBox="-60 -50 120 100" role="img" aria-label="Fire level 3"><g fill="#A8221B" opacity="0.8"><circle cx="-28" cy="-12" r="2.2"></circle><circle cx="-20" cy="-2" r="2.2"></circle><circle cx="-12" cy="-16" r="2.2"></circle><circle cx="-6" cy="8" r="2.2"></circle><circle cx="4" cy="-10" r="2.2"></circle><circle cx="10" cy="14" r="2.2"></circle><circle cx="18" cy="-4" r="2.2"></circle><circle cx="24" cy="-18" r="2.2"></circle><circle cx="-22" cy="16" r="2.2"></circle><circle cx="2" cy="20" r="2.2"></circle><circle cx="28" cy="8" r="2.2"></circle><circle cx="-8" cy="-24" r="2.2"></circle><circle cx="14" cy="24" r="2.2"></circle><circle cx="-30" cy="4" r="2.2"></circle><circle cx="32" cy="-6" r="2.2"></circle></g><rect x="-8" y="-8" width="16" height="16" fill="#A8221B"></rect><text x="0" y="4" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" font-weight="600" fill="#FFFFFF">1</text></svg>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #5C5A55">4×+ or forest alert</span></div>
+<div style="display: flex; flex-direction: column; align-items: flex-start; gap: 6px">
+<svg width="140" height="100" viewBox="-70 -50 140 100" role="img" aria-label="Fire level 4"><g fill="#A8221B" opacity="0.8"><circle cx="-28" cy="-12" r="2.2"></circle><circle cx="-20" cy="-2" r="2.2"></circle><circle cx="-12" cy="-16" r="2.2"></circle><circle cx="-6" cy="8" r="2.2"></circle><circle cx="4" cy="-10" r="2.2"></circle><circle cx="10" cy="14" r="2.2"></circle><circle cx="-22" cy="16" r="2.2"></circle><circle cx="2" cy="20" r="2.2"></circle></g><circle cx="22" cy="-6" r="7" fill="none" stroke="#A8221B" stroke-width="1.6"></circle><circle cx="22" cy="-6" r="3" fill="#A8221B"></circle><circle cx="22" cy="-6" r="14" fill="#A8221B" opacity="0.1"></circle><rect x="-8" y="-8" width="16" height="16" fill="#A8221B"></rect><text x="0" y="4" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" font-weight="600" fill="#FFFFFF">1</text></svg>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A8221B">large fire near a town · ringed</span></div>
+</div>
+
+<div style="display: grid; grid-template-columns: 150px repeat(4, minmax(0, 1fr)); align-items: center; height: 130px">
+<div style="display: flex; flex-direction: column; gap: 4px"><span style="font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 600; font-size: 20px">Air</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #5C5A55">soft square per city · tint = band · under everything</span></div>
+<div style="display: flex; flex-direction: column; align-items: flex-start; gap: 6px">
+<svg width="120" height="80" viewBox="-60 -40 120 80" role="img" aria-label="Air: moderate or better, not drawn"><rect x="-6" y="-6" width="12" height="12" rx="2" fill="none" stroke="#CFC9BC" stroke-dasharray="2 2"></rect></svg>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #5C5A55">moderate or better · not drawn</span></div>
+<div style="display: flex; flex-direction: column; align-items: flex-start; gap: 6px">
+<svg width="120" height="80" viewBox="-60 -40 120 80" role="img" aria-label="Air: poor"><rect x="-7" y="-7" width="14" height="14" rx="2.5" fill="#C9A24A" opacity="0.7"></rect></svg>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #5C5A55">poor · 201–300</span></div>
+<div style="display: flex; flex-direction: column; align-items: flex-start; gap: 6px">
+<svg width="120" height="80" viewBox="-60 -40 120 80" role="img" aria-label="Air: very poor"><rect x="-8" y="-8" width="16" height="16" rx="2.5" fill="#B5652B" opacity="0.75"></rect></svg>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #5C5A55">very poor · 301–400</span></div>
+<div style="display: flex; flex-direction: column; align-items: flex-start; gap: 6px">
+<svg width="120" height="80" viewBox="-60 -40 120 80" role="img" aria-label="Air: severe"><rect x="-9" y="-9" width="18" height="18" rx="2.5" fill="#7A2318" opacity="0.8"></rect></svg>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A8221B">severe · 401+</span></div>
+</div>
+</section>
+
+<section style="flex: 0 0 500px; display: flex; flex-direction: column; gap: 12px">
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; border-bottom: 1px solid #17171B; padding-bottom: 8px">Together · a busy day</div>
+<div style="background: #DCD8CF; border: 1px solid #17171B; padding: 8px">
+<svg viewBox="0 0 420 445" width="482" height="510" role="img" aria-label="Example map of India with a severe cyclone off Andhra Pradesh, fires in Madhya Pradesh, poor air in the north, a flood near Chennai and a moderate earthquake near the Andamans">
+<path d="M91 8 L137 30 L154 52 L171 75 L154 98 L182 110 L224 135 L280 150 L283 165 L305 160 L336 158 L385 128 L410 142 L392 158 L378 172 L371 195 L354 218 L340 225 L333 202 L315 184 L305 180 L294 177 L288 195 L291 232 L266 240 L259 255 L238 270 L224 288 L200 314 L182 327 L171 338 L171 362 L165 390 L165 408 L154 423 L143 429 L133 441 L120 429 L112 405 L104 384 L95 368 L85 339 L77 320 L69 279 L67 255 L64 244 L59 248 L41 252 L14 228 L28 220 L7 210 L21 198 L42 197 L35 178 L22 158 L36 142 L56 133 L76 114 L91 98 L92 75 L81 60 L87 42 L77 27 Z" fill="#FBF7EE" stroke="#8C8577" stroke-width="0.8"></path>
+<g opacity="0.7"><rect x="120" y="115" width="9" height="9" rx="1.5" fill="#B5652B"></rect><rect x="129" y="129" width="8" height="8" rx="1.5" fill="#C9A24A"></rect><rect x="138" y="126" width="8" height="8" rx="1.5" fill="#C9A24A"></rect><rect x="180" y="148" width="8" height="8" rx="1.5" fill="#C9A24A"></rect><rect x="64" y="272" width="8" height="8" rx="1.5" fill="#C9A24A"></rect><rect x="100" y="108" width="8" height="8" rx="1.5" fill="#C9A24A"></rect></g>
+<text x="96" y="110" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="8.5" fill="#17171B">Panipat 301</text>
+<g fill="#B4532A" opacity="0.7"><circle cx="120" cy="200" r="1.4"></circle><circle cx="126" cy="206" r="1.4"></circle><circle cx="132" cy="196" r="1.4"></circle><circle cx="138" cy="214" r="1.4"></circle><circle cx="144" cy="204" r="1.4"></circle><circle cx="150" cy="218" r="1.4"></circle><circle cx="156" cy="208" r="1.4"></circle><circle cx="128" cy="222" r="1.4"></circle><circle cx="134" cy="228" r="1.4"></circle><circle cx="146" cy="226" r="1.4"></circle><circle cx="160" cy="198" r="1.4"></circle><circle cx="116" cy="214" r="1.4"></circle><circle cx="140" cy="192" r="1.4"></circle><circle cx="152" cy="232" r="1.4"></circle><circle cx="122" cy="230" r="1.4"></circle><circle cx="164" cy="214" r="1.4"></circle><circle cx="168" cy="152" r="1.4"></circle><circle cx="176" cy="160" r="1.4"></circle><circle cx="190" cy="156" r="1.4"></circle><circle cx="200" cy="166" r="1.4"></circle><circle cx="104" cy="268" r="1.4"></circle><circle cx="116" cy="278" r="1.4"></circle><circle cx="96" cy="96" r="1.4"></circle><circle cx="104" cy="90" r="1.4"></circle><circle cx="150" cy="300" r="1.4"></circle><circle cx="250" cy="180" r="1.4"></circle></g>
+<rect x="133" y="203" width="14" height="14" fill="#17171B"></rect><text x="140" y="213.5" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="9.5" font-weight="600" fill="#FFFFFF">2</text>
+<g fill="none" stroke="#1F4E8C" stroke-width="1.6" stroke-linecap="round"><path d="M 162 368 q 3 -4 6 0 t 6 0 t 6 0"></path></g>
+<g fill="none" stroke="#17171B" stroke-width="1"><circle cx="352" cy="380" r="2" fill="#17171B" stroke="none"></circle><circle cx="352" cy="380" r="6"></circle><circle cx="352" cy="380" r="11" opacity="0.6"></circle><circle cx="352" cy="380" r="16" opacity="0.3"></circle></g>
+<circle cx="208" cy="322" r="26" fill="#A8221B" opacity="0.08"></circle>
+<g transform="translate(208 322) scale(1.7)" fill="none" stroke="#A8221B" stroke-linecap="round"><circle r="3" fill="#A8221B" stroke="none"></circle><circle r="7" stroke-width="1.2"></circle><path d="M 7 0 C 7 -9, 0 -15, -9 -14" stroke-width="1.8"></path><path d="M -7 0 C -7 9, 0 15, 9 14" stroke-width="1.8"></path></g>
+<rect x="224" y="296" width="14" height="14" fill="#A8221B"></rect><text x="231" y="306.5" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="9.5" font-weight="600" fill="#FFFFFF">1</text>
+<text x="300" y="300" font-family="IBM Plex Serif, serif" font-style="italic" font-size="10" fill="#8C8577">Bay of Bengal</text>
+</svg>
+</div>
+<p style="margin: 0; font-size: 14px; line-height: 1.5; color: #5C5A55; font-style: italic">One red thing shouts (the Level 4 cyclone). Fires read as warm ember, not alarm. Air sits underneath as soft tint, and only the worst city is named. Rank badges tie each symbol back to the desk.</p>
+</section>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1180}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

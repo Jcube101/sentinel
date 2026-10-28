@@ -6,12 +6,18 @@ import type { Edition, Snapshot } from './types'
 import { dayBefore } from './ist'
 import type { MapItem } from '@/components/paper/PaperMap'
 
-/** What sizes an item's map symbol: a cyclone's wind in km/h, a quake's magnitude. */
+/** What sizes an item's map symbol: a cyclone's wind in km/h (quakes and floods are sized by level). */
 function symbolStrength(e: DeskEntry): number | null {
   const f = e.figures
   if (e.category === 'cyclone') return typeof f.severity === 'number' && f.severity > 0 && f.severity_unit === 'km/h' ? f.severity : null
-  if (e.category === 'earthquake') return typeof f.magnitude === 'number' ? f.magnitude : null
   return null
+}
+
+/** A Level 4 fire state's large fires near towns, as fire_events ids, to ring on the map. */
+function ringedFires(e: DeskEntry): number[] {
+  const near = e.figures.large_fires_near_people
+  if (e.category !== 'fire' || e.level < 4 || !Array.isArray(near)) return []
+  return near.map((x) => (x as { fire_event?: unknown }).fire_event).filter((id): id is number => typeof id === 'number')
 }
 
 function marker(e: DeskEntry, number: number | null, title: string, closed: boolean): MapItem {
@@ -26,6 +32,7 @@ function marker(e: DeskEntry, number: number | null, title: string, closed: bool
     lon: e.coords![1],
     title,
     closed,
+    ringed: ringedFires(e),
   }
 }
 
@@ -33,17 +40,20 @@ function marker(e: DeskEntry, number: number | null, title: string, closed: bool
  * Markers for the edition's open items that have a position as of that
  * edition (DeskEntry.coords), numbered by desk row. Air has no position (P5);
  * a fire state's position is the centre of its fires that day.
+ *
+ * Only what the desk row is about gets its number (MapSymbols sheet): a fire
+ * state at Level 1 is just its dots, no badge; a group of small quakes has
+ * one badge, on its largest quake with a position.
  */
 export function mapItems(entries: DeskEntry[], ctx: CopyContext): MapItem[] {
   const out: MapItem[] = []
   entries.forEach((row, i) => {
-    // Only what the desk row is about gets its number: in a fire roundup at
-    // Level 2+, the states still above normal, not those back at Level 1.
-    const members = row.members.filter((m) => row.category !== 'fire' || row.level < 2 || m.level >= 2)
-    for (const e of row.members.length > 0 ? members : [row]) {
-      if (!e.coords) continue
+    const shown = (row.members.length > 0 ? row.members : [row]).filter((e) => e.coords && !(e.category === 'fire' && e.level < 2))
+    // Members are ranked, largest first.
+    const badged = row.category === 'earthquake' && row.members.length > 0 ? shown[0] : null
+    for (const e of shown) {
       const title = row.members.length > 0 && row.category === 'fire' ? `${e.figures.state}: ${e.figures.fire_events ?? 0} fires` : itemCopy(e, ctx).title
-      out.push(marker(e, i + 1, title, false))
+      out.push(marker(e, badged && e !== badged ? null : i + 1, title, false))
     }
   })
   return out

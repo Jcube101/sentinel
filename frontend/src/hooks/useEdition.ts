@@ -320,7 +320,7 @@ export function useFirePoints(day: string | null) {
       if (!supabase || !day) return []
       const { data, error } = await supabase
         .from('fire_events')
-        .select('latitude,longitude,hotspot_count,frp_max,district,state')
+        .select('id,latitude,longitude,hotspot_count,frp_max,district,state')
         .eq('acq_date', day)
         .not('state', 'is', null) // India only: the same fires the counts are made of
         .limit(5000)

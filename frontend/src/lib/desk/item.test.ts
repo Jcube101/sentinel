@@ -70,6 +70,17 @@ describe('map markers (edition 26)', () => {
     ])
   })
 
+  it('a group of small quakes has one badge, on its largest quake', () => {
+    const no17 = e17 as unknown as EditionData
+    // Give the two Level 1 quakes positions as of No. 17.
+    const placed = no17.snapshots.map((s, i) =>
+      s.category === 'earthquake' ? { ...s, desk_items: { ...s.desk_items!, latitude: 30 + i, longitude: 80, last_run_id: 17 } } : s,
+    )
+    const qs = deskEntries(placed, new Map())
+    const markers = mapItems(qs, copyContext(qs, null, no17.run)).filter((m) => m.category === 'earthquake')
+    expect(markers.map((m) => `${m.number} ${m.key}`)).toEqual(['2 earthquake:USGS-us6000u4f5', 'null earthquake:USGS-us6000u4p1'])
+  })
+
   it('a past edition gets no positions that later runs have moved (plan P1)', () => {
     const old = e25 as unknown as EditionData
     const oldEntries = deskEntries(old.snapshots, new Map())
