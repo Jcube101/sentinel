@@ -36,3 +36,40 @@ export const SCALE = {
     baselineYears: '2024–2025',
   },
 } as const
+
+/** A magnitude without a needless .0: 5, 5.9. */
+export function mag(m: number): string {
+  return Number.isInteger(m) ? String(m) : m.toFixed(1)
+}
+
+/** One row per category: what each level means, from SCALE above. */
+export const SCALE_ROWS: { name: string; cells: [string, string, string, string] }[] = [
+  { name: 'Flood Cyclone', cells: ['GDACS green', 'green, rising', 'orange', 'red'] },
+  {
+    name: 'Quake',
+    cells: [
+      `below M${mag(SCALE.quake.level2MinMagnitude)}`,
+      `M${mag(SCALE.quake.level2MinMagnitude)}–${mag(SCALE.quake.level3MinMagnitude - 0.1)}`,
+      `M${mag(SCALE.quake.level3MinMagnitude)}–${mag(SCALE.quake.level4MinMagnitude - 0.1)}`,
+      `M${mag(SCALE.quake.level4MinMagnitude)}+`,
+    ],
+  },
+  {
+    name: 'Air',
+    cells: [
+      'poor',
+      'very poor',
+      `severe, ${SCALE.air.level3MinSevereCities} ${SCALE.air.level3MinSevereCities === 1 ? 'city' : 'cities'}`,
+      `severe, ${SCALE.air.level4MinSevereCities}+ cities`,
+    ],
+  },
+  {
+    name: 'Fire',
+    cells: [
+      `below ${SCALE.fire.level2MinRatio}× norm`,
+      `${SCALE.fire.level2MinRatio}–${SCALE.fire.level3MinRatio}× norm`,
+      `${SCALE.fire.level3MinRatio}×+ norm, or forest-fire alert`,
+      'large fire near a town',
+    ],
+  },
+]

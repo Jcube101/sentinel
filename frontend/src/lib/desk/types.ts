@@ -27,23 +27,56 @@ export interface Edition {
 /** Key figures stored with each item. Which keys exist depends on the category. */
 export interface Figures {
   [key: string]: unknown
-  // earthquake
+  // earthquake (desk.usgs_candidates)
   magnitude?: number
-  // fire
+  magnitude_type?: string | null
+  depth_km?: number | null
+  km_from_india?: number | null
+  in_india?: boolean
+  tsunami?: boolean
+  felt_reports?: number | null
+  usgs_alert?: string | null
+  // flood and cyclone (desk.gdacs_candidates)
+  alert_level?: string | null
+  alert_score?: number | null
+  prev_episode_alert_score?: number | null
+  rising?: boolean
+  severity?: number | null
+  severity_unit?: string | null
+  severity_text?: string | null
+  episode_id?: number | null
+  gdacs_url?: string | null
+  // fire (fire_desk.state_candidate)
   state?: string
+  day?: string
+  fire_events?: number
+  hotspots?: number
   district_count?: number
+  districts?: FireDistrict[]
   ratio_to_norm?: number | null
+  norm_daily_events?: number | null
+  norm_max_daily_events?: number | null
+  large_fires_near_people?: unknown[]
   capped?: boolean
   firms_level?: number
   calibration_cap?: number
   gdacs_wildfire?: unknown[]
-  // air
+  // air (air.py)
   source?: 'datagov' | 'openaq'
   approximate?: boolean
   unvalidated?: boolean
   cities?: AirCity[]
+  counts?: Partial<Record<AirBand, number>>
+  cities_reporting?: number
   severe_unconfirmed?: string[]
   data_as_of?: string | null
+}
+
+export interface FireDistrict {
+  district: string
+  fire_events: number
+  hotspots?: number
+  frp_max?: number
 }
 
 export type AirBand = 'poor' | 'very_poor' | 'severe'
@@ -52,8 +85,12 @@ export interface AirCity {
   city: string
   band: AirBand
   counted_as?: AirBand
+  /** CPCB AQI (data.gov.in). The OpenAQ fallback has 24 h means instead. */
   aqi?: number
+  pm25_24h?: number | null
+  pm10_24h?: number | null
   state?: string
+  prominent?: string[]
 }
 
 /** The desk_items fields embedded in a snapshot (current values, not as of the run). */
@@ -80,6 +117,21 @@ export interface Snapshot {
   change: Change | null
   figures: Figures
   desk_items: SnapshotItem | null
+  /**
+   * Set by the site, not stored: the item's stage failed in this run, so this
+   * is its latest snapshot from an earlier edition (that edition's number).
+   */
+  carried_from?: number
+}
+
+/** A slim snapshot row: enough to follow an item's level from run to run. */
+export interface SnapshotTrace {
+  run_id: number
+  item_id: string
+  category: Category
+  status: 'open' | 'closed'
+  severity_level: Level
+  change: Change | null
 }
 
 /** A category_status row: one category in one edition. */
@@ -96,9 +148,19 @@ export interface CategoryStatus {
   taken_at: string
 }
 
-/** Everything step 1 of the desk needs for one edition. */
+/** One edition: its run, its snapshots and its per-category status. */
 export interface EditionData {
   run: Edition
   snapshots: Snapshot[]
   status: CategoryStatus[]
+}
+
+/** What "since yesterday" compares an edition with. */
+export interface ChangeWindow {
+  /** The edition about a day earlier; null when there is none (the first editions). */
+  ref: Pick<Edition, 'id' | 'started_at'> | null
+  /** Snapshots of runs from ref up to the edition, not including it (slim). */
+  rows: SnapshotTrace[]
+  /** Full snapshots of items that closed after ref and before the edition. */
+  closed: Snapshot[]
 }

@@ -1,4 +1,5 @@
 import { CATEGORY_NAMES, LEVEL_NAMES } from '@/lib/desk/levels'
+import { entryCard, type Card } from '@/lib/desk/cards'
 import type { DeskEntry, DeskLabel } from '@/lib/desk/entries'
 import type { Change } from '@/lib/desk/types'
 import LevelSquares from './LevelSquares'
@@ -49,6 +50,33 @@ function Chips({ entry }: { entry: DeskEntry }) {
   )
 }
 
+/** The item's key figures: a strip of numbers (three on phones) and a line of context. */
+function Figures({ card }: { card: Card }) {
+  return (
+    <>
+      {card.text && <p className="m-0 text-[15px] sm:text-[17px] leading-[1.55] max-w-[760px]">{card.text}</p>}
+      {card.cells.length > 0 && (
+        <dl className="m-0 grid grid-flow-col auto-cols-fr border-y border-rule max-w-[760px]">
+          {card.cells.map((c, i) => (
+            <div
+              key={c.label}
+              className={`${c.wideOnly ? 'hidden sm:flex' : 'flex'} flex-col-reverse justify-end gap-0.5 py-2.5 sm:py-3 min-w-0 ${
+                i === 0 ? 'pr-2 sm:pr-4' : 'px-2 sm:px-4 border-l border-rule'
+              }`}
+            >
+              <dt className="font-mono text-[10px] sm:text-[11px] uppercase tracking-[0.06em]">
+                <span className="sm:hidden">{c.short ?? c.label}</span>
+                <span className="hidden sm:inline">{c.label}</span>
+              </dt>
+              <dd className="m-0 font-cond font-bold text-[20px] sm:text-[26px] leading-[1.1] whitespace-nowrap">{c.value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+    </>
+  )
+}
+
 /** Level 1 rows are compact: one muted line instead of chips. */
 function MinorLine({ entry }: { entry: DeskEntry }) {
   const parts = [`Level 1 · ${LEVEL_NAMES[1]}`, CATEGORY_NAMES[entry.category]]
@@ -73,6 +101,7 @@ interface Props {
 /** One item on the desk, as in the DeskSeverity and DeskPhone mockups. */
 export default function DeskEntryRow({ entry, rank }: Props) {
   const major = entry.level >= 2
+  const card = entryCard(entry)
   const meta = 'font-mono text-[11px] sm:text-[12px] leading-[1.5]'
   return (
     <article className={`flex gap-3.5 sm:gap-6 border-b border-ink ${major ? 'py-5 sm:pt-6 sm:pb-[26px]' : 'py-3.5 sm:py-5'}`}>
@@ -99,8 +128,17 @@ export default function DeskEntryRow({ entry, rank }: Props) {
             ))}
           </ul>
         )}
+        {card && <Figures card={card} />}
         <p className={`${meta} m-0 text-ink-muted`}>
           <span className="uppercase tracking-[0.04em]">Level from:</span> {entry.reason}
+          {card?.link && (
+            <>
+              {' · '}
+              <a href={card.link.href} target="_blank" rel="noreferrer" className="uppercase tracking-[0.04em] border-b border-ink-muted hover:text-accent hover:border-accent">
+                {card.link.text} ↗
+              </a>
+            </>
+          )}
         </p>
         {entry.notes.map((n) => (
           <p key={n.text} className={`${meta} m-0 text-ink-muted`}>

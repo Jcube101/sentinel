@@ -1,0 +1,81 @@
+{
+ "ref": {
+  "id": 11,
+  "started_at": "2026-10-23T09:00:03.30883+00:00"
+ },
+ "rows": [
+  {
+   "run_id": 11,
+   "item_id": "air:IN",
+   "category": "air",
+   "status": "open",
+   "severity_level": 1,
+   "change": "deescalated"
+  },
+  {
+   "run_id": 11,
+   "item_id": "earthquake:USGS-us6000u43g",
+   "category": "earthquake",
+   "status": "open",
+   "severity_level": 4,
+   "change": null
+  },
+  {
+   "run_id": 11,
+   "item_id": "fire:madhya-pradesh",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 1,
+   "change": null
+  },
+  {
+   "run_id": 12,
+   "item_id": "air:IN",
+   "category": "air",
+   "status": "open",
+   "severity_level": 1,
+   "change": null
+  },
+  {
+   "run_id": 12,
+   "item_id": "earthquake:USGS-us6000u43g",
+   "category": "earthquake",
+   "status": "open",
+   "severity_level": 4,
+   "change": null
+  },
+  {
+   "run_id": 12,
+   "item_id": "fire:madhya-pradesh",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 1,
+   "change": null
+  },
+  {
+   "run_id": 13,
+   "item_id": "air:IN",
+   "category": "air",
+   "status": "open",
+   "severity_level": 2,
+   "change": "escalated"
+  },
+  {
+   "run_id": 13,
+   "item_id": "earthquake:USGS-us6000u43g",
+   "category": "earthquake",
+   "status": "open",
+   "severity_level": 4,
+   "change": null
+  },
+  {
+   "run_id": 13,
+   "item_id": "fire:madhya-pradesh",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 1,
+   "change": null
+  }
+ ],
+ "closed": []
+}

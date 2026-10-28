@@ -1,0 +1,269 @@
+{
+ "ref": {
+  "id": 22,
+  "started_at": "2026-10-26T21:00:03.740588+00:00"
+ },
+ "rows": [
+  {
+   "run_id": 22,
+   "item_id": "air:IN",
+   "category": "air",
+   "status": "open",
+   "severity_level": 2,
+   "change": null
+  },
+  {
+   "run_id": 22,
+   "item_id": "cyclone:GDACS-TC-1001345",
+   "category": "cyclone",
+   "status": "open",
+   "severity_level": 4,
+   "change": null
+  },
+  {
+   "run_id": 22,
+   "item_id": "earthquake:USGS-us6000u4p1",
+   "category": "earthquake",
+   "status": "closed",
+   "severity_level": 1,
+   "change": "closed"
+  },
+  {
+   "run_id": 22,
+   "item_id": "fire:gujarat",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 1,
+   "change": null
+  },
+  {
+   "run_id": 22,
+   "item_id": "fire:madhya-pradesh",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": null
+  },
+  {
+   "run_id": 22,
+   "item_id": "fire:maharashtra",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": null
+  },
+  {
+   "run_id": 22,
+   "item_id": "fire:telangana",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": null
+  },
+  {
+   "run_id": 22,
+   "item_id": "fire:uttar-pradesh",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": null
+  },
+  {
+   "run_id": 23,
+   "item_id": "air:IN",
+   "category": "air",
+   "status": "open",
+   "severity_level": 1,
+   "change": "deescalated"
+  },
+  {
+   "run_id": 23,
+   "item_id": "cyclone:GDACS-TC-1001345",
+   "category": "cyclone",
+   "status": "open",
+   "severity_level": 4,
+   "change": null
+  },
+  {
+   "run_id": 23,
+   "item_id": "fire:chhattisgarh",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": "opened"
+  },
+  {
+   "run_id": 23,
+   "item_id": "fire:gujarat",
+   "category": "fire",
+   "status": "closed",
+   "severity_level": 1,
+   "change": "closed"
+  },
+  {
+   "run_id": 23,
+   "item_id": "fire:madhya-pradesh",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": null
+  },
+  {
+   "run_id": 23,
+   "item_id": "fire:maharashtra",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": null
+  },
+  {
+   "run_id": 23,
+   "item_id": "fire:telangana",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": null
+  },
+  {
+   "run_id": 23,
+   "item_id": "fire:uttar-pradesh",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": null
+  },
+  {
+   "run_id": 24,
+   "item_id": "air:IN",
+   "category": "air",
+   "status": "open",
+   "severity_level": 1,
+   "change": null
+  },
+  {
+   "run_id": 24,
+   "item_id": "cyclone:GDACS-TC-1001345",
+   "category": "cyclone",
+   "status": "open",
+   "severity_level": 4,
+   "change": null
+  },
+  {
+   "run_id": 24,
+   "item_id": "fire:chhattisgarh",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": null
+  },
+  {
+   "run_id": 24,
+   "item_id": "fire:madhya-pradesh",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": null
+  },
+  {
+   "run_id": 24,
+   "item_id": "fire:maharashtra",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": null
+  },
+  {
+   "run_id": 24,
+   "item_id": "fire:telangana",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": null
+  },
+  {
+   "run_id": 24,
+   "item_id": "fire:uttar-pradesh",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": null
+  }
+ ],
+ "closed": [
+  {
+   "run_id": 23,
+   "item_id": "fire:gujarat",
+   "taken_at": "2026-10-27T09:04:18.973024+00:00",
+   "category": "fire",
+   "status": "closed",
+   "severity_level": 1,
+   "severity_reason": "4 fire events on 26 Oct, too few to compare with the norm (minimum 25)",
+   "last_known": false,
+   "new_data": true,
+   "change": "closed",
+   "figures": {
+    "day": "2026-10-26",
+    "week": 43,
+    "state": "Gujarat",
+    "today": {
+     "date": "2026-10-27",
+     "partial": true,
+     "hotspots": 0,
+     "fire_events": 0,
+     "district_count": 0
+    },
+    "capped": false,
+    "data_to": "2026-10-26T21:53:00+00:00",
+    "product": "VIIRS NOAA-20 NRT",
+    "hotspots": 4,
+    "districts": [
+     {
+      "frp_max": 2.54,
+      "district": "Kachchh",
+      "hotspots": 2,
+      "district_id": "76128533B91881382098572",
+      "fire_events": 2
+     },
+     {
+      "frp_max": 1.32,
+      "district": "Devbhumi Dwarka",
+      "hotspots": 1,
+      "district_id": "76128533B74381554567803",
+      "fire_events": 1
+     },
+     {
+      "frp_max": 5.29,
+      "district": "Junagadh",
+      "hotspots": 1,
+      "district_id": "76128533B40923846274136",
+      "fire_events": 1
+     }
+    ],
+    "norm_years": "2024-2025",
+    "fire_events": 4,
+    "firms_level": 1,
+    "gdacs_level": null,
+    "quiet_since": "2026-10-25",
+    "ratio_level": 1,
+    "gdacs_checked": false,
+    "ratio_counted": false,
+    "ratio_to_norm": 0.712,
+    "district_count": 3,
+    "gdacs_wildfire": [],
+    "calibration_cap": 2,
+    "min_fire_events": 25,
+    "norm_daily_events": 5.619,
+    "norm_max_daily_events": 26,
+    "large_fires_near_people": []
+   },
+   "desk_items": {
+    "title": "Fire activity in 3 Gujarat districts",
+    "source": "FIRMS",
+    "latitude": 22.6774,
+    "longitude": 69.4391,
+    "place_name": "Gujarat",
+    "source_ref": null
+   }
+  }
+ ]
+}

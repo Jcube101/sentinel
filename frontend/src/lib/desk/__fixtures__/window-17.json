@@ -1,0 +1,112 @@
+{
+ "ref": {
+  "id": 14,
+  "started_at": "2026-10-24T09:00:03.807957+00:00"
+ },
+ "rows": [
+  {
+   "run_id": 14,
+   "item_id": "air:IN",
+   "category": "air",
+   "status": "open",
+   "severity_level": 2,
+   "change": null
+  },
+  {
+   "run_id": 14,
+   "item_id": "earthquake:USGS-us6000u43g",
+   "category": "earthquake",
+   "status": "open",
+   "severity_level": 4,
+   "change": null
+  },
+  {
+   "run_id": 14,
+   "item_id": "earthquake:USGS-us6000u4f5",
+   "category": "earthquake",
+   "status": "open",
+   "severity_level": 1,
+   "change": "opened"
+  },
+  {
+   "run_id": 14,
+   "item_id": "fire:madhya-pradesh",
+   "category": "fire",
+   "status": "closed",
+   "severity_level": 1,
+   "change": "closed"
+  },
+  {
+   "run_id": 15,
+   "item_id": "air:IN",
+   "category": "air",
+   "status": "open",
+   "severity_level": 2,
+   "change": null
+  },
+  {
+   "run_id": 15,
+   "item_id": "earthquake:USGS-us6000u43g",
+   "category": "earthquake",
+   "status": "closed",
+   "severity_level": 4,
+   "change": "closed"
+  },
+  {
+   "run_id": 15,
+   "item_id": "earthquake:USGS-us6000u4f5",
+   "category": "earthquake",
+   "status": "open",
+   "severity_level": 1,
+   "change": null
+  },
+  {
+   "run_id": 16,
+   "item_id": "air:IN",
+   "category": "air",
+   "status": "open",
+   "severity_level": 2,
+   "change": null
+  },
+  {
+   "run_id": 16,
+   "item_id": "earthquake:USGS-us6000u4f5",
+   "category": "earthquake",
+   "status": "open",
+   "severity_level": 1,
+   "change": null
+  }
+ ],
+ "closed": [
+  {
+   "run_id": 15,
+   "item_id": "earthquake:USGS-us6000u43g",
+   "taken_at": "2026-10-24T15:04:05.510802+00:00",
+   "category": "earthquake",
+   "status": "closed",
+   "severity_level": 4,
+   "severity_reason": "M7.0, 348 km from India (USGS)",
+   "last_known": false,
+   "new_data": false,
+   "change": "closed",
+   "figures": {
+    "tsunami": false,
+    "depth_km": 18.0,
+    "in_india": false,
+    "magnitude": 7.0,
+    "usgs_alert": "orange",
+    "felt_reports": 8,
+    "km_from_india": 347.9,
+    "magnitude_type": "mww"
+   },
+   "desk_items": {
+    "title": "M7.0 earthquake, 191 km ENE of Nagqu, China",
+    "source": "USGS",
+    "latitude": 32.3805,
+    "longitude": 93.7797,
+    "place_name": "191 km ENE of Nagqu, China",
+    "source_ref": "USGS-us6000u43g"
+   }
+  }
+ ]
+}

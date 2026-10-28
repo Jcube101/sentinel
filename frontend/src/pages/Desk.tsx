@@ -1,15 +1,21 @@
 import { useEffect, useMemo, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
-import { useEdition, useLatestEditionId } from '@/hooks/useEdition'
+import { useChangeWindow, useEdition, useLatestEditionId } from '@/hooks/useEdition'
+import { sinceLabel, sinceYesterday, type Movement } from '@/lib/desk/changes'
 import { deskEntries } from '@/lib/desk/entries'
+import { changeCounts, headline, levelCounts } from '@/lib/desk/headline'
 import { istDate, istShortDate, istTime } from '@/lib/desk/ist'
 import { SCALE } from '@/lib/desk/scale'
 import { lateNotice, sourceLines } from '@/lib/desk/sources'
 import type { Edition } from '@/lib/desk/types'
 import PaperShell from '@/components/paper/PaperShell'
 import DeskEntryRow from '@/components/paper/DeskEntryRow'
+import DeskHero from '@/components/paper/DeskHero'
 import NoteBox from '@/components/paper/NoteBox'
+import PhoneWire from '@/components/paper/PhoneWire'
+import ScalePanel from '@/components/paper/ScalePanel'
+import SinceYesterday from '@/components/paper/SinceYesterday'
 
 function EditionLine({ run, latestId }: { run: Edition; latestId: number | null }) {
   const prev = run.id > 1 ? run.id - 1 : null
@@ -77,8 +83,16 @@ export default function Desk() {
   const id = badParam ? null : (requested ?? latestId)
   const edition = useEdition(id)
   const data = edition.data ?? null
+  const finished = data && data.run.status !== 'running' ? data.run : null
+  const changeWindow = useChangeWindow(finished)
 
-  const entries = useMemo(() => (data ? deskEntries(data.snapshots) : []), [data])
+  const since = useMemo(() => (data && changeWindow.data ? sinceYesterday(data.snapshots, changeWindow.data) : null), [data, changeWindow.data])
+  const entries = useMemo(() => {
+    if (!data) return []
+    // Without the comparison, show no change tags rather than this run's alone.
+    const moves = since?.byItem ?? (changeWindow.isError ? new Map<string, Movement>() : undefined)
+    return deskEntries(data.snapshots, moves)
+  }, [data, since, changeWindow.isError])
   const notice = data ? lateNotice(data.run, data.status) : null
 
   useEffect(() => {
@@ -125,6 +139,8 @@ export default function Desk() {
         )}
       </Message>
     )
+  } else if (changeWindow.isPending && !changeWindow.isError && data.run.status !== 'running') {
+    body = loading
   } else if (data.run.status === 'running') {
     body = (
       <>
@@ -146,11 +162,6 @@ export default function Desk() {
             </Link>
           </NoteBox>
         )}
-        {notice && (
-          <NoteBox tag="LATE" accent>
-            {notice}
-          </NoteBox>
-        )}
         {noDesk ? (
           <Message>
             {data.run.id < SCALE.fromEdition
@@ -158,22 +169,42 @@ export default function Desk() {
               : 'No desk was recorded in this edition.'}
           </Message>
         ) : (
-          <main className="max-w-[920px]">
-            <div className="flex justify-between items-baseline gap-3 pt-8 sm:pt-9 pb-2.5 border-b border-ink font-mono text-[11px] sm:text-[12px] tracking-[0.08em] uppercase">
-              <span>
-                On the desk<span className="hidden sm:inline"> · ranked by severity level, not by count</span>
-                <span className="sm:hidden"> · by severity</span>
-              </span>
-              <span className="text-ink-muted tracking-[0.04em]">
-                {entries.length === 0 ? 'nothing open' : `${entries.length} ${entries.length === 1 ? 'item' : 'items'}`}
-              </span>
-            </div>
-            {entries.length === 0 ? (
-              <Message>Nothing is open on the desk in this edition.</Message>
-            ) : (
-              entries.map((e, i) => <DeskEntryRow key={e.key} entry={e} rank={i + 1} />)
+          <>
+            <DeskHero
+              headline={headline(entries, since)}
+              counts={levelCounts(entries)}
+              changes={since ? (changeCounts(since) ?? 'No change since yesterday') : null}
+            />
+            {notice && (
+              <NoteBox tag="LATE" accent>
+                {notice}
+              </NoteBox>
             )}
-          </main>
+            <div className="flex flex-wrap gap-x-12 gap-y-8 pt-2">
+              <main className="flex-[999_1_560px] min-w-0">
+                <h2 className="sr-only">On the desk, ranked by severity level, not by count</h2>
+                {entries.length === 0 ? (
+                  <Message>Nothing is open on the desk in this edition.</Message>
+                ) : (
+                  entries.map((e, i) => <DeskEntryRow key={e.key} entry={e} rank={i + 1} />)
+                )}
+              </main>
+              <aside className="flex-[1_1_340px] min-w-0 flex flex-col gap-8 sm:pt-6">
+                <div className="hidden sm:block">
+                  <ScalePanel />
+                </div>
+                <SinceYesterday
+                  label={changeWindow.data ? sinceLabel(changeWindow.data.ref, data.run) : 'Since yesterday'}
+                  since={since}
+                  error={changeWindow.isError}
+                  onRetry={() => changeWindow.refetch()}
+                />
+              </aside>
+              <div className="basis-full sm:hidden">
+                <PhoneWire run={data.run} snapshots={data.snapshots} entries={entries} />
+              </div>
+            </div>
+          </>
         )}
       </>
     )

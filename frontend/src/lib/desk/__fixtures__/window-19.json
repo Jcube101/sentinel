@@ -1,0 +1,137 @@
+{
+ "ref": {
+  "id": 16,
+  "started_at": "2026-10-24T21:00:07.237701+00:00"
+ },
+ "rows": [
+  {
+   "run_id": 16,
+   "item_id": "air:IN",
+   "category": "air",
+   "status": "open",
+   "severity_level": 2,
+   "change": null
+  },
+  {
+   "run_id": 16,
+   "item_id": "earthquake:USGS-us6000u4f5",
+   "category": "earthquake",
+   "status": "open",
+   "severity_level": 1,
+   "change": null
+  },
+  {
+   "run_id": 17,
+   "item_id": "air:IN",
+   "category": "air",
+   "status": "open",
+   "severity_level": 1,
+   "change": "deescalated"
+  },
+  {
+   "run_id": 17,
+   "item_id": "earthquake:USGS-us6000u4f5",
+   "category": "earthquake",
+   "status": "open",
+   "severity_level": 1,
+   "change": null
+  },
+  {
+   "run_id": 17,
+   "item_id": "earthquake:USGS-us6000u4p1",
+   "category": "earthquake",
+   "status": "open",
+   "severity_level": 1,
+   "change": "opened"
+  },
+  {
+   "run_id": 17,
+   "item_id": "fire:gujarat",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": "opened"
+  },
+  {
+   "run_id": 17,
+   "item_id": "fire:madhya-pradesh",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": "reopened"
+  },
+  {
+   "run_id": 17,
+   "item_id": "fire:maharashtra",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": "reopened"
+  },
+  {
+   "run_id": 17,
+   "item_id": "fire:telangana",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": "opened"
+  },
+  {
+   "run_id": 18,
+   "item_id": "air:IN",
+   "category": "air",
+   "status": "open",
+   "severity_level": 1,
+   "change": null
+  },
+  {
+   "run_id": 18,
+   "item_id": "earthquake:USGS-us6000u4f5",
+   "category": "earthquake",
+   "status": "open",
+   "severity_level": 1,
+   "change": null
+  },
+  {
+   "run_id": 18,
+   "item_id": "earthquake:USGS-us6000u4p1",
+   "category": "earthquake",
+   "status": "open",
+   "severity_level": 1,
+   "change": null
+  },
+  {
+   "run_id": 18,
+   "item_id": "fire:gujarat",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": null
+  },
+  {
+   "run_id": 18,
+   "item_id": "fire:madhya-pradesh",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": null
+  },
+  {
+   "run_id": 18,
+   "item_id": "fire:maharashtra",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": null
+  },
+  {
+   "run_id": 18,
+   "item_id": "fire:telangana",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": null
+  }
+ ],
+ "closed": []
+}

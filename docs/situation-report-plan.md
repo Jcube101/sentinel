@@ -1,6 +1,6 @@
 # Sentinel — "Situation Report" frontend (Phase 7): plan
 
-Status: **plan updated 28 Oct 2026 with Job's answers; step 1 in progress.** Branch
+Status: **plan updated 28 Oct 2026 with Job's answers; steps 1 and 2 done.** Branch
 `frontend/situation-report`, worktree `../sentinel-situation-report`. Design reference:
 `docs/design/` (DeskSeverity, DeskQuiet, DeskPhone, MapView, ItemFire), read as visual and
 copy spec, not code. Data model: `docs/severity-pipeline.md` and
@@ -40,13 +40,21 @@ How the pages work:
 - **An edition is read from its snapshots, not from `desk_items`.** A run writes its
   stages one after another over 5-11 minutes, so `desk_items` can be half-updated during a
   run; a finished run's snapshots can't. The latest edition and past editions use the same
-  code. If a stage crashed in that run (no snapshots for its category), the edition's late
-  notice names the category as last-known. Showing that category's open `desk_items` rows
-  on the latest edition instead is a follow-up for step 2.
+  code. If a stage crashed in that run (`category_status` counts more open items than the
+  run has snapshots of), the edition shows that category's items from their latest earlier
+  snapshot, marked last-known ("figures from No. m"). Not seen in editions 1-25.
 - **Latest edition** = the newest `pipeline_runs` row that isn't `running`. A failed
   edition is still shown, with what failed (from `pipeline_runs.sources`).
 - **Ranking:** level, then strength (fire `ratio_to_norm`, quake magnitude), then title:
-  the same order as `watch.py` (`category_status`). Never by count.
+  the same order as `watch.py` (`category_status`). Never by count. Open question below
+  (*Ranking within a level*).
+- **Since yesterday** compares the edition with the latest edition that started at least
+  23 hours before it (the same slot a day earlier, with an hour's slack for late runs). An
+  item is new or reopened if it opened or reopened after that edition; escalated or
+  de-escalated if its level now differs from its level then (the net change, so down and
+  back up is no change); closed if it closed after that edition and isn't open now. The
+  items' change tags, the counts under the level boxes and the headline all use this, not
+  the run's own `change`.
 - **Level 1 quakes are grouped** into one desk row ("2 small earthquakes, the largest
   M4.6 …"); a quake at Level 2+ keeps its own row.
 - **Quiet mode:** when nothing open is above Level 1, the Desk switches to the DeskQuiet
@@ -203,7 +211,18 @@ checked on the Pi preview against live data. Smallest shippable step first.
    links show placeholders; old pages stay in the tree, unrouted, until step 9.
 2. **Desk, severity day.** Level counts; new, escalated and closed counts; the headline
    template; Since yesterday; per-category cards (fire figures strip, quake, GDACS, air);
-   the "How levels are set" panel (`lib/scale.ts`); the phone wire.
+   the "How levels are set" panel (`lib/scale.ts`); the phone wire. **Done.** Notes:
+   - Headline: the top item ("… is the most severe item on the desk", or "Six items lead
+     the desk at Level 2: …" with same-category items counted together), then one change
+     sentence (new, else escalated, else eased or closed, else "No change since
+     yesterday"). Templates only.
+   - Figures strip under every Level 2+ item, three cells on phones. Fire: districts, fire
+     events, ratio to norm, large fires near towns (in place of the mockup's
+     "high-intensity"), plus the norm, the baseline's busiest day and the three busiest
+     districts. Air: cities severe / very poor / poor / reporting and the worst three.
+     Quake: magnitude, depth, distance from India, felt reports, PAGER alert, USGS link.
+     Cyclone and flood: GDACS alert, wind speed, alert score, episode, GDACS link.
+   - The sidebar's map image waits for step 6 (the map).
 3. **Desk, quiet day.** Watching list (latest edition only until P2), all-clear table,
    14-day strip and days since Level 3+ (both from snapshots, so past editions work),
    recently closed.
@@ -309,6 +328,15 @@ Also:
   site goes live, since it is public and uses the anon key.
 - Never delete `pipeline_runs` or `desk_items` rows by hand: the cascades take editions'
   snapshots and status with them.
+
+## Open questions
+
+- **Ranking within a level** (Job, 28 Oct): should fire size count, not only the ratio
+  (Chhattisgarh, 27 fire events at 9.07×, ranks above Madhya Pradesh, 200 at 2.91×)?
+  Recommendation in the step 2 report: keep the ratio. Related: across categories at the
+  same level the tie-break compares fire ratios with quake magnitudes, and air, cyclone and
+  flood items have no strength, so they sink below every fire state at their level (No. 25:
+  air is 7th of 7). Unchanged until Job decides.
 
 ## Decisions (Job, 28 Oct 2026)
 
