@@ -10,7 +10,9 @@ import e25 from './__fixtures__/edition-25.json'
 const editions = { 14: e14, 17: e17, 25: e25 } as unknown as Record<number, EditionData>
 
 function entry(n: number, key: string) {
-  const e = deskEntries(editions[n].snapshots).find((x) => x.key === key)
+  const e = deskEntries(editions[n].snapshots)
+    .flatMap((x) => [x, ...x.members])
+    .find((x) => x.key === key)
   if (!e) throw new Error(`no ${key} in edition ${n}`)
   return e
 }
@@ -63,8 +65,22 @@ describe('entryCard', () => {
   })
 
   it('none for Level 1 rows and grouped quakes', () => {
-    const group = deskEntries(editions[17].snapshots).find((e) => e.members.length > 0)!
+    const group = deskEntries(editions[17].snapshots).find((e) => e.category === 'earthquake')!
+    expect(group.members).toHaveLength(2)
     expect(entryCard(group)).toBeNull()
+  })
+
+  it('the fire roundup: a state table, with the baseline comparison', () => {
+    const card = entryCard(entry(25, 'fire:roundup'))!
+    expect(card.cells).toEqual([])
+    expect(card.tableDay).toBe('26 Oct')
+    expect(card.table!.map((r) => `${r.state} ${r.fires} ${r.usual} ${r.vsPast}${r.wouldBe ? ' *' : ''}`)).toEqual([
+      'Chhattisgarh 27 3.0 busiest in 2 years *',
+      'Telangana 39 6.4 within range *',
+      'Maharashtra 26 6.7 within range',
+      'Madhya Pradesh 200 69 within range',
+      'Uttar Pradesh 115 42 within range',
+    ])
   })
 
   it('phones get three cells: the fourth is wide-only', () => {

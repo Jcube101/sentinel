@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Desk from './pages/Desk'
+import About from './pages/About'
 import Placeholder from './pages/Placeholder'
 
 // The Situation Report redesign (docs/situation-report-plan.md). The old
@@ -27,10 +28,7 @@ export default function App() {
         path="/sources"
         element={<Placeholder title="Sources" line="How each source answered in each run, and how fresh its data is. Coming in a later step of the redesign." />}
       />
-      <Route
-        path="/about"
-        element={<Placeholder title="About" line="How levels are set, what the labels mean, and the data credits. Coming in a later step of the redesign." />}
-      />
+      <Route path="/about" element={<About />} />
       <Route path="/insights" element={<Navigate to="/archive" replace />} />
       <Route path="/dashboard" element={<Navigate to="/map" replace />} />
       <Route path="/event/:id" element={<Navigate to="/map" replace />} />

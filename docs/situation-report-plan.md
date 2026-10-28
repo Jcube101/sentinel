@@ -1,6 +1,6 @@
 # Sentinel — "Situation Report" frontend (Phase 7): plan
 
-Status: **plan updated 28 Oct 2026 with Job's answers; steps 1 and 2 done, then the copy rewritten to `docs/style-guide.md` (step 2b).** Branch
+Status: **plan updated 28 Oct 2026 with Job's answers; steps 1, 2 and 4 done; the copy follows `docs/style-guide.md` (2b, 2c).** Branch
 `frontend/situation-report`, worktree `../sentinel-situation-report`. Design reference:
 `docs/design/` (DeskSeverity, DeskQuiet, DeskPhone, MapView, ItemFire), read as visual and
 copy spec, not code. Data model: `docs/severity-pipeline.md` and
@@ -59,8 +59,14 @@ How the pages work:
   back up is no change); closed if it closed after that edition and isn't open now. The
   items' change tags, the counts under the level boxes and the headline all use this, not
   the run's own `change`.
-- **Level 1 quakes are grouped** into one desk row ("2 small earthquakes, the largest
-  M4.6 …"); a quake at Level 2+ keeps its own row.
+- **Level 1 quakes are grouped** into one desk row ("Two small earthquakes strike near
+  India's borders"); a quake at Level 2+ keeps its own row.
+- **Fire states are one roundup row,** ranked at the highest state's level (Job, 28 Oct).
+  A state gets its own row at Level 3+, or when it is the only fire state. Title angles
+  and copy: `docs/style-guide.md`, *Fire roundup*.
+- **Legend:** "How levels are set" is a collapsed section at the foot of every page, with
+  the full explanation on About. The Desk's sidebar holds the map (a placeholder until
+  step 6) and Since yesterday.
 - **Quiet mode:** when nothing open is above Level 1, the Desk switches to the DeskQuiet
   layout (same route).
 - **Phone:** same routes, bottom nav Desk / Map / Archive / Sources (About in the footer),
@@ -231,11 +237,16 @@ checked on the Pi preview against live data. Smallest shippable step first.
      for ordinary readers: `docs/style-guide.md` first, then titles with verbs,
      standfirsts, the page headline, Since yesterday, the late notice and the wire. The
      exact figures stay, set smaller, as evidence under each story.
+   - **2c (Job, 28 Oct):** the fire roundup (one story for the fire states, a state table
+     under it, no multiples in titles); the legend moved to the footer and About.
 3. **Desk, quiet day.** Watching list (latest edition only until P2), all-clear table,
    14-day strip and days since Level 3+ (both from snapshots, so past editions work),
    recently closed.
 4. **About.** Levels, the cap, the air labels, the schedule, the not-an-alert-system
-   disclaimer and the credits (clears the spec's TODO). Small and static.
+   disclaimer and the credits (clears the spec's TODO). Small and static. **Done** with 2c,
+   since the full levels explanation moved there. The Esri basemap credit joins with the
+   map (step 6). The spec's About TODO (`docs/severity-pipeline.md`) can be ticked when
+   this merges.
 5. **Item page.** Generic parts first (header, reason, labels, history from snapshots,
    also on the desk, previous/next, permalink); then fire (districts, daily chart vs norm,
    count funnel, locator map); then air, quake, cyclone and flood.
@@ -356,3 +367,8 @@ Also:
    as evidence under each story.
 8. Ranking: keep the ratio within fires; at the same level, categories in the order
    cyclone, flood, earthquake, air, fire.
+9. Fire states are one roundup story; a state gets its own story at Level 3+ or when it
+   is the only fire state. A record for the time of year leads the roundup (Job's example
+   title for No. 25) rather than splitting the state out; "spreading" compares with the
+   edition a day earlier, like Since yesterday.
+10. "How levels are set" moves to a collapsed footer section and About.

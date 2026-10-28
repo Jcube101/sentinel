@@ -54,28 +54,15 @@ describe('edition 25 (Wed 28 Oct, 02:30 IST)', () => {
     })
   })
 
-  it('Chhattisgarh: the jump, against the usual and the baseline’s busiest day', () => {
-    expect(item(25, 'fire:chhattisgarh')).toMatchObject({
-      title: "Chhattisgarh's fires jump to nine times normal",
-      // The fire day is Monday 26 Oct: two days before this 02:30 edition, so not "yesterday".
+  it('fires: one roundup, led by the strongest angle (a spike in Chhattisgarh), the multiple once', () => {
+    expect(item(25, 'fire:roundup')).toMatchObject({
+      title: 'Fires run above normal in five states, led by a spike in Chhattisgarh',
       standfirst:
-        '27 fires on Monday across 10 districts, where late October usually sees about 3. ' +
-        "That's more than on any day at this time of year in 2024 or 2025.",
+        // The fire day is Monday 26 Oct: two days before this 02:30 edition, so not "yesterday".
+        'Chhattisgarh, newly above normal, had 27 fires on Monday, about nine times usual for late October and more than on any day ' +
+        "at this time of year in 2024 or 2025. Madhya Pradesh had the most, with 200, though that's within its range for the season. " +
+        'Telangana, Maharashtra and Uttar Pradesh are also above normal.',
     })
-  })
-
-  it('Madhya Pradesh: the most fires of the states above normal (not "of any state": the edition only holds these)', () => {
-    expect(item(25, 'fire:madhya-pradesh')).toMatchObject({
-      title: 'Madhya Pradesh has the most fires of the five states above normal',
-      standfirst: '200 on Monday, about three times usual, though still within its range for the season.',
-    })
-  })
-
-  it('the other fire states run at their multiple', () => {
-    expect(item(25, 'fire:telangana').title).toBe("Telangana's fires run at six times normal")
-    expect(item(25, 'fire:uttar-pradesh').standfirst).toBe(
-      "115 fires on Monday across 45 districts, where late October usually sees about 40. That's within its range for the season.",
-    )
   })
 
   it('air', () => {
@@ -89,35 +76,30 @@ describe('edition 25 (Wed 28 Oct, 02:30 IST)', () => {
 
   it('since yesterday', () => {
     expect(edition(25).since.map((l) => `${l.tag} ${l.text} (${l.levels})`)).toEqual([
-      "+ NEW Chhattisgarh's fires jump to nine times normal (Level 2 · Elevated)",
-      "− CLOSED Gujarat's fires have stayed under twice normal for two days (was Level 1)",
+      "+ NEW Chhattisgarh's fires jump above normal (Level 2 · Elevated)",
+      "− CLOSED Gujarat's fires drop off the list after two quieter days (was Level 1)",
     ])
   })
 })
 
 describe('edition 17 (Sun 25 Oct, 14:30 IST)', () => {
-  it('page headline: fires lead, spreading from none a day earlier', () => {
-    expect(edition(17).headline).toBe('Fires are the top story today, spreading to four states, led by Gujarat at eight times normal.')
+  it('page headline: fires lead, spreading from none a day earlier, led by a spike in Gujarat', () => {
+    expect(edition(17).headline).toBe('Fires are the top story today, spreading to four states, led by a spike in Gujarat.')
   })
 
-  it('new, reopened and most-fires states; the fire day is yesterday for a 14:30 edition', () => {
-    expect(item(17, 'fire:gujarat')).toMatchObject({
-      title: "Gujarat's fires jump to eight times normal",
+  it('the roundup; the fire day is yesterday for a 14:30 edition', () => {
+    expect(item(17, 'fire:roundup')).toMatchObject({
+      title: 'Fires run above normal in four states, led by a spike in Gujarat',
       standfirst:
-        '46 fires yesterday across 14 districts, where late October usually sees about 6. ' +
-        "That's more than on any day at this time of year in 2024 or 2025.",
-    })
-    expect(item(17, 'fire:madhya-pradesh')).toMatchObject({
-      title: "Madhya Pradesh's fires flare up again, at three times normal",
-      standfirst:
-        '185 fires yesterday across 31 districts, the most of the four states above normal, where late October usually sees about 70. ' +
-        "That's within its range for the season.",
+        'Gujarat, newly above normal, had 46 fires yesterday, about eight times usual for late October and more than on any day ' +
+        "at this time of year in 2024 or 2025. Madhya Pradesh had the most, with 185, though that's within its range for the season. " +
+        'Telangana and Maharashtra are also above normal.',
     })
   })
 
   it('Level 1 quakes, grouped', () => {
     const { entries, items } = edition(17)
-    const group = entries.find((e) => e.members.length > 0)!
+    const group = entries.find((e) => e.category === 'earthquake')!
     expect(items.find((i) => i.key === group.key)!.title).toBe("Two small earthquakes strike near India's borders")
     expect(group.members.map(quakeMemberLine)).toEqual([
       'Magnitude 4.6, 91 km from Tuensang, India',
@@ -138,12 +120,9 @@ describe('edition 17 (Sun 25 Oct, 14:30 IST)', () => {
 })
 
 describe('edition 19 (Mon 26 Oct, 02:30 IST, a failed run)', () => {
-  it('the same fire stories, dated Saturday: the figures are last known from No. 17', () => {
-    expect(item(19, 'fire:gujarat').standfirst).toBe(
-      '46 fires on Saturday across 14 districts, where late October usually sees about 6. ' +
-        "That's more than on any day at this time of year in 2024 or 2025.",
-    )
-    expect(edition(19).headline).toBe('Fires are the top story today, spreading to four states, led by Gujarat at eight times normal.')
+  it('the same roundup, dated Saturday: the figures are last known from No. 17', () => {
+    expect(item(19, 'fire:roundup').standfirst).toMatch(/^Gujarat, newly above normal, had 46 fires on Saturday, /)
+    expect(edition(19).headline).toBe('Fires are the top story today, spreading to four states, led by a spike in Gujarat.')
   })
 })
 
@@ -170,6 +149,68 @@ describe('edition 14 (Sat 24 Oct, 14:30 IST)', () => {
         "Baraut, in Uttar Pradesh, is worst, at 335 on India's air quality index, which the Central Pollution Control Board rates very poor. " +
         "Meerut and Gajraula are also very poor, and 10 more cities are poor, out of 264 reporting. These are the board's live readings, before its own checks.",
     })
+  })
+})
+
+describe('fire roundup rules', () => {
+  const [ed25, w25_] = fixtures[25]
+
+  function withFigures(n: number, key: string, patch: Record<string, unknown>) {
+    return fixtures[n][0].snapshots.map((s) => (s.item_id === key ? { ...s, figures: { ...s.figures, ...patch } } : s))
+  }
+
+  function roundupTitle(snapshots: EditionData['snapshots'], window: ChangeWindow | null) {
+    const since = window ? sinceYesterday(snapshots, window) : null
+    const entries = deskEntries(snapshots, since?.byItem ?? new Map())
+    const ctx = copyContext(entries, since, ed25.run)
+    return itemCopy(entries.find((e) => e.key === 'fire:roundup')!, ctx).title
+  }
+
+  it('angle order: record, then new, then spreading, then the largest count, then the multiple', () => {
+    const noRecord = withFigures(25, 'fire:chhattisgarh', { norm_max_daily_events: 40 })
+    expect(roundupTitle(noRecord, w25_)).toBe('Fires run above normal in five states, now including Chhattisgarh')
+    // Without the comparison there is nothing new or spreading: the largest count leads.
+    expect(roundupTitle(noRecord, null)).toBe('Fires run above normal in five states, the most in Madhya Pradesh')
+    // Spreading: more states above normal than a day earlier, none of them new.
+    // A day earlier: Uttar Pradesh not yet above normal, Chhattisgarh already was (so not new).
+    const spreading = {
+      ...w25_,
+      rows: w25_.rows.filter((r) => r.item_id !== 'fire:uttar-pradesh' && !(r.item_id === 'fire:chhattisgarh' && r.change === 'opened')),
+    }
+    const old = noRecord.map((s) => (s.item_id === 'fire:chhattisgarh' ? { ...s, change: null } : s))
+    const oldWindow = { ...spreading, rows: [...spreading.rows, { run_id: 22, item_id: 'fire:chhattisgarh', category: 'fire' as const, status: 'open' as const, severity_level: 2 as const, change: null }] }
+    expect(roundupTitle(old, oldWindow)).toBe('Fires run above normal in five states, up from four')
+  })
+
+  it('a lone fire state gets its own story, with no multiple in the title', () => {
+    const only = ed25.snapshots.filter((s) => s.category !== 'fire' || s.item_id === 'fire:telangana')
+    const entries = deskEntries(only, new Map())
+    const ctx = copyContext(entries, null, ed25.run)
+    const fire = entries.find((e) => e.category === 'fire')!
+    expect(fire.key).toBe('fire:telangana')
+    expect(itemCopy(fire, ctx)).toEqual({
+      title: "Telangana's fires run well above normal",
+      standfirst:
+        "39 fires on Monday across 17 districts, about six times usual for late October. That's within its range for the season.",
+    })
+  })
+
+  it('a Level 3 state gets its own story; the roundup covers the rest', () => {
+    const l3 = ed25.snapshots.map((s) => (s.item_id === 'fire:telangana' ? { ...s, severity_level: 3 as const } : s))
+    const entries = deskEntries(l3, new Map())
+    const ctx = copyContext(entries, null, ed25.run)
+    expect(entries.map((e) => e.key)).toEqual(['cyclone:GDACS-TC-1001345', 'fire:telangana', 'air:IN', 'fire:roundup'])
+    expect(itemCopy(entries[1], ctx).title).toBe("Telangana's fires run far above normal")
+    expect(itemCopy(entries[3], ctx).title).toBe('Fires also run above normal in four more states, led by a spike in Chhattisgarh')
+  })
+
+  it('no title or headline carries a multiple of normal', () => {
+    for (const n of [14, 17, 19, 25]) {
+      const { headline, items, since } = edition(n)
+      for (const t of [headline, ...items.map((i) => i.title), ...since.map((l) => l.text)]) {
+        expect(t, `No. ${n}: ${t}`).not.toMatch(/times normal|twice normal|×/)
+      }
+    }
   })
 })
 

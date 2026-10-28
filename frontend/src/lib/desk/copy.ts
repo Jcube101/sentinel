@@ -12,7 +12,6 @@ import { LEVEL_NAMES } from './levels'
 import { SCALE } from './scale'
 import type { AirBand, Edition, Level } from './types'
 import {
-  aboutCount,
   alertRank,
   alertRankWord,
   cap,
@@ -24,7 +23,6 @@ import {
   quakeStrength,
   relativeDay,
   roundKm,
-  timesNormal,
   timesUsual,
   whereStates,
 } from './words'
@@ -39,10 +37,10 @@ export interface CopyContext {
   /** The edition's start time: "today" and "yesterday" are relative to it. */
   editionAt: string
   since: SinceYesterday | null
-  /** Fire states at Level 2 and up, highest ratio first. */
+  /** Fire states at Level 2 and up (in the roundup or on their own), highest ratio first. */
   fires: DeskEntry[]
-  /** The fire state with clearly the most fires, if there are several. */
-  mostFires: string | null
+  /** Fire states with their own story (Level 3+, or the only fire state). */
+  ownFires: DeskEntry[]
 }
 
 const BAND_WORDS: Record<AirBand, string> = { poor: 'poor', very_poor: 'very poor', severe: 'severe' }
@@ -58,15 +56,14 @@ function counted_(n: number, one: string, many: string): string {
 }
 
 export function copyContext(entries: DeskEntry[], since: SinceYesterday | null, run: Pick<Edition, 'started_at'>): CopyContext {
-  const fires = entries
-    .filter((e) => e.category === 'fire' && e.level >= 2)
-    .sort((a, b) => b.strength - a.strength)
-  let mostFires: string | null = null
-  if (fires.length >= 2) {
-    const byCount = [...fires].sort((a, b) => (b.figures.fire_events ?? 0) - (a.figures.fire_events ?? 0))
-    if ((byCount[0].figures.fire_events ?? 0) > (byCount[1].figures.fire_events ?? 0)) mostFires = byCount[0].key
+  const fireRows = entries.filter((e) => e.category === 'fire')
+  const states = fireRows.flatMap((e) => (e.members.length > 0 ? e.members : [e]))
+  return {
+    editionAt: run.started_at,
+    since,
+    fires: states.filter((e) => e.level >= 2).sort((a, b) => b.strength - a.strength),
+    ownFires: fireRows.filter((e) => e.members.length === 0),
   }
-  return { editionAt: run.started_at, since, fires, mostFires }
 }
 
 // --- fire ----------------------------------------------------------------------------
@@ -81,38 +78,87 @@ interface WildfireAlert {
   alert_level?: string
 }
 
-function fireCopy(e: DeskEntry, ctx: CopyContext): ItemCopy {
-  const f = e.figures
-  const state = typeof f.state === 'string' ? f.state : e.title
-  const day = f.day ? relativeDay(f.day, ctx.editionAt) : ''
-  const n = f.fire_events ?? 0
-  const districts = f.district_count ?? 0
-  const r = typeof f.ratio_to_norm === 'number' ? f.ratio_to_norm : null
-  const counted = r !== null && n >= SCALE.fire.minFireEvents
-  const near = (Array.isArray(f.large_fires_near_people) ? f.large_fires_near_people[0] : undefined) as NearFire | undefined
-  const wildfire = (Array.isArray(f.gdacs_wildfire) ? f.gdacs_wildfire[0] : undefined) as WildfireAlert | undefined
-  const states = numberWord(ctx.fires.length)
-  const most = ctx.mostFires === e.key
-  const mostInTitle = most && ctx.fires[0]?.key !== e.key && !e.change
+/** One state's fire figures, read the same way by every template. */
+interface StateFacts {
+  state: string
+  n: number
+  districts: number
+  /** "on Monday", "yesterday" (relative to the edition) */
+  day: string
+  /** "late October" */
+  period: string
+  r: number | null
+  /** Enough fires for the ratio to set the level. */
+  counted: boolean
+  /** The day against the baseline's busiest day at this time of year. */
+  record: 'above' | 'equal' | 'within' | null
+  /** "in 2024 or 2025" */
+  years: string
+}
 
-  // How this day compares with the baseline's busiest day at this time of year.
+function stateFacts(e: DeskEntry, ctx: CopyContext): StateFacts {
+  const f = e.figures
+  const n = f.fire_events ?? 0
+  const r = typeof f.ratio_to_norm === 'number' ? f.ratio_to_norm : null
   const max = typeof f.norm_max_daily_events === 'number' ? f.norm_max_daily_events : null
-  const years = inYears(typeof f.norm_years === 'string' ? f.norm_years : SCALE.fire.baselineYears)
-  const record = max === null ? null : n > max ? 'above' : n === max ? 'equal' : 'within'
-  const context =
-    record === 'above'
-      ? ` That's more than on any day at this time of year ${years}.`
-      : record === 'equal'
-        ? ` That matches the busiest day at this time of year ${years}.`
-        : record === 'within'
-          ? " That's within its range for the season."
-          : ''
+  return {
+    state: typeof f.state === 'string' ? f.state : e.title,
+    n,
+    districts: f.district_count ?? 0,
+    day: f.day ? relativeDay(f.day, ctx.editionAt) : '',
+    period: f.day ? partOfMonth(f.day) : 'this time of year',
+    r,
+    counted: r !== null && n >= SCALE.fire.minFireEvents,
+    record: max === null ? null : n > max ? 'above' : n === max ? 'equal' : 'within',
+    years: inYears(typeof f.norm_years === 'string' ? f.norm_years : SCALE.fire.baselineYears),
+  }
+}
+
+/** "more than on any day at this time of year in 2024 or 2025", or null. */
+function recordClause(f: StateFacts): string | null {
+  if (f.record === 'above') return `more than on any day at this time of year ${f.years}`
+  if (f.record === 'equal') return `level with the busiest day at this time of year ${f.years}`
+  return null
+}
+
+function baselineYears(e: DeskEntry): number {
+  const [a, b] = String(e.figures.norm_years ?? SCALE.fire.baselineYears)
+    .split(/[-–]/)
+    .map(Number)
+  return b ? b - a + 1 : 1
+}
+
+/** A state's story title: what happened, never the multiple (style guide). */
+function stateTitle(e: DeskEntry, ctx: CopyContext): string {
+  const f = stateFacts(e, ctx)
+  const S = possessive(f.state)
+  if (f.record === 'above' && f.counted) return `${S} fires spike to a ${numberWord(baselineYears(e))}-year high for the season`
+  switch (e.change) {
+    case 'opened':
+      return `${S} fires jump well above normal`
+    case 'reopened':
+      return `${S} fires flare up again`
+    case 'escalated':
+      return `${S} fires climb further above normal`
+    case 'deescalated':
+      return e.level >= 2 ? `${S} fires ease but stay above normal` : `${S} fires fall back toward normal`
+  }
+  if (e.level === 1) return `${S} fires have fallen back toward normal`
+  return `${S} fires run ${e.level >= 3 ? 'far' : 'well'} above normal`
+}
+
+/** A state's own story: the title, then the count with the multiple, once. */
+function fireStateCopy(e: DeskEntry, ctx: CopyContext): ItemCopy {
+  const ff = e.figures
+  const f = stateFacts(e, ctx)
+  const near = (Array.isArray(ff.large_fires_near_people) ? ff.large_fires_near_people[0] : undefined) as NearFire | undefined
+  const wildfire = (Array.isArray(ff.gdacs_wildfire) ? ff.gdacs_wildfire[0] : undefined) as WildfireAlert | undefined
   const count =
-    counted && typeof f.norm_daily_events === 'number' && f.day
-      ? `${plural(n, 'fire', 'fires')} ${day} across ${counted_(districts, 'district', 'districts')}` +
-        (most && !mostInTitle ? `, the most of the ${states} states above normal` : '') +
-        `, where ${partOfMonth(f.day)} usually sees ${aboutCount(f.norm_daily_events)}.${context}`
+    f.counted && f.r !== null
+      ? `${plural(f.n, 'fire', 'fires')} ${f.day} across ${counted_(f.districts, 'district', 'districts')}, ${timesUsual(f.r)} for ${f.period}.`
       : null
+  const rc = recordClause(f)
+  const context = rc ? ` That's ${rc}.` : f.record === 'within' ? " That's within its range for the season." : ''
 
   if (near?.place) {
     const where = near.district ? ` in ${near.district} district` : ''
@@ -120,59 +166,161 @@ function fireCopy(e: DeskEntry, ctx: CopyContext): ItemCopy {
       title: `A large fire burns ${Math.max(1, Math.round(near.km ?? 0))} km from ${near.place}`,
       standfirst:
         `NASA's fire satellites picked up a large fire${where}, close to a town of ${SCALE.fire.level4MinPopulation.toLocaleString('en-IN')} people or more.` +
-        (count ? ` ${state} had ${count}` : ''),
+        (count ? ` ${f.state} had ${count}` : ''),
     }
   }
-  if (wildfire && (!counted || (f.gdacs_level ?? 0) > (f.ratio_level ?? 0))) {
+  if (wildfire && (!f.counted || (ff.gdacs_level ?? 0) > (ff.ratio_level ?? 0))) {
     const colour = (wildfire.alert_level ?? '').toLowerCase()
     return {
-      title: `Global monitors put a forest fire in ${state} on alert`,
+      title: `Global monitors put a forest fire in ${f.state} on alert`,
       standfirst:
-        `Global disaster monitors have a ${colour ? `${colour} ` : ''}forest-fire alert in ${state}.` +
+        `Global disaster monitors have a ${colour ? `${colour} ` : ''}forest-fire alert in ${f.state}.` +
         (count ? ` NASA's fire satellites counted ${count}` : ''),
     }
   }
-  if (n === 0) return { title: `Satellites see no fires in ${state}`, standfirst: `NASA's fire satellites saw none ${day}.` }
-  if (!counted || r === null) {
+  if (f.n === 0) return { title: `Satellites see no fires in ${f.state}`, standfirst: `NASA's fire satellites saw none ${f.day}.` }
+  if (!f.counted) {
     return {
-      title: `${state} is down to ${plural(n, 'fire', 'fires')}`,
-      standfirst: `${plural(n, 'fire', 'fires')} ${day}, too few to compare with past years: levels count from ${SCALE.fire.minFireEvents} fires a day.`,
+      title: `${f.state} is down to ${plural(f.n, 'fire', 'fires')}`,
+      standfirst: `${plural(f.n, 'fire', 'fires')} ${f.day}, too few to compare with past years: levels count from ${SCALE.fire.minFireEvents} fires a day.`,
     }
   }
+  return { title: stateTitle(e, ctx), standfirst: count ? cap(count) + context : null }
+}
 
-  const S = possessive(state)
-  let title: string
-  switch (e.change) {
-    case 'opened':
-      title = `${S} fires jump to ${timesNormal(r)}`
-      break
+type AngleKind = 'record' | 'new' | 'spreading' | 'largest' | 'multiple'
+
+interface Angle {
+  kind: AngleKind
+  /** The states the angle names, strongest first. */
+  states: DeskEntry[]
+  /** Spreading: how many states were above normal a day earlier. */
+  before: number
+}
+
+/** Fire states above normal in the edition a day earlier, or null without the comparison. */
+function firesBefore(ctx: CopyContext): number | null {
+  const ref = ctx.since?.refLevels
+  if (!ref || !ctx.since?.ref) return null
+  return [...ref].filter(([id, level]) => id.startsWith('fire:') && level >= 2).length
+}
+
+/**
+ * The strongest true angle on a set of fire states (style guide, Fire
+ * roundup): a record for the time of year, then new on the desk, then
+ * spreading, then the largest count, then the multiple of normal.
+ */
+function fireAngle(states: DeskEntry[], ctx: CopyContext, spreadingAllowed: boolean): Angle {
+  const facts = new Map(states.map((e) => [e.key, stateFacts(e, ctx)]))
+  const records = states.filter((e) => facts.get(e.key)!.record === 'above' && facts.get(e.key)!.counted)
+  if (records.length > 0) return { kind: 'record', states: records, before: 0 }
+  const news = states.filter((e) => isNewChange(e))
+  if (news.length > 0) return { kind: 'new', states: news, before: 0 }
+  const before = firesBefore(ctx)
+  if (spreadingAllowed && before !== null && ctx.fires.length > before) return { kind: 'spreading', states: [], before }
+  const byCount = [...states].sort((a, b) => facts.get(b.key)!.n - facts.get(a.key)!.n)
+  if (byCount.length >= 2 && facts.get(byCount[0].key)!.n > facts.get(byCount[1].key)!.n) {
+    return { kind: 'largest', states: [byCount[0]], before: 0 }
+  }
+  return { kind: 'multiple', states: [states[0]], before: 0 }
+}
+
+function isNewChange(e: DeskEntry): boolean {
+  return e.change === 'opened' || e.change === 'reopened'
+}
+
+function stateName(e: DeskEntry): string {
+  return String(e.figures.state ?? e.title)
+}
+
+/** "led by a spike in Chhattisgarh", "now including Telangana", "up from four" */
+function angleSuffix(a: Angle): string {
+  const names = a.states.map(stateName)
+  switch (a.kind) {
+    case 'record':
+      if (names.length === 1) return `led by a spike in ${names[0]}`
+      return names.length === 2 ? `led by spikes in ${listText(names)}` : `with spikes in ${numberWord(names.length)} of them`
+    case 'new':
+      return names.length <= 2 ? `now including ${listText(names)}` : `${numberWord(names.length)} of them new`
+    case 'spreading':
+      return `up from ${a.before === 0 ? 'none' : numberWord(a.before)}`
+    case 'largest':
+      return `the most in ${names[0]}`
+    case 'multiple':
+      return `led by ${names[0]}`
+  }
+}
+
+/** The fire roundup: one story for the fire states, led by the strongest angle. */
+function roundupCopy(e: DeskEntry, ctx: CopyContext): ItemCopy {
+  const above = e.members.filter((x) => x.level >= 2)
+  const below = e.members.filter((x) => x.level < 2)
+  const backNames = below.map(stateName)
+  const back = backNames.length > 0 ? `${listText(backNames)} ${backNames.length === 1 ? 'has' : 'have'} fallen back toward normal` : null
+
+  if (above.length === 0) {
+    return {
+      title: `Fires fall back toward normal in ${counted_(e.members.length, 'state', 'states')}`,
+      standfirst: `${cap(back!)}; a state leaves the list after two quieter days.`,
+    }
+  }
+  if (above.length === 1) {
+    const one = fireStateCopy(above[0], ctx)
+    return { title: one.title, standfirst: [one.standfirst, back ? `${cap(back)}.` : null].filter(Boolean).join(' ') }
+  }
+
+  const also = ctx.ownFires.some((x) => x.level >= 2)
+  const angle = fireAngle(above, ctx, !also)
+  const base = also
+    ? `Fires also run above normal in ${counted_(above.length, 'more state', 'more states')}`
+    : `Fires run above normal in ${counted_(above.length, 'state', 'states')}`
+  const title = `${base}, ${angleSuffix(angle)}`
+
+  // The standout: the state the angle names, else the furthest above normal.
+  const standout = angle.kind === 'record' || angle.kind === 'new' ? angle.states[0] : above[0]
+  const sf = stateFacts(standout, ctx)
+  const who = isNewChange(standout) ? `${sf.state}, newly above normal,` : sf.state
+  const rc = recordClause(sf)
+  const sentences = [
+    sf.r !== null
+      ? `${who} had ${plural(sf.n, 'fire', 'fires')} ${sf.day}, ${timesUsual(sf.r)} for ${sf.period}${rc ? ` and ${rc}` : ''}.`
+      : `${who} had ${plural(sf.n, 'fire', 'fires')} ${sf.day}.`,
+  ]
+  const byCount = [...above].sort((a, b) => stateFacts(b, ctx).n - stateFacts(a, ctx).n)
+  const biggest = byCount[0] !== standout && stateFacts(byCount[0], ctx).n > stateFacts(byCount[1], ctx).n ? byCount[0] : null
+  if (biggest) {
+    const bf = stateFacts(biggest, ctx)
+    const brc = recordClause(bf)
+    sentences.push(
+      `${bf.state} had the most, with ${bf.n}` +
+        (brc ? `, also ${brc}` : bf.record === 'within' ? ", though that's within its range for the season" : '') +
+        '.',
+    )
+  }
+  const others = above.filter((x) => x !== standout && x !== biggest).map(stateName)
+  const tail = [
+    others.length > 0 ? `${listText(others)} ${others.length === 1 ? 'is' : 'are'} also above normal` : null,
+    back,
+  ].filter(Boolean) as string[]
+  if (tail.length > 0) sentences.push(`${cap(tail.join('; '))}.`)
+  return { title, standfirst: sentences.join(' ') }
+}
+
+/** A fire state's Since yesterday line: the move in words. */
+function fireMoveText(m: Movement, e: DeskEntry): string {
+  const S = possessive(stateName(e))
+  switch (m.kind) {
+    case 'new':
+      return `${S} fires jump above normal`
     case 'reopened':
-      title = `${S} fires flare up again, at ${timesNormal(r)}`
-      break
+      return `${S} fires flare up again`
     case 'escalated':
-      title = `${S} fires climb to ${timesNormal(r)}`
-      break
+      return `${S} fires climb further above normal`
     case 'deescalated':
-      title = `${S} fires ease to ${timesNormal(r)}`
-      break
-    default:
-      title = mostInTitle
-        ? `${state} has the most fires of the ${states} states above normal`
-        : e.level === 1
-          ? `${S} fires are back under ${timesNormal(SCALE.fire.level2MinRatio)}`
-          : `${S} fires run at ${timesNormal(r)}`
+      return (m.to ?? 1) >= 2 ? `${S} fires ease but stay above normal` : `${S} fires fall back toward normal`
+    case 'closed':
+      return `${S} fires drop off the list after two quieter days`
   }
-  if (mostInTitle) {
-    // The title has no multiple, so the standfirst gives it.
-    const tail =
-      record === 'above'
-        ? `, and more than on any day at this time of year ${years}.`
-        : record === 'within'
-          ? ', though still within its range for the season.'
-          : '.'
-    return { title, standfirst: `${n} ${day}, ${timesUsual(r)}${tail}` }
-  }
-  return { title, standfirst: count ? cap(count) : null }
 }
 
 // --- air -----------------------------------------------------------------------------
@@ -341,10 +489,10 @@ function gdacsStandfirst(e: DeskEntry, cyclone: boolean): string {
 
 /** The title and standfirst for one desk row. */
 export function itemCopy(e: DeskEntry, ctx: CopyContext): ItemCopy {
-  if (e.members.length > 0) return quakeGroupCopy(e)
+  if (e.members.length > 0) return e.category === 'fire' ? roundupCopy(e, ctx) : quakeGroupCopy(e)
   switch (e.category) {
     case 'fire':
-      return fireCopy(e, ctx)
+      return fireStateCopy(e, ctx)
     case 'air':
       return airCopy(e)
     case 'earthquake':
@@ -360,7 +508,7 @@ export function itemCopy(e: DeskEntry, ctx: CopyContext): ItemCopy {
 export function closedLine(e: DeskEntry): string {
   switch (e.category) {
     case 'fire':
-      return `${possessive(String(e.figures.state ?? e.title))} fires have stayed under ${timesNormal(SCALE.fire.level2MinRatio)} for two days`
+      return `${possessive(stateName(e))} fires drop off the list after two quieter days`
     case 'earthquake':
       return `The ${quakeStrength(e.figures.magnitude ?? e.strength)} earthquake ${quakeWhere(e)} leaves the report after two days`
     case 'cyclone':
@@ -374,6 +522,10 @@ export function closedLine(e: DeskEntry): string {
 
 /** A Since yesterday line: the item's title, and the level change as evidence. */
 export function movementLine(m: Movement, e: DeskEntry, ctx: CopyContext): { tag: string; text: string; levels: string } {
+  if (e.category === 'fire' && m.kind !== 'closed') {
+    const levels = m.from !== null ? `Level ${m.from} → ${m.to}` : `Level ${m.to} · ${LEVEL_NAMES[m.to!]}`
+    return { tag: MOVE_TAGS[m.kind], text: fireMoveText(m, e), levels }
+  }
   switch (m.kind) {
     case 'new':
       return { tag: '+ NEW', text: itemCopy(e, ctx).title, levels: `Level ${m.to} · ${LEVEL_NAMES[m.to!]}` }
@@ -386,6 +538,14 @@ export function movementLine(m: Movement, e: DeskEntry, ctx: CopyContext): { tag
     case 'closed':
       return { tag: '− CLOSED', text: closedLine(e), levels: `was Level ${m.from}` }
   }
+}
+
+const MOVE_TAGS: Record<MoveKind, string> = {
+  new: '+ NEW',
+  reopened: '+ BACK',
+  escalated: '▲ UP',
+  deescalated: '▼ DOWN',
+  closed: '− CLOSED',
 }
 
 export interface SinceLine {
@@ -429,11 +589,8 @@ function leadSubject(e: DeskEntry): { text: string; plural: boolean } {
       const a = airWorst(e)
       return { text: a ? `${a.band} air in ${a.where}` : 'poor air', plural: false }
     }
-    case 'fire': {
-      const r = f.ratio_to_norm
-      const S = possessive(String(f.state ?? e.title))
-      return { text: typeof r === 'number' ? `${S} fires, at ${timesNormal(r)},` : `${S} fires`, plural: true }
-    }
+    case 'fire':
+      return { text: `${possessive(stateName(e))} fires`, plural: true }
   }
 }
 
@@ -467,15 +624,14 @@ function itemClause(e: DeskEntry): string {
       return `${name} is on a ${colour} alert`
     }
     case 'fire':
-      return `${possessive(String(f.state ?? e.title))} fires are at ${timesNormal(f.ratio_to_norm ?? 1)}`
+      return `${possessive(stateName(e))} fires are ${e.level >= 3 ? 'far' : 'well'} above normal`
   }
 }
 
 /** How the fire states moved since the edition a day earlier: more, fewer, the same, or unknown. */
 function fireTrend(ctx: CopyContext): 'more' | 'fewer' | 'same' | null {
-  const ref = ctx.since?.refLevels
-  if (!ref || !ctx.since?.ref) return null
-  const before = [...ref].filter(([id, level]) => id.startsWith('fire:') && level >= 2).length
+  const before = firesBefore(ctx)
+  if (before === null) return null
   return ctx.fires.length > before ? 'more' : ctx.fires.length < before ? 'fewer' : 'same'
 }
 
@@ -496,10 +652,9 @@ export function pageHeadline(entries: DeskEntry[], ctx: CopyContext): string {
   if (lead.level === 1) return 'A quiet day: nothing in this report is above minor.'
 
   if (lead.category === 'fire' && ctx.fires.length >= 2) {
-    const top = ctx.fires[0]
-    const led = `led by ${top.figures.state} at ${timesNormal(top.strength)}`
+    const angle = fireAngle(ctx.fires, ctx, false)
     const other = entries.find((e) => e.category !== 'fire' && e.level >= 2)
-    return `Fires are the top story today, ${firesPhrase(ctx)}, ${led}.` + (other ? ` ${cap(itemClause(other))}.` : '')
+    return `Fires are the top story today, ${firesPhrase(ctx)}, ${angleSuffix(angle)}.` + (other ? ` ${cap(itemClause(other))}.` : '')
   }
 
   const s = leadSubject(lead)

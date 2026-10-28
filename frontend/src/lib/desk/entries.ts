@@ -4,6 +4,7 @@ import { SCALE } from './scale'
 import { splitReason, type ReasonNote } from './levels'
 import type { Movement } from './changes'
 import type { AirBand, AirCity, Category, CategoryStatus, Change, Figures, Level, Snapshot } from './types'
+import { numberWord } from './words'
 
 export interface DeskLabel {
   kind: 'unvalidated' | 'approximate' | 'cap'
@@ -208,17 +209,67 @@ function quakeGroup(quakes: DeskEntry[]): DeskEntry {
   }
 }
 
+export const FIRE_ROUNDUP_KEY = 'fire:roundup'
+
 /**
- * The edition's open items, ranked, with Level 1 quakes grouped into one row.
- * With moves (since yesterday), each item's change is its change over the
- * day; without, its change in this run alone.
+ * The fire states as one desk row, ranked at its highest state's level
+ * (Job, 28 Oct: one roundup, not five near-identical stories).
+ */
+function fireRoundup(states: DeskEntry[], ownStories: number): DeskEntry {
+  const ranked = [...states].sort(compareEntries)
+  const top = ranked[0]
+  const capped = ranked.filter((x) => x.wouldBe !== null)
+  const wouldBe = capped.length > 0 ? (Math.max(...capped.map((x) => x.wouldBe!)) as Level) : null
+  const labels: DeskLabel[] = []
+  if (wouldBe !== null) {
+    const who = capped.length === 1 ? 'one state' : `${numberWord(capped.length)} states`
+    labels.push({ kind: 'cap', text: `Held at Level ${top.level} · ${who} would be ${wouldBe}` })
+  }
+  const stale = ranked.find((x) => x.lastKnown)
+  return {
+    key: FIRE_ROUNDUP_KEY,
+    itemIds: ranked.map((x) => x.key),
+    category: 'fire',
+    level: top.level,
+    wouldBe: wouldBe !== null && wouldBe > top.level ? wouldBe : null,
+    title: `Fire activity above normal in ${ranked.length} states` + (ownStories > 0 ? ' (more elsewhere)' : ''),
+    reason: `${top.figures.state ?? top.title}: ${top.reason}`,
+    labels,
+    lastKnown: stale !== undefined,
+    lastKnownWhy: stale?.lastKnownWhy ?? null,
+    notes: [],
+    change: null,
+    from: null,
+    newMembers: ranked.filter((x) => isNew(x.change)).length,
+    strength: top.strength,
+    members: ranked,
+    figures: top.figures,
+    placeName: null,
+    sourceRef: null,
+    carriedFrom: ranked.find((x) => x.carriedFrom !== null)?.carriedFrom ?? null,
+  }
+}
+
+/**
+ * The edition's open items, ranked. Level 1 quakes are grouped into one row;
+ * fire states into one roundup, except a state at Level 3 or above, which
+ * gets its own story, as does a state that is alone. With moves (since
+ * yesterday), each item's change is its change over the day; without, its
+ * change in this run alone.
  */
 export function deskEntries(snapshots: Snapshot[], moves?: Map<string, Movement>): DeskEntry[] {
-  const entries = snapshots.filter((s) => s.status === 'open').map((s) => toEntry(s, moves))
+  let entries = snapshots.filter((s) => s.status === 'open').map((s) => toEntry(s, moves))
+
   const minorQuakes = entries.filter((e) => e.category === 'earthquake' && e.level === 1)
-  if (minorQuakes.length < 2) return entries.sort(compareEntries)
-  const rest = entries.filter((e) => !minorQuakes.includes(e))
-  return [...rest, quakeGroup(minorQuakes)].sort(compareEntries)
+  if (minorQuakes.length >= 2) entries = [...entries.filter((e) => !minorQuakes.includes(e)), quakeGroup(minorQuakes)]
+
+  const fires = entries.filter((e) => e.category === 'fire')
+  const own = fires.filter((e) => e.level >= 3)
+  const grouped = fires.filter((e) => e.level < 3)
+  if (grouped.length >= 2) {
+    entries = [...entries.filter((e) => !grouped.includes(e)), fireRoundup(grouped, own.length)]
+  }
+  return entries.sort(compareEntries)
 }
 
 /**

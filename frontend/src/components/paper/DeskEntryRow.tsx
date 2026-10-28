@@ -1,5 +1,5 @@
 import { CATEGORY_NAMES, LEVEL_NAMES } from '@/lib/desk/levels'
-import { entryCard, type Card } from '@/lib/desk/cards'
+import { entryCard, type Card, type FireRow } from '@/lib/desk/cards'
 import { quakeMemberLine, type ItemCopy } from '@/lib/desk/copy'
 import type { DeskEntry, DeskLabel } from '@/lib/desk/entries'
 import type { Change } from '@/lib/desk/types'
@@ -40,6 +40,9 @@ function Chips({ entry }: { entry: DeskEntry }) {
         <span className={`px-[7px] sm:px-2 py-0.5 border ${isNew ? 'border-accent text-accent font-semibold' : 'border-ink'}`}>
           {CHANGE_TEXT[entry.change]}
         </span>
+      )}
+      {entry.members.length > 0 && entry.newMembers > 0 && (
+        <span className="px-[7px] sm:px-2 py-0.5 border border-accent text-accent font-semibold">+ {entry.newMembers} new</span>
       )}
       {entry.labels.map((l) => (
         <span key={l.kind} className={`px-[7px] sm:px-2 py-0.5 ${LABEL_STYLE[l.kind]}`}>
@@ -89,6 +92,44 @@ function Strip({ card }: { card: Card }) {
   )
 }
 
+/** The fire roundup's state table: the evidence under the story. */
+function StateTable({ rows, day }: { rows: FireRow[]; day: string | null }) {
+  const held = rows.filter((r) => r.wouldBe !== null)
+  const th = 'py-1.5 pr-3 font-normal text-left text-[10px] uppercase tracking-[0.05em]'
+  return (
+    <div className="max-w-[640px]">
+      <table className="w-full border-collapse border-t border-rule font-mono text-[12px] sm:text-[13px] leading-[1.35]">
+        <thead>
+          <tr className="border-b border-rule">
+            <th scope="col" className={th}>State</th>
+            <th scope="col" className={`${th} text-right`}>Fires{day ? `, ${day}` : ''}</th>
+            <th scope="col" className={`${th} text-right`}>Usual a day</th>
+            <th scope="col" className={`${th} pl-3 pr-0`}>Vs past years</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.key} className="border-b border-rule">
+              <th scope="row" className="py-1.5 pr-3 font-normal text-left text-ink">
+                {r.state}
+                {r.wouldBe !== null && '*'}
+              </th>
+              <td className="py-1.5 pr-3 text-right text-ink font-semibold">{r.fires}</td>
+              <td className="py-1.5 pr-3 text-right">{r.usual}</td>
+              <td className={`py-1.5 pl-3 ${r.vsPast.startsWith('busiest') ? 'text-ink font-semibold' : ''}`}>{r.vsPast}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {held.length > 0 && (
+        <p className="m-0 pt-1 font-mono text-[11px]">
+          * Held at Level {held[0].level} for now; would be {held[0].wouldBe}.
+        </p>
+      )}
+    </div>
+  )
+}
+
 interface Props {
   entry: DeskEntry
   copy: ItemCopy
@@ -117,7 +158,7 @@ export default function DeskEntryRow({ entry, copy, rank }: Props) {
         {major && copy.standfirst && (
           <p className="m-0 text-[16px] sm:text-[18px] leading-[1.55] max-w-[760px]">{copy.standfirst}</p>
         )}
-        {entry.members.length > 0 && (
+        {entry.members.length > 0 && entry.category === 'earthquake' && (
           <ul className="m-0 p-0 list-none text-[15px] leading-[1.45]">
             {entry.members.map((m) => (
               <li key={m.key}>
@@ -129,6 +170,7 @@ export default function DeskEntryRow({ entry, copy, rank }: Props) {
         )}
         <div className={`flex flex-col gap-1.5 text-ink-muted ${major ? 'pt-1' : ''}`}>
           {card && card.cells.length > 0 && <Strip card={card} />}
+          {card?.table && <StateTable rows={card.table} day={card.tableDay ?? null} />}
           <p className={`${meta} m-0`}>
             <span className="uppercase tracking-[0.04em]">Level from:</span> {entry.reason}
             {card?.link && (

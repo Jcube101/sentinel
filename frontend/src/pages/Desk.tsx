@@ -15,7 +15,7 @@ import DeskEntryRow from '@/components/paper/DeskEntryRow'
 import DeskHero from '@/components/paper/DeskHero'
 import NoteBox from '@/components/paper/NoteBox'
 import PhoneWire from '@/components/paper/PhoneWire'
-import ScalePanel from '@/components/paper/ScalePanel'
+import MapSlot from '@/components/paper/MapSlot'
 import SinceYesterday from '@/components/paper/SinceYesterday'
 
 function EditionLine({ run, latestId }: { run: Edition; latestId: number | null }) {
@@ -192,9 +192,7 @@ export default function Desk() {
                 )}
               </main>
               <aside className="flex-[1_1_340px] min-w-0 flex flex-col gap-8 sm:pt-6">
-                <div className="hidden sm:block">
-                  <ScalePanel />
-                </div>
+                <MapSlot />
                 <SinceYesterday
                   label={changeWindow.data ? sinceLabel(changeWindow.data.ref, data.run) : 'Since yesterday'}
                   lines={ctx && since ? sinceLines(entries, ctx) : null}

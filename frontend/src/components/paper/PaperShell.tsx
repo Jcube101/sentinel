@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
+import ScaleTable from './ScaleTable'
 
 interface NavItem {
   to: string
@@ -90,6 +91,30 @@ function BottomNav({ path }: { path: string }) {
   )
 }
 
+/** "How levels are set", collapsed: the compact legend at the foot of every page. */
+function Legend() {
+  return (
+    <details className="group mt-12 border-t border-ink">
+      <summary className="flex justify-between items-center gap-3 py-3 cursor-pointer list-none [&::-webkit-details-marker]:hidden font-mono text-[11px] sm:text-[12px] uppercase tracking-[0.08em]">
+        <span>How levels are set</span>
+        <span className="text-ink-muted tracking-[0.04em]">
+          <span className="group-open:hidden">Show</span>
+          <span className="hidden group-open:inline">Hide</span> <span className="inline-block transition-transform group-open:rotate-90">›</span>
+        </span>
+      </summary>
+      <div className="pb-4 max-w-[640px] flex flex-col gap-3">
+        <p className="m-0 text-[14px] leading-[1.5] text-ink-muted">
+          Every item gets a level from 1 (minor) to 4 (severe). The desk ranks by level, never by how many there are.
+        </p>
+        <ScaleTable names />
+        <Link to="/about" className="self-start font-mono text-[12px] uppercase tracking-[0.06em] border-b border-ink hover:text-accent">
+          The full explanation →
+        </Link>
+      </div>
+    </details>
+  )
+}
+
 interface Props {
   children: ReactNode
   /** The right-hand side of the footer: the edition's source line. */
@@ -104,7 +129,8 @@ export default function PaperShell({ children, footer }: Props) {
       <div className="max-w-[1360px] mx-auto px-5 sm:px-10 pb-6 sm:pb-14">
         <Masthead path={pathname} />
         {children}
-        <footer className="mt-12 pt-3 border-t border-ink flex flex-wrap justify-between gap-3 font-mono text-[10px] sm:text-[11px] leading-relaxed text-ink-muted tracking-[0.04em]">
+        {pathname !== '/about' && <Legend />}
+        <footer className={`${pathname !== '/about' ? 'mt-0' : 'mt-12'} pt-3 border-t border-ink flex flex-wrap justify-between gap-3 font-mono text-[10px] sm:text-[11px] leading-relaxed text-ink-muted tracking-[0.04em]`}>
           <span>
             SENTINEL · EDITIONS AT 02:30, 14:30 AND 20:30 IST, FROM A RASPBERRY PI ·{' '}
             <Link to="/about" className="border-b border-ink-muted hover:text-accent">

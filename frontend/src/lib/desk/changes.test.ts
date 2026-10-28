@@ -77,15 +77,17 @@ describe('sinceYesterday', () => {
 
 describe('deskEntries with the day’s changes', () => {
   it('tags items with their change since yesterday, not just this run’s', () => {
-    const entries = deskEntries(editions[25].snapshots, since(25).byItem)
+    const entries = deskEntries(editions[25].snapshots, since(25).byItem).flatMap((e) => [e, ...e.members])
     expect(entries.find((e) => e.key === 'fire:chhattisgarh')?.change).toBe('opened') // opened in No. 23
     const air = deskEntries(editions[17].snapshots, since(17).byItem).find((e) => e.key === 'air:IN')!
     expect([air.change, air.from]).toEqual(['deescalated', 2])
   })
 
   it('counts new members of the Level 1 quake group', () => {
-    const group = deskEntries(editions[17].snapshots, since(17).byItem).find((e) => e.members.length > 0)!
+    const group = deskEntries(editions[17].snapshots, since(17).byItem).find((e) => e.category === 'earthquake')!
     expect(group.newMembers).toBe(1)
+    const fires = deskEntries(editions[17].snapshots, since(17).byItem).find((e) => e.category === 'fire')!
+    expect(fires.newMembers).toBe(4) // two new, two back
   })
 
   it('shows a carried-over item as last-known, from the edition it came from', () => {

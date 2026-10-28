@@ -17,8 +17,25 @@ export interface Cell {
   wideOnly?: boolean
 }
 
+/** One row of the fire roundup's state table. */
+export interface FireRow {
+  key: string
+  state: string
+  fires: number
+  /** The usual fires a day at this time of year: "3.0", "69". */
+  usual: string
+  /** "busiest in 2 years", "matches busiest", "within range" */
+  vsPast: string
+  level: number
+  wouldBe: number | null
+  lastKnown: boolean
+}
+
 export interface Card {
   cells: Cell[]
+  /** The fire roundup: one row per state, and the day the counts are for ("26 Oct"). */
+  table?: FireRow[]
+  tableDay?: string | null
   /** One line of exact detail: busiest districts, next worst cities. */
   detail: string | null
   link: { href: string; text: string } | null
@@ -148,9 +165,35 @@ function gdacsCard(f: Figures, cyclone: boolean): Card {
   return { cells, detail: null, link: f.gdacs_url ? { href: f.gdacs_url, text: 'GDACS report' } : null }
 }
 
+/** The roundup's state table, in desk order. */
+export function fireRows(e: DeskEntry): FireRow[] {
+  return e.members.map((m) => {
+    const f = m.figures
+    const n = f.fire_events ?? 0
+    const max = typeof f.norm_max_daily_events === 'number' ? f.norm_max_daily_events : null
+    const [a, b] = String(f.norm_years ?? SCALE.fire.baselineYears).split(/[-–]/).map(Number)
+    const years = b ? b - a + 1 : 1
+    return {
+      key: m.key,
+      state: String(f.state ?? m.title),
+      fires: n,
+      usual: typeof f.norm_daily_events === 'number' ? normText(f.norm_daily_events) : '—',
+      vsPast: max === null ? '—' : n > max ? `busiest in ${years} years` : n === max ? 'matches busiest' : 'within range',
+      level: m.level,
+      wouldBe: m.wouldBe,
+      lastKnown: m.lastKnown,
+    }
+  })
+}
+
 /** The figures for a Level 2+ item; null for Level 1 rows and grouped quakes. */
 export function entryCard(e: DeskEntry): Card | null {
-  if (e.level < 2 || e.members.length > 0) return null
+  if (e.level < 2) return null
+  if (e.members.length > 0) {
+    if (e.category !== 'fire') return null
+    const day = e.figures.day
+    return { cells: [], table: fireRows(e), tableDay: day ? dayText(day) : null, detail: null, link: null }
+  }
   const f = e.figures
   switch (e.category) {
     case 'fire':

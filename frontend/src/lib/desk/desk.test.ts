@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { compareEntries, deskEntries, editionTitle } from './entries'
+import { compareEntries, deskEntries, editionTitle, type DeskEntry } from './entries'
 import { istDate, istTime, shortAge } from './ist'
 import { splitReason } from './levels'
 import { lateNotice, sourceLines } from './sources'
@@ -15,6 +15,11 @@ import e25 from './__fixtures__/edition-25.json'
 //  19: a failed run (FIRMS and GDACS timed out); fire items last-known
 //  25: the latest edition when step 1 was written
 const editions = { 14: e14, 17: e17, 19: e19, 25: e25 } as unknown as Record<number, EditionData>
+
+/** Desk rows with the groups (quakes, the fire roundup) taken apart. */
+function flat(entries: DeskEntry[]): DeskEntry[] {
+  return entries.flatMap((e) => (e.members.length > 0 ? e.members : [e]))
+}
 
 describe('editionTitle', () => {
   it('matches the current title for the latest edition', () => {
@@ -48,6 +53,10 @@ describe('deskEntries', () => {
     expect(deskEntries(editions[25].snapshots).map((e) => e.key)).toEqual([
       'cyclone:GDACS-TC-1001345',
       'air:IN', // same level as the fires: cyclone, flood, earthquake, air, fire
+      'fire:roundup',
+    ])
+    // Inside the roundup, by ratio, never by count.
+    expect(deskEntries(editions[25].snapshots).at(-1)!.members.map((e) => e.key)).toEqual([
       'fire:chhattisgarh', // 9.07×
       'fire:telangana', // 6.11×
       'fire:maharashtra', // 3.86×
@@ -80,7 +89,7 @@ describe('deskEntries', () => {
   })
 
   it('labels the fire cap and drops it from the shown reason (edition 25, Chhattisgarh)', () => {
-    const e = deskEntries(editions[25].snapshots).find((x) => x.key === 'fire:chhattisgarh')!
+    const e = flat(deskEntries(editions[25].snapshots)).find((x) => x.key === 'fire:chhattisgarh')!
     expect(e.level).toBe(2)
     expect(e.wouldBe).toBe(3)
     expect(e.labels).toEqual([{ kind: 'cap', text: 'Held at Level 2 · would be 3' }])
@@ -93,7 +102,7 @@ describe('deskEntries', () => {
   })
 
   it('marks last-known items with the reason the pipeline gave (edition 19)', () => {
-    const e = deskEntries(editions[19].snapshots).find((x) => x.key === 'fire:telangana')!
+    const e = flat(deskEntries(editions[19].snapshots)).find((x) => x.key === 'fire:telangana')!
     expect(e.lastKnown).toBe(true)
     expect(e.lastKnownWhy).toBe('FIRMS fetch failed this run')
     expect(e.wouldBe).toBe(3)
