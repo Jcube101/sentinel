@@ -47,6 +47,11 @@ export interface DeskEntry {
   sourceRef: string | null
   /** Its stage failed in this run: figures from this earlier edition. */
   carriedFrom: number | null
+  /**
+   * [lat, lon] as of this edition, or null. desk_items keeps only the latest
+   * position, so a past edition gets it only if no later run moved it (P1).
+   */
+  coords: [number, number] | null
 }
 
 export const AIR_BANDS: AirBand[] = ['severe', 'very_poor', 'poor'] // worst first, as air.BANDS
@@ -156,6 +161,10 @@ function toEntry(s: Snapshot, moves?: Map<string, Movement>): DeskEntry {
     placeName: s.desk_items?.place_name ?? null,
     sourceRef: s.desk_items?.source_ref ?? null,
     carriedFrom: carried,
+    coords:
+      s.desk_items?.latitude != null && s.desk_items?.longitude != null && s.desk_items.last_run_id === s.run_id
+        ? [Number(s.desk_items.latitude), Number(s.desk_items.longitude)]
+        : null,
   }
 }
 
@@ -206,6 +215,7 @@ function quakeGroup(quakes: DeskEntry[]): DeskEntry {
     placeName: largest.placeName,
     sourceRef: null,
     carriedFrom: ranked.find((q) => q.carriedFrom !== null)?.carriedFrom ?? null,
+    coords: null,
   }
 }
 
@@ -247,6 +257,7 @@ function fireRoundup(states: DeskEntry[], ownStories: number): DeskEntry {
     placeName: null,
     sourceRef: null,
     carriedFrom: ranked.find((x) => x.carriedFrom !== null)?.carriedFrom ?? null,
+    coords: null,
   }
 }
 

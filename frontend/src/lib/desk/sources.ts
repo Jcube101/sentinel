@@ -28,6 +28,16 @@ const STATUS_WORDS: Record<string, string> = {
   empty: 'came back empty',
 }
 
+/** Short names for the footer line: what each source covers, then its own name. */
+export const FOOTER_NAMES: Record<string, string> = {
+  FIRMS: 'Fire satellites (FIRMS)',
+  USGS: 'Earthquakes (USGS)',
+  GDACS: 'Disaster alerts (GDACS)',
+  EONET: 'NASA events (EONET)',
+  OPENAQ: 'Air monitors (OpenAQ)',
+  DATAGOV: 'Air index (CPCB)',
+}
+
 /** What each source is, for readers (the phone wire's source list). */
 export const SOURCE_TITLES: Record<string, string> = {
   FIRMS: 'NASA fire satellites (FIRMS)',

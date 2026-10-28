@@ -1,0 +1,185 @@
+{
+ "ref": {
+  "id": 23,
+  "started_at": "2026-10-27T09:00:04.315879+00:00"
+ },
+ "rows": [
+  {
+   "run_id": 23,
+   "item_id": "air:IN",
+   "category": "air",
+   "status": "open",
+   "severity_level": 1,
+   "change": "deescalated"
+  },
+  {
+   "run_id": 23,
+   "item_id": "cyclone:GDACS-TC-1001345",
+   "category": "cyclone",
+   "status": "open",
+   "severity_level": 4,
+   "change": null
+  },
+  {
+   "run_id": 23,
+   "item_id": "fire:chhattisgarh",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": "opened"
+  },
+  {
+   "run_id": 23,
+   "item_id": "fire:gujarat",
+   "category": "fire",
+   "status": "closed",
+   "severity_level": 1,
+   "change": "closed"
+  },
+  {
+   "run_id": 23,
+   "item_id": "fire:madhya-pradesh",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": null
+  },
+  {
+   "run_id": 23,
+   "item_id": "fire:maharashtra",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": null
+  },
+  {
+   "run_id": 23,
+   "item_id": "fire:telangana",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": null
+  },
+  {
+   "run_id": 23,
+   "item_id": "fire:uttar-pradesh",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": null
+  },
+  {
+   "run_id": 24,
+   "item_id": "air:IN",
+   "category": "air",
+   "status": "open",
+   "severity_level": 1,
+   "change": null
+  },
+  {
+   "run_id": 24,
+   "item_id": "cyclone:GDACS-TC-1001345",
+   "category": "cyclone",
+   "status": "open",
+   "severity_level": 4,
+   "change": null
+  },
+  {
+   "run_id": 24,
+   "item_id": "fire:chhattisgarh",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": null
+  },
+  {
+   "run_id": 24,
+   "item_id": "fire:madhya-pradesh",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": null
+  },
+  {
+   "run_id": 24,
+   "item_id": "fire:maharashtra",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": null
+  },
+  {
+   "run_id": 24,
+   "item_id": "fire:telangana",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": null
+  },
+  {
+   "run_id": 24,
+   "item_id": "fire:uttar-pradesh",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": null
+  },
+  {
+   "run_id": 25,
+   "item_id": "air:IN",
+   "category": "air",
+   "status": "open",
+   "severity_level": 2,
+   "change": "escalated"
+  },
+  {
+   "run_id": 25,
+   "item_id": "cyclone:GDACS-TC-1001345",
+   "category": "cyclone",
+   "status": "open",
+   "severity_level": 4,
+   "change": null
+  },
+  {
+   "run_id": 25,
+   "item_id": "fire:chhattisgarh",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": null
+  },
+  {
+   "run_id": 25,
+   "item_id": "fire:madhya-pradesh",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": null
+  },
+  {
+   "run_id": 25,
+   "item_id": "fire:maharashtra",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": null
+  },
+  {
+   "run_id": 25,
+   "item_id": "fire:telangana",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": null
+  },
+  {
+   "run_id": 25,
+   "item_id": "fire:uttar-pradesh",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": null
+  }
+ ],
+ "closed": []
+}

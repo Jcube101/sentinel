@@ -145,7 +145,7 @@ function quakeCard(f: Figures, sourceRef: string | null): Card {
   }
 }
 
-function gdacsCard(f: Figures, cyclone: boolean): Card {
+function gdacsCard(f: Figures, cyclone: boolean, coords: [number, number] | null): Card {
   const cells: Cell[] = []
   const colour = f.episode_alert_level ?? f.alert_level
   if (colour) cells.push({ value: colour, label: 'GDACS alert', short: 'Alert' })
@@ -156,18 +156,13 @@ function gdacsCard(f: Figures, cyclone: boolean): Card {
       short: cyclone ? 'Max wind' : 'Severity',
     })
   }
-  if (typeof f.alert_score === 'number') {
-    const prev = f.prev_episode_alert_score
-    const value = typeof prev === 'number' && prev !== f.alert_score ? `${prev} → ${f.alert_score}` : String(f.alert_score)
-    cells.push({ value, label: 'Alert score', short: 'Score' })
-  }
-  if (typeof f.episode_id === 'number') cells.push({ value: String(f.episode_id), label: 'GDACS episode', wideOnly: true })
-  return { cells, detail: null, link: f.gdacs_url ? { href: f.gdacs_url, text: 'GDACS report' } : null }
+  const at = coords ? `Event area centred at ${coords[0].toFixed(1)}°N, ${coords[1].toFixed(1)}°E` : null
+  return { cells, detail: at, link: f.gdacs_url ? { href: f.gdacs_url, text: 'GDACS report' } : null }
 }
 
-/** The roundup's state table, in desk order. */
+/** The roundup's state table: the states still at Level 2 or above, in desk order. Those that eased are named in the story. */
 export function fireRows(e: DeskEntry): FireRow[] {
-  return e.members.map((m) => {
+  return e.members.filter((m) => m.level >= 2).map((m) => {
     const f = m.figures
     const n = f.fire_events ?? 0
     const max = typeof f.norm_max_daily_events === 'number' ? f.norm_max_daily_events : null
@@ -192,7 +187,8 @@ export function entryCard(e: DeskEntry): Card | null {
   if (e.members.length > 0) {
     if (e.category !== 'fire') return null
     const day = e.figures.day
-    return { cells: [], table: fireRows(e), tableDay: day ? dayText(day) : null, detail: null, link: null }
+    const rows = fireRows(e)
+    return rows.length > 0 ? { cells: [], table: rows, tableDay: day ? dayText(day) : null, detail: null, link: null } : null
   }
   const f = e.figures
   switch (e.category) {
@@ -204,7 +200,7 @@ export function entryCard(e: DeskEntry): Card | null {
       return quakeCard(f, e.sourceRef)
     case 'cyclone':
     case 'flood':
-      return gdacsCard(f, e.category === 'cyclone')
+      return gdacsCard(f, e.category === 'cyclone', e.coords)
   }
 }
 

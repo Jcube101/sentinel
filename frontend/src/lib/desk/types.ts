@@ -105,6 +105,8 @@ export interface SnapshotItem {
   longitude: number | null
   source: string
   source_ref: string | null
+  /** The last run that wrote the item: its place and lat/lon are as of that run. */
+  last_run_id?: number | null
 }
 
 /** A desk_item_snapshots row: one item as it stood in one edition. */

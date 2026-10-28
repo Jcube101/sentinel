@@ -64,9 +64,9 @@ describe('the quiet desk copy (edition 19, Level 2+ taken out)', () => {
   const entries = deskEntries(snapshots, new Map())
 
   it('headline counts the quiet days in a row', () => {
-    expect(quietHeadline(1)).toBe('A quiet day: nothing in this report is above minor.')
-    expect(quietHeadline(3)).toBe('A quiet day, the third in a row: nothing in this report is above minor.')
-    expect(quietHeadline(14)).toBe('A quiet fortnight: nothing in the report has been above minor for two weeks.')
+    expect(quietHeadline(1)).toBe('A quiet day across India, with nothing above minor.')
+    expect(quietHeadline(3)).toBe('A quiet day across India, the third in a row, with nothing above minor.')
+    expect(quietHeadline(14)).toBe('A quiet fortnight across India, with nothing above minor for two weeks.')
   })
 
   it('standfirst: every category in a sentence; watching only on the latest edition', () => {

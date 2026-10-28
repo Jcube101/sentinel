@@ -8,7 +8,7 @@ import { copyContext, itemCopy, pageHeadline, sinceLines } from '@/lib/desk/copy
 import { changeCounts, levelCounts } from '@/lib/desk/headline'
 import { istDate, istShortDate, istTime } from '@/lib/desk/ist'
 import { SCALE } from '@/lib/desk/scale'
-import { lateNotice, sourceLines } from '@/lib/desk/sources'
+import { FOOTER_NAMES, lateNotice, sourceLines } from '@/lib/desk/sources'
 import type { Edition } from '@/lib/desk/types'
 import PaperShell from '@/components/paper/PaperShell'
 import DeskEntryRow from '@/components/paper/DeskEntryRow'
@@ -53,12 +53,13 @@ function SourceFooter({ run }: { run: Edition }) {
   const lines = sourceLines(run)
   if (lines.length === 0) return null
   return (
-    <span title="How old each source's newest data was when this edition was published">
+    <span>
+      <span className="text-ink">Newest data at publication: </span>
       {lines.map((l, i) => (
         <span key={l.id}>
           {i > 0 && ' · '}
           <span className={l.failed ? 'text-accent font-semibold' : ''}>
-            {l.name.toUpperCase()} {l.text}
+            {(FOOTER_NAMES[l.id] ?? l.name).toUpperCase()} {l.words.toUpperCase()}
           </span>
         </span>
       ))}
@@ -209,7 +210,7 @@ export default function Desk() {
             )}
             <div className="flex flex-wrap gap-x-12 gap-y-8 pt-2">
               <main className="flex-[999_1_560px] min-w-0">
-                <h2 className="sr-only">On the desk, ranked by severity level, not by count</h2>
+                <h2 className="sr-only">Items, ranked by severity level, not by count</h2>
                 {entries.length === 0 ? (
                   <Message>Nothing is open on the desk in this edition.</Message>
                 ) : (

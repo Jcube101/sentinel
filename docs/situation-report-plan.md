@@ -239,6 +239,11 @@ checked on the Pi preview against live data. Smallest shippable step first.
      exact figures stay, set smaller, as evidence under each story.
    - **2c (Job, 28 Oct):** the fire roundup (one story for the fire states, a state table
      under it, no multiples in titles); the legend moved to the footer and About.
+   - **2d (Job, 28 Oct):** easing angle; state table only for states still at Level 2+;
+     grouped Since yesterday lines; cyclone location from geometry (`lib/desk/where.ts`,
+     coast and outline in `lib/desk/geo/india-coast.json`, derived from pipeline/data);
+     no alert score or episode in the strip; footer ages labelled; no self-reference in
+     any copy (style guide).
 3. **Desk, quiet day.** Watching list (latest edition only until P2), all-clear table,
    14-day strip and days since Level 3+ (both from snapshots, so past editions work),
    recently closed. **Done.** Notes:
@@ -351,6 +356,16 @@ Needed so past editions can be shown exactly as published (section 2):
 Also:
 - **P5.** Lat/lon per city in the air figures (the feed has station coordinates; no
   migration).
+- **P7.** A cyclone's current position: GDACS's point (`Class: Point_Centroid`) is the
+  centre of the area it maps for the event, not the storm. The latest track point would
+  let the copy say where the storm is.
+- **P8. Incomplete fire days (found 28 Oct, No. 26):** No. 26 levelled fire on 27 Oct with
+  data only to 09:07 UTC (`figures.data_to`); 26 Oct ran to 21:53 UTC. FIRMS had sent
+  neither 27 Oct's night pass nor 28 Oct's morning pass by 09:04 UTC (846 rows; newest
+  24 h old, so the footer read 23H 58M). Four states fell to Level 1 on that partial day.
+  Suggest: treat a UTC day as complete only once it has data after ~18:00 UTC (the night
+  pass), else keep the last levels as last-known. Until then the site says the counts are
+  incomplete and claims no easing.
 - **P6.** Each fire item's national rank by fires that day (e.g. `figures.state_rank`,
   and the number of states with fires), so a title can say "the most fires of any state".
   An edition holds only the states on the desk, so today the copy says "the most fires of

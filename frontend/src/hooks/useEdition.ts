@@ -22,7 +22,7 @@ import type {
 export const RUN_SELECT = 'id,started_at,finished_at,status,duration_s,sources'
 export const SNAPSHOT_SELECT =
   'run_id,item_id,taken_at,category,status,severity_level,severity_reason,last_known,new_data,change,figures,' +
-  'desk_items(title,place_name,latitude,longitude,source,source_ref)'
+  'desk_items(title,place_name,latitude,longitude,source,source_ref,last_run_id)'
 export const TRACE_SELECT = 'run_id,item_id,category,status,severity_level,change'
 
 /** The newest finished edition's number (a run still writing is skipped). */

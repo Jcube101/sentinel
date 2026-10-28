@@ -41,14 +41,9 @@ describe('entryCard', () => {
     )
   })
 
-  it('cyclone: GDACS alert, wind speed, alert score, and the GDACS report link', () => {
+  it('cyclone: GDACS alert and wind speed (no alert score or episode), and the GDACS report link', () => {
     const card = entryCard(entry(25, 'cyclone:GDACS-TC-1001345'))!
-    expect(card.cells.map((c) => `${c.value} ${c.label}`)).toEqual([
-      'Red GDACS alert',
-      '222 km/h Max wind speed',
-      '3 Alert score',
-      '8 GDACS episode',
-    ])
+    expect(card.cells.map((c) => `${c.value} ${c.label}`)).toEqual(['Red GDACS alert', '222 km/h Max wind speed'])
     expect(card.link?.href).toContain('gdacs.org/report.aspx?eventid=1001345')
   })
 
@@ -84,7 +79,7 @@ describe('entryCard', () => {
   })
 
   it('phones get three cells: the fourth is wide-only', () => {
-    for (const key of ['fire:chhattisgarh', 'air:IN', 'cyclone:GDACS-TC-1001345']) {
+    for (const key of ['fire:chhattisgarh', 'air:IN']) {
       const shown = entryCard(entry(25, key))!.cells.filter((c) => !c.wideOnly)
       expect(shown.length, key).toBe(3)
     }

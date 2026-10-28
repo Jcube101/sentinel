@@ -45,7 +45,7 @@ function DaysSince({ days, last, ctx }: { days: number | null; last: DeskHistory
       <span className="font-mono text-[11px] text-ink-muted uppercase tracking-[0.04em] max-w-[300px]">
         {last
           ? `Last: ${level3Title(last, ctx)} · ${days === 0 ? 'earlier today' : istShortDate(last.pipeline_runs?.started_at ?? last.taken_at)}`
-          : 'None since the desk began'}
+          : 'None since Sentinel began'}
       </span>
     </div>
   )
@@ -121,7 +121,7 @@ function AllClear({ entries, status }: { entries: DeskEntry[]; status: CategoryS
     <section aria-label="All clear by category">
       <h2 className={head}>
         <span>All clear · by category</span>
-        <span className="text-ink-muted tracking-[0.04em]">level · this report</span>
+        <span className="text-ink-muted tracking-[0.04em]">level now</span>
       </h2>
       <ul className="m-0 p-0 list-none">
         {allClearRows(entries, status).map((r) => (

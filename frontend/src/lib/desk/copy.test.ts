@@ -3,6 +3,7 @@ import { sinceYesterday } from './changes'
 import { copyContext, cycloneName, itemCopy, pageHeadline, quakeMemberLine, sinceLines } from './copy'
 import { deskEntries } from './entries'
 import type { ChangeWindow, EditionData } from './types'
+import { placeOf, placeText } from './where'
 import {
   aboutCount,
   inYears,
@@ -17,14 +18,16 @@ import e14 from './__fixtures__/edition-14.json'
 import e17 from './__fixtures__/edition-17.json'
 import e19 from './__fixtures__/edition-19.json'
 import e25 from './__fixtures__/edition-25.json'
+import e26 from './__fixtures__/edition-26.json'
 import w14 from './__fixtures__/window-14.json'
 import w17 from './__fixtures__/window-17.json'
 import w19 from './__fixtures__/window-19.json'
 import w25 from './__fixtures__/window-25.json'
+import w26 from './__fixtures__/window-26.json'
 
 // The copy for real editions, held to the letter (docs/style-guide.md). Every
 // line comes from the edition's own data, so these are also the archive's words.
-const fixtures = { 14: [e14, w14], 17: [e17, w17], 19: [e19, w19], 25: [e25, w25] } as unknown as Record<
+const fixtures = { 14: [e14, w14], 17: [e17, w17], 19: [e19, w19], 25: [e25, w25], 26: [e26, w26] } as unknown as Record<
   number,
   [EditionData, ChangeWindow]
 >
@@ -44,7 +47,7 @@ function item(n: number, key: string) {
 
 describe('edition 25 (Wed 28 Oct, 02:30 IST)', () => {
   it('page headline', () => {
-    expect(edition(25).headline).toBe('A severe cyclone is the top story today, and fires are spreading across central India.')
+    expect(edition(25).headline).toBe('Cyclone Arnab holds at red alert as fires spread across central India.')
   })
 
   it('cyclone', () => {
@@ -77,14 +80,61 @@ describe('edition 25 (Wed 28 Oct, 02:30 IST)', () => {
   it('since yesterday', () => {
     expect(edition(25).since.map((l) => `${l.tag} ${l.text} (${l.levels})`)).toEqual([
       "+ NEW Chhattisgarh's fires jump above normal (Level 2 · Elevated)",
-      "− CLOSED Gujarat's fires drop off the list after two quieter days (was Level 1)",
+      "− CLOSED Gujarat's fires have stayed down for two days (was Level 1)",
     ])
+  })
+})
+
+describe('edition 26 (Wed 28 Oct, 14:30 IST): four fire states fall back on an incomplete day', () => {
+  it('headline: the news itself, no "top story"; no easing claimed on incomplete counts', () => {
+    expect(edition(26).headline).toBe("Cyclone Arnab holds at red alert as Madhya Pradesh's fires run well above normal.")
+  })
+
+  it('the cyclone: where the area global disaster monitors map for it is centred (not the storm itself)', () => {
+    expect(item(26, 'cyclone:GDACS-TC-1001345').standfirst).toBe(
+      'Global disaster monitors give it their highest alert, red, with winds of up to 222 km/h. ' +
+        'The area they map for it is centred in the Bay of Bengal, just off the Andhra Pradesh coast.',
+    )
+  })
+
+  it('fires: the one state still above normal leads; the others are named; the gap in the data is said', () => {
+    expect(item(26, 'fire:roundup')).toEqual({
+      key: 'fire:roundup',
+      title: "Madhya Pradesh's fires run well above normal",
+      standfirst:
+        "145 fires yesterday across 21 districts, about twice the usual for late October. That's within its range for the season. " +
+        'Maharashtra, Uttar Pradesh, Telangana and Chhattisgarh have dropped back on these counts. ' +
+        "The counts for yesterday are incomplete: nothing had come in from NASA's fire satellites after 14:37 IST.",
+    })
+  })
+
+  it('since yesterday: the four states that fell back share one line', () => {
+    expect(edition(26).since.map((l) => `${l.tag} ${l.text} (${l.levels})`)).toEqual([
+      '▼ DOWN Fires fall back toward normal in four states: Maharashtra, Uttar Pradesh, Telangana and Chhattisgarh (Level 2 → 1)',
+    ])
+  })
+
+  it('with a complete day, the same edition leads with easing', () => {
+    const [ed, w] = fixtures[26]
+    const complete = ed.snapshots.map((s) =>
+      s.category === 'fire' ? { ...s, figures: { ...s.figures, data_to: '2026-10-27T21:40:00+00:00' } } : s,
+    )
+    const since = sinceYesterday(complete, w)
+    const entries = deskEntries(complete, since.byItem)
+    const ctx = copyContext(entries, since, ed.run)
+    expect(pageHeadline(entries, ctx)).toBe('Cyclone Arnab holds at red alert as fires ease across central India.')
+    expect(itemCopy(entries.find((e) => e.key === 'fire:roundup')!, ctx)).toEqual({
+      title: 'Fires ease across central India, with Madhya Pradesh still above normal',
+      standfirst:
+        'Maharashtra, Uttar Pradesh, Telangana and Chhattisgarh fell back toward normal since yesterday. ' +
+        "Madhya Pradesh is still above normal, with 145 fires yesterday, about twice the usual for late October, though that's within its range for the season.",
+    })
   })
 })
 
 describe('edition 17 (Sun 25 Oct, 14:30 IST)', () => {
   it('page headline: fires lead, spreading from none a day earlier, led by a spike in Gujarat', () => {
-    expect(edition(17).headline).toBe('Fires are the top story today, spreading to four states, led by a spike in Gujarat.')
+    expect(edition(17).headline).toBe('Fires spread to four states, led by a spike in Gujarat.')
   })
 
   it('the roundup; the fire day is yesterday for a 14:30 edition', () => {
@@ -114,7 +164,7 @@ describe('edition 17 (Sun 25 Oct, 14:30 IST)', () => {
   it('since yesterday: the M7.0 closed after two days', () => {
     expect(edition(17).since.at(-1)).toMatchObject({
       tag: '− CLOSED',
-      text: 'The major earthquake 350 km outside India leaves the report after two days',
+      text: 'Two days have passed since the major earthquake 350 km outside India',
     })
   })
 })
@@ -122,14 +172,14 @@ describe('edition 17 (Sun 25 Oct, 14:30 IST)', () => {
 describe('edition 19 (Mon 26 Oct, 02:30 IST, a failed run)', () => {
   it('the same roundup, dated Saturday: the figures are last known from No. 17', () => {
     expect(item(19, 'fire:roundup').standfirst).toMatch(/^Gujarat, newly above normal, had 46 fires on Saturday, /)
-    expect(edition(19).headline).toBe('Fires are the top story today, spreading to four states, led by a spike in Gujarat.')
+    expect(edition(19).headline).toBe('Fires spread to four states, led by a spike in Gujarat.')
   })
 })
 
 describe('edition 14 (Sat 24 Oct, 14:30 IST)', () => {
   it('page headline: a quake leads, air follows', () => {
     expect(edition(14).headline).toBe(
-      'A major earthquake 350 km outside India is the top story today, and air is very poor in three cities.',
+      'A major earthquake strikes 350 km outside India as air turns very poor in three cities.',
     )
   })
 
@@ -205,10 +255,19 @@ describe('fire roundup rules', () => {
   })
 
   it('no title or headline carries a multiple of normal', () => {
-    for (const n of [14, 17, 19, 25]) {
+    for (const n of [14, 17, 19, 25, 26]) {
       const { headline, items, since } = edition(n)
       for (const t of [headline, ...items.map((i) => i.title), ...since.map((l) => l.text)]) {
         expect(t, `No. ${n}: ${t}`).not.toMatch(/times normal|twice normal|×/)
+      }
+    }
+  })
+
+  it('no copy refers to itself: never "top story", "on the desk", "this report", "this edition", "the list"', () => {
+    for (const n of [14, 17, 19, 25, 26]) {
+      const { headline, items, since } = edition(n)
+      for (const t of [headline, ...items.flatMap((i) => [i.title, i.standfirst ?? '']), ...since.map((l) => l.text)]) {
+        expect(t, `No. ${n}: ${t}`).not.toMatch(/top story|on the desk|this report|this edition|the list|the report/i)
       }
     }
   })
@@ -251,6 +310,16 @@ describe('words', () => {
     expect(whereStates(['Punjab', 'Haryana', 'Gujarat']).inText).toBe('across northern and western India')
     expect(whereStates(['Gujarat', 'Telangana', 'Maharashtra', 'Madhya Pradesh']).spreadText).toBe('to four states')
     expect(whereStates(['Gujarat', 'Telangana']).inText).toBe('in Gujarat and Telangana')
+  })
+
+  it('places a point in plain words: sea, nearest Indian coast, rounded; no sea name near other countries', () => {
+    const at = (lat: number, lon: number) => placeText(placeOf(lat, lon))
+    expect(at(15.0, 87.0)).toBe('in the Bay of Bengal, about 480 km off the Andhra Pradesh coast')
+    expect(at(19.0, 87.5)).toBe('in the Bay of Bengal, about 160 km off the Odisha coast')
+    expect(at(18.9, 70.5)).toBe('in the Arabian Sea, about 200 km off the Gujarat coast')
+    expect(at(21.15, 79.09)).toBe('over land, about 570 km from the Andhra Pradesh coast') // Nagpur
+    expect(at(23.8, 90.4)).toBe('about 250 km from the West Bengal coast') // Dhaka: no sea, no country claimed
+    expect(at(12.0, 96.0)).toBe('in the Andaman Sea, about 230 km off the Andaman and Nicobar Islands')
   })
 
   it('names cyclones as people say them', () => {

@@ -104,7 +104,7 @@ function Legend() {
       </summary>
       <div className="pb-4 max-w-[640px] flex flex-col gap-3">
         <p className="m-0 text-[14px] leading-[1.5] text-ink-muted">
-          Every item gets a level from 1 (minor) to 4 (severe). The desk ranks by level, never by how many there are.
+          Every item gets a level from 1 (minor) to 4 (severe). Items are ranked by level, never by how many there are.
         </p>
         <ScaleTable names />
         <Link to="/about" className="self-start font-mono text-[12px] uppercase tracking-[0.06em] border-b border-ink hover:text-accent">

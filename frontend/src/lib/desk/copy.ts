@@ -13,7 +13,8 @@ import { SCALE } from './scale'
 import type { AirBand, Category, CategoryStatus, Edition, Level, TimedSnapshot, WatchRow } from './types'
 import { CATEGORY_ORDER } from './entries'
 import { SOURCE_NAMES } from './sources'
-import { istDay } from './ist'
+import { istDay, istTime } from './ist'
+import { placeOf, placeText } from './where'
 import {
   SOURCE_WORDS,
   alertRank,
@@ -133,6 +134,48 @@ function baselineYears(e: DeskEntry): number {
   return b ? b - a + 1 : 1
 }
 
+// FIRMS's night pass over India ends around 21:00 UTC. A day whose data stops
+// before this hour lacks it, so its counts are incomplete (No. 26: 27 Oct ran
+// only to 09:07 UTC).
+const NIGHT_PASS_UTC = 'T18:00:00Z'
+
+/** The IST time a fire day's data stops at, when the night pass is missing; null when complete or unknown. */
+export function fireDayCutOff(e: DeskEntry): string | null {
+  const f = e.figures
+  const to = typeof f.data_to === 'string' ? f.data_to : null
+  if (!f.day || !to) return null
+  return Date.parse(to) < Date.parse(`${f.day}${NIGHT_PASS_UTC}`) ? istTime(to) : null
+}
+
+/** "The counts for yesterday are incomplete: …", or null. */
+function cutOffSentence(e: DeskEntry, ctx: CopyContext): string | null {
+  const at = fireDayCutOff(e)
+  if (!at || !e.figures.day) return null
+  const day = relativeDay(e.figures.day, ctx.editionAt).replace(/^on /, '')
+  return `The counts for ${day} are incomplete: nothing had come in from NASA's fire satellites after ${at} IST.`
+}
+
+/** Fire states that fell a level since yesterday, and how many rose. */
+function fireMoves(ctx: CopyContext): { fell: Movement[]; rose: number } {
+  const moves = (ctx.since?.moves ?? []).filter((m) => m.category === 'fire')
+  return {
+    fell: moves.filter((m) => m.kind === 'deescalated'),
+    rose: moves.filter((m) => m.kind === 'new' || m.kind === 'reopened' || m.kind === 'escalated').length,
+  }
+}
+
+/**
+ * The easing angle: more fire states fell back than rose since yesterday.
+ * Not on an incomplete day: a drop there may be data that hasn't arrived.
+ */
+function fireEasing(ctx: CopyContext): string[] | null {
+  const { fell, rose } = fireMoves(ctx)
+  if (fell.length === 0 || fell.length <= rose) return null
+  const anyFire = ctx.fires[0] ?? ctx.ownFires[0] ?? fell.map((m) => snapshotEntry(m.snapshot))[0]
+  if (anyFire && fireDayCutOff(anyFire)) return null
+  return fell.map((m) => String(m.snapshot.figures?.state ?? m.itemId))
+}
+
 /** A state's story title: what happened, never the multiple (style guide). */
 function stateTitle(e: DeskEntry, ctx: CopyContext): string {
   const f = stateFacts(e, ctx)
@@ -190,7 +233,8 @@ function fireStateCopy(e: DeskEntry, ctx: CopyContext): ItemCopy {
       standfirst: `${plural(f.n, 'fire', 'fires')} ${f.day}, too few to compare with past years: levels count from ${SCALE.fire.minFireEvents} fires a day.`,
     }
   }
-  return { title: stateTitle(e, ctx), standfirst: count ? cap(count) + context : null }
+  const cut = cutOffSentence(e, ctx)
+  return { title: stateTitle(e, ctx), standfirst: count ? cap(count) + context + (cut ? ` ${cut}` : '') : cut }
 }
 
 type AngleKind = 'record' | 'new' | 'spreading' | 'largest' | 'multiple'
@@ -260,18 +304,48 @@ function angleSuffix(a: Angle): string {
 function roundupCopy(e: DeskEntry, ctx: CopyContext): ItemCopy {
   const above = e.members.filter((x) => x.level >= 2)
   const below = e.members.filter((x) => x.level < 2)
+  const cut = cutOffSentence(e.members[0], ctx)
   const backNames = below.map(stateName)
-  const back = backNames.length > 0 ? `${listText(backNames)} ${backNames.length === 1 ? 'has' : 'have'} fallen back toward normal` : null
+  const have = backNames.length === 1 ? 'has' : 'have'
+  const back =
+    backNames.length === 0
+      ? null
+      : cut
+        ? `${listText(backNames)} ${have} dropped back on these counts`
+        : `${listText(backNames)} ${have} fallen back toward normal`
+  const eased = fireEasing(ctx)
+
+  if (eased) {
+    // Lead with easing (style guide, Fire roundup): the states that fell back, then those still above.
+    const aboveNames = above.map(stateName)
+    const where = whereStates(eased).inText
+    const title = `Fires ease ${where}` + (aboveNames.length > 0 ? `, with ${listText(aboveNames)} still above normal` : '')
+    const sentences = [`${listText(eased)} fell back toward normal since yesterday.`]
+    if (above.length > 0) {
+      const sf = stateFacts(above[0], ctx)
+      const rc = recordClause(sf)
+      sentences.push(
+        `${sf.state} is still above normal, with ${plural(sf.n, 'fire', 'fires')} ${sf.day}` +
+          (sf.r !== null ? `, ${timesUsual(sf.r)} for ${sf.period}` : '') +
+          (rc ? `, and ${rc}` : sf.record === 'within' ? ", though that's within its range for the season" : '') +
+          '.',
+      )
+      const others = above.slice(1).map(stateName)
+      if (others.length > 0) sentences.push(`${listText(others)} ${others.length === 1 ? 'is' : 'are'} also still above normal.`)
+    }
+    return { title, standfirst: sentences.join(' ') }
+  }
 
   if (above.length === 0) {
     return {
       title: `Fires fall back toward normal in ${counted_(e.members.length, 'state', 'states')}`,
-      standfirst: `${cap(back!)}; a state leaves the list after two quieter days.`,
+      standfirst: [`${cap(back!)}.`, cut].filter(Boolean).join(' '),
     }
   }
   if (above.length === 1) {
     const one = fireStateCopy(above[0], ctx)
-    return { title: one.title, standfirst: [one.standfirst, back ? `${cap(back)}.` : null].filter(Boolean).join(' ') }
+    const body = (one.standfirst ?? '').replace(` ${cut ?? ''}`, '')
+    return { title: one.title, standfirst: [body, back ? `${cap(back)}.` : null, cut].filter(Boolean).join(' ') }
   }
 
   const also = ctx.ownFires.some((x) => x.level >= 2)
@@ -308,6 +382,7 @@ function roundupCopy(e: DeskEntry, ctx: CopyContext): ItemCopy {
     back,
   ].filter(Boolean) as string[]
   if (tail.length > 0) sentences.push(`${cap(tail.join('; '))}.`)
+  if (cut) sentences.push(cut)
   return { title, standfirst: sentences.join(' ') }
 }
 
@@ -324,7 +399,7 @@ function fireMoveText(m: Movement, e: DeskEntry): string {
     case 'deescalated':
       return (m.to ?? 1) >= 2 ? `${S} fires ease but stay above normal` : `${S} fires fall back toward normal`
     case 'closed':
-      return `${S} fires drop off the list after two quieter days`
+      return `${S} fires have stayed down for two days`
   }
 }
 
@@ -487,7 +562,14 @@ function gdacsStandfirst(e: DeskEntry, cyclone: boolean): string {
   let s = `Global disaster monitors give it ${alertRank(now, 'their')}${wind}.`
   if (f.rising) s += ' Its alert score went up in their latest update.'
   if ((COLOUR_RANK[peak] ?? 0) > (COLOUR_RANK[now] ?? 0)) s += ` It was rated ${peak} earlier.`
+  // GDACS's point is the centre of the area it maps for the event, not the storm's position.
+  if (e.coords) s += ` The area they map for it is centred ${placeText(placeOf(e.coords[0], e.coords[1]))}.`
   return s
+}
+
+/** A name at the start of a clause in mid-sentence: "an unnamed tropical cyclone", "flooding in Assam". */
+function midName(name: string): string {
+  return /^(An|A|Flooding) /.test(name) ? name.charAt(0).toLowerCase() + name.slice(1) : name
 }
 
 // --- items ---------------------------------------------------------------------------
@@ -513,13 +595,13 @@ export function itemCopy(e: DeskEntry, ctx: CopyContext): ItemCopy {
 export function closedLine(e: DeskEntry): string {
   switch (e.category) {
     case 'fire':
-      return `${possessive(stateName(e))} fires drop off the list after two quieter days`
+      return `${possessive(stateName(e))} fires have stayed down for two days`
     case 'earthquake':
-      return `The ${quakeStrength(e.figures.magnitude ?? e.strength)} earthquake ${quakeWhere(e)} leaves the report after two days`
+      return `Two days have passed since the ${quakeStrength(e.figures.magnitude ?? e.strength)} earthquake ${quakeWhere(e)}`
     case 'cyclone':
-      return `${cycloneName(e.title)} is off the global disaster monitors' list`
+      return `Global disaster monitors have stopped tracking ${midName(cycloneName(e.title))}`
     case 'flood':
-      return `${floodName(e)} is off the global disaster monitors' list`
+      return `Global disaster monitors have stopped tracking ${midName(floodName(e))}`
     case 'air':
       return "No city's air is poor any more"
   }
@@ -561,43 +643,72 @@ export interface SinceLine {
   levels: string
 }
 
-/** The Since yesterday list, in the order of the moves (new, back, up, down, closed). */
+/** The level change of several moves as evidence: "Level 2 → 1", or "levels vary". */
+function groupLevels(ms: Movement[]): string {
+  const same = (k: 'from' | 'to') => ms.every((m) => m[k] === ms[0][k])
+  const m = ms[0]
+  switch (m.kind) {
+    case 'new':
+    case 'reopened':
+      return same('to') ? `Level ${m.to} · ${LEVEL_NAMES[m.to!]}` : 'levels vary'
+    case 'closed':
+      return same('from') ? `were Level ${m.from}` : 'levels vary'
+    default:
+      return same('from') && same('to') ? `Level ${m.from} → ${m.to}` : 'levels vary'
+  }
+}
+
+/** Several fire states or quakes with the same kind of change, as one line (the roundup rule). */
+function groupLine(ms: Movement[], es: DeskEntry[]): Omit<SinceLine, 'key' | 'kind'> {
+  const kind = ms[0].kind
+  const n = es.length
+  if (ms[0].category === 'fire') {
+    const where = `${counted_(n, 'state', 'states')}: ${listText(es.map(stateName))}`
+    const text = {
+      new: `Fires jump above normal in ${where}`,
+      reopened: `Fires flare up again in ${where}`,
+      escalated: `Fires climb further in ${where}`,
+      deescalated: ms.every((m) => m.to === 1) ? `Fires fall back toward normal in ${where}` : `Fires ease in ${where}`,
+      closed: `Fires have stayed down for two days in ${where}`,
+    }[kind]
+    return { tag: MOVE_TAGS[kind], text, levels: groupLevels(ms) }
+  }
+  const near = es.some((x) => x.figures.in_india) ? 'in and near India' : "near India's borders"
+  const text =
+    kind === 'closed'
+      ? `Two days have passed since ${numberWord(n)} earthquakes ${near}`
+      : kind === 'new' || kind === 'reopened'
+        ? `${cap(numberWord(n))} ${es.every((x) => x.level === 1) ? 'small ' : ''}earthquakes strike ${near}`
+        : `${cap(numberWord(n))} earthquakes ${near} change level`
+  return { tag: MOVE_TAGS[kind], text, levels: groupLevels(ms) }
+}
+
+/**
+ * The Since yesterday list, in the order of the moves (new, back, up, down,
+ * closed). Fire states and quakes with the same kind of change share a line.
+ */
 export function sinceLines(entries: DeskEntry[], ctx: CopyContext): SinceLine[] {
   if (!ctx.since) return []
   const byId = new Map<string, DeskEntry>()
   for (const e of entries) for (const x of e.members.length ? e.members : [e]) byId.set(x.key, x)
-  return ctx.since.moves.map((m) => ({
-    key: m.itemId,
-    kind: m.kind,
-    ...movementLine(m, byId.get(m.itemId) ?? snapshotEntry(m.snapshot), ctx),
-  }))
+  const entryOf = (m: Movement) => byId.get(m.itemId) ?? snapshotEntry(m.snapshot)
+  const moves = ctx.since.moves
+  const done = new Set<string>()
+  const out: SinceLine[] = []
+  for (const m of moves) {
+    if (done.has(m.itemId)) continue
+    const same =
+      m.category === 'fire' || m.category === 'earthquake'
+        ? moves.filter((x) => x.category === m.category && x.kind === m.kind)
+        : [m]
+    for (const x of same) done.add(x.itemId)
+    if (same.length >= 2) out.push({ key: `${m.category}:${m.kind}`, kind: m.kind, ...groupLine(same, same.map(entryOf)) })
+    else out.push({ key: m.itemId, kind: m.kind, ...movementLine(m, entryOf(m), ctx) })
+  }
+  return out
 }
 
 // --- the page headline ---------------------------------------------------------------
-
-const LEVEL_ADJECTIVE: Partial<Record<Level, string>> = { 4: 'severe', 3: 'strong' }
-
-/** The top item as the subject of "… is the top story today". */
-function leadSubject(e: DeskEntry): { text: string; plural: boolean } {
-  const f = e.figures
-  const adj = LEVEL_ADJECTIVE[e.level]
-  switch (e.category) {
-    case 'cyclone':
-      return { text: adj ? `a ${adj} cyclone` : cycloneName(e.title), plural: false }
-    case 'flood':
-      return { text: `${e.level >= 4 ? 'severe ' : e.level === 3 ? 'serious ' : ''}${floodName(e).replace(/^Flooding/, 'flooding')}`, plural: false }
-    case 'earthquake':
-      return e.members.length > 0
-        ? { text: `${numberWord(e.members.length)} small earthquakes`, plural: true }
-        : { text: `a ${quakeStrength(f.magnitude ?? e.strength)} earthquake ${quakeWhere(e)}`, plural: false }
-    case 'air': {
-      const a = airWorst(e)
-      return { text: a ? `${a.band} air in ${a.where}` : 'poor air', plural: false }
-    }
-    case 'fire':
-      return { text: `${possessive(stateName(e))} fires`, plural: true }
-  }
-}
 
 /** The worst band and where: { band: 'very poor', where: 'Panipat' | 'three cities' }. */
 function airWorst(e: DeskEntry): { band: string; where: string } | null {
@@ -614,7 +725,7 @@ function airClause(e: DeskEntry): string {
   return a ? `air is ${a.band} in ${a.where}` : 'air is poor'
 }
 
-/** A second item as a clause: "air is very poor in Panipat". */
+/** An item as a plain statement, mid-sentence: "Cyclone X is on a red alert" (quiet desk, all clear). */
 function itemClause(e: DeskEntry): string {
   const f = e.figures
   switch (e.category) {
@@ -626,7 +737,7 @@ function itemClause(e: DeskEntry): string {
     case 'flood': {
       const colour = String(f.episode_alert_level ?? f.alert_level ?? '').toLowerCase()
       const name = e.category === 'cyclone' ? cycloneName(e.title) : floodName(e)
-      return `${name} is on a ${colour} alert`
+      return `${midName(name)} is on a ${colour} alert`
     }
     case 'fire':
       return `${possessive(stateName(e))} fires are ${e.level >= 3 ? 'far' : 'well'} above normal`
@@ -640,34 +751,84 @@ function fireTrend(ctx: CopyContext): 'more' | 'fewer' | 'same' | null {
   return ctx.fires.length > before ? 'more' : ctx.fires.length < before ? 'fewer' : 'same'
 }
 
-/** "spreading across central India", "far above normal in four states" */
-function firesPhrase(ctx: CopyContext): string {
-  const where = whereStates(ctx.fires.map((e) => String(e.figures.state ?? e.title)))
+/** The fire states as one clause, mid-sentence: "fires ease across central India", "fires spread to four states". */
+function firesClause(ctx: CopyContext, withAngle: boolean): string {
+  const eased = fireEasing(ctx)
+  if (eased) return `fires ease ${whereStates(eased).inText}`
+  const where = whereStates(ctx.fires.map(stateName))
   const trend = fireTrend(ctx)
-  if (trend === 'more') return `spreading ${where.spreadText}`
-  if (trend === 'fewer') return `easing but still above normal ${where.inText}`
   const far = (ctx.fires[0]?.strength ?? 0) >= SCALE.fire.level3MinRatio ? 'far' : 'well'
-  return `${far} above normal ${where.inText}`
+  const clause =
+    trend === 'more'
+      ? `fires spread ${where.spreadText}`
+      : trend === 'fewer'
+        ? `fires ease but stay above normal ${where.inText}`
+        : `fires run ${far} above normal ${where.inText}`
+  if (!withAngle) return clause
+  const angle = fireAngle(ctx.fires, ctx, false)
+  return angle.kind === 'spreading' ? clause : `${clause}, ${angleSuffix(angle)}`
 }
 
-/** The edition's headline: the top story, then the next thing a reader should know. */
-export function pageHeadline(entries: DeskEntry[], ctx: CopyContext): string {
-  if (entries.length === 0) return 'A quiet day: there is nothing in this report.'
-  const lead = entries[0]
-  if (lead.level === 1) return 'A quiet day: nothing in this report is above minor.'
+/** "holds at red alert", "rises to red alert": the move since yesterday, if the comparison says. */
+function alertVerb(e: DeskEntry, ctx: CopyContext, colour: string): string {
+  const move = ctx.since?.byItem.get(e.key)
+  if (move?.kind === 'escalated') return `rises to ${colour} alert`
+  if (move?.kind === 'deescalated') return `eases to ${colour} alert`
+  if (move?.kind === 'reopened') return `is back on ${colour} alert`
+  if (!move && ctx.since?.ref && ctx.since.refLevels.has(e.key)) return `holds at ${colour} alert`
+  return `is on ${colour} alert`
+}
 
-  if (lead.category === 'fire' && ctx.fires.length >= 2) {
-    const angle = fireAngle(ctx.fires, ctx, false)
-    const other = entries.find((e) => e.category !== 'fire' && e.level >= 2)
-    return `Fires are the top story today, ${firesPhrase(ctx)}, ${angleSuffix(angle)}.` + (other ? ` ${cap(itemClause(other))}.` : '')
+/** An item as a headline clause, mid-sentence: the news, with a verb (style guide, The page headline). */
+function headClause(e: DeskEntry, ctx: CopyContext): string {
+  const f = e.figures
+  switch (e.category) {
+    case 'cyclone':
+    case 'flood': {
+      const colour = String(f.episode_alert_level ?? f.alert_level ?? '').toLowerCase()
+      const name = e.category === 'cyclone' ? cycloneName(e.title) : floodName(e)
+      // Name the sea only when the mapped area is centred well out at sea.
+      const place = e.coords ? placeOf(e.coords[0], e.coords[1]) : null
+      const sea = place?.sea && place.km >= 150 ? ` in ${place.sea}` : ''
+      return `${midName(name)} ${alertVerb(e, ctx, colour)}${sea}`
+    }
+    case 'earthquake':
+      return e.members.length > 0
+        ? `${numberWord(e.members.length)} small earthquakes strike near India's borders`
+        : `a ${quakeStrength(f.magnitude ?? e.strength)} earthquake strikes ${quakeWhere(e)}`
+    case 'air': {
+      const a = airWorst(e)
+      if (!a) return 'air is poor'
+      const move = ctx.since?.byItem.get(e.key)
+      if (move?.kind === 'escalated' || move?.kind === 'new' || move?.kind === 'reopened') return `air turns ${a.band} in ${a.where}`
+      if (move?.kind === 'deescalated') return `air eases to ${a.band} in ${a.where}`
+      return `air is ${a.band} in ${a.where}`
+    }
+    case 'fire':
+      if (e.members.length > 0) {
+        const above = e.members.filter((x) => x.level >= 2)
+        return above.length === 1 ? stateTitle(above[0], ctx) : firesClause(ctx, false)
+      }
+      return stateTitle(e, ctx)
   }
+}
 
-  const s = leadSubject(lead)
-  const head = `${cap(s.text)} ${s.plural ? 'are' : 'is'} the top story today`
-  const fireLead = lead.category === 'fire'
-  if (!fireLead && ctx.fires.length >= 2) return `${head}, and fires are ${firesPhrase(ctx)}.`
-  const other = entries.find((e) => e !== lead && e.level >= 2 && (e.category !== 'fire' || ctx.fires.length === 1))
-  return other ? `${head}, and ${itemClause(other)}.` : `${head}.`
+/**
+ * The edition's headline: the lead item's news, then the next thing a reader
+ * should know ("… as fires ease across central India"). Never about the
+ * report itself (style guide, No self-reference).
+ */
+export function pageHeadline(entries: DeskEntry[], ctx: CopyContext): string {
+  if (entries.length === 0 || entries[0].level <= 1) return quietHeadline(1)
+  const lead = entries[0]
+  if (lead.category === 'fire' && ctx.fires.length >= 2) {
+    const other = entries.find((e) => e.category !== 'fire' && e.level >= 2)
+    return `${cap(firesClause(ctx, true))}${other ? `, as ${headClause(other, ctx)}` : ''}.`
+  }
+  const head = cap(headClause(lead, ctx))
+  if (lead.category !== 'fire' && (ctx.fires.length >= 2 || fireEasing(ctx))) return `${head} as ${firesClause(ctx, false)}.`
+  const other = entries.find((e) => e !== lead && e.level >= 2)
+  return other ? `${head} as ${headClause(other, ctx)}.` : `${head}.`
 }
 
 // --- the quiet desk ------------------------------------------------------------------
@@ -680,9 +841,9 @@ function ordinal(n: number): string {
 
 /** The quiet desk's headline, with how many days in a row nothing was above Level 1. */
 export function quietHeadline(streak: number): string {
-  if (streak >= 14) return 'A quiet fortnight: nothing in the report has been above minor for two weeks.'
-  if (streak >= 2) return `A quiet day, the ${ordinal(streak)} in a row: nothing in this report is above minor.`
-  return 'A quiet day: nothing in this report is above minor.'
+  if (streak >= 14) return 'A quiet fortnight across India, with nothing above minor for two weeks.'
+  if (streak >= 2) return `A quiet day across India, the ${ordinal(streak)} in a row, with nothing above minor.`
+  return 'A quiet day across India, with nothing above minor.'
 }
 
 function largestQuake(entries: DeskEntry[]): DeskEntry | null {
@@ -709,7 +870,9 @@ export function quietStandfirst(entries: DeskEntry[], watching: number | null): 
       : fires.length === 1
         ? `${fires[0]}'s fires have fallen back toward normal`
         : `fires have fallen back toward normal in ${counted_(fires.length, 'state', 'states')}`,
-    quake ? `the largest earthquake was magnitude ${(quake.figures.magnitude ?? quake.strength).toFixed(1)}` : 'no earthquakes are on the report',
+    quake
+      ? `the largest earthquake was magnitude ${(quake.figures.magnitude ?? quake.strength).toFixed(1)}`
+      : `no earthquake of magnitude ${SCALE.quake.fetchMinMagnitude} or more has struck in or near India in two days`,
     aw ? `the worst air is ${aw.band}, in ${aw.where}` : "no city's air is poor",
   ]
   const sentences = [first, `${cap(listText(parts))}.`]
@@ -775,7 +938,7 @@ export function allClearRows(entries: DeskEntry[], status: CategoryStatus[]): Cl
         line =
           states.length === 0
             ? "No state's fires are well above normal for the time of year."
-            : `${listText(states)} ${states.length === 1 ? 'has' : 'have'} fallen back toward normal and ${states.length === 1 ? 'is' : 'are'} leaving the list.`
+            : `${listText(states)} ${states.length === 1 ? 'has' : 'have'} fallen back toward normal.`
         break
       }
     }

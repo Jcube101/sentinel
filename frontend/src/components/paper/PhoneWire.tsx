@@ -103,7 +103,7 @@ export default function PhoneWire({ run, snapshots, entries }: Props) {
               </li>
             ))}
           </ul>
-          <p className="m-0 pt-2 font-mono text-[11px] text-ink-muted uppercase">How old each source's newest data was when this report ran</p>
+          <p className="m-0 pt-2 font-mono text-[11px] text-ink-muted uppercase">How old each source's newest data was at publication</p>
         </Wire>
       )}
     </section>
