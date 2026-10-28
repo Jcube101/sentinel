@@ -20,23 +20,22 @@ function cells(n: number, key: string) {
 }
 
 describe('entryCard', () => {
-  it('fire: districts, fire events, ratio to norm, large fires near towns; the norm and busiest districts', () => {
+  it('fire: exact fires, districts, ratio and usual rate; busiest districts and the baseline’s busiest day', () => {
     expect(cells(25, 'fire:chhattisgarh')).toEqual([
-      '10 Districts active',
-      '27 Fire events, 26 Oct',
-      '9.07× Seasonal norm',
+      '27 Fires on 26 Oct',
+      '10 Districts',
+      '9.07× Usual 3.0/day',
       '0 Large fires near towns',
     ])
-    expect(entryCard(entry(25, 'fire:chhattisgarh'))!.text).toBe(
-      'In 2024–2025, this time of year averaged 3.0 fire events a day; the busiest day had 16. ' +
-        'Busiest districts: Bemetra (8), Rajnandgaon (7), Bilaspur (3).',
+    expect(entryCard(entry(25, 'fire:chhattisgarh'))!.detail).toBe(
+      'Busiest districts: Bemetra 8, Rajnandgaon 7, Bilaspur 3 · busiest day at this time of year in 2024–2025: 16',
     )
   })
 
-  it('air: cities per band and reporting; the worst three with their readings', () => {
+  it('air: cities per band and reporting; the worst four with their readings', () => {
     expect(cells(25, 'air:IN')).toEqual(['0 Cities severe', '1 Cities very poor', '16 Cities poor', '267 Cities reporting'])
-    expect(entryCard(entry(25, 'air:IN'))!.text).toBe(
-      'Worst: Panipat, Haryana, AQI 301 (PM2.5); Gummidipoondi, Tamil Nadu, AQI 268; Bhiwadi, Rajasthan, AQI 260.',
+    expect(entryCard(entry(25, 'air:IN'))!.detail).toBe(
+      'Worst: Panipat AQI 301 (PM2.5), Gummidipoondi AQI 268, Bhiwadi AQI 260, Khora AQI 249',
     )
   })
 
@@ -56,10 +55,10 @@ describe('entryCard', () => {
     expect(card.cells.map((c) => `${c.value} ${c.label}`)).toEqual([
       'M7.0 Magnitude (mww)',
       '18 km Depth',
-      '348 km From India',
-      '8 Felt reports (USGS)',
+      '348 km Outside India',
+      '8 Felt reports',
     ])
-    expect(card.text).toBe('USGS PAGER alert: orange.')
+    expect(card.detail).toBe('PAGER alert orange')
     expect(card.link?.href).toBe('https://earthquake.usgs.gov/earthquakes/eventpage/us6000u43g')
   })
 
@@ -95,8 +94,8 @@ describe('the phone wire', () => {
 describe('How levels are set', () => {
   it('prints the scale copy, not the mockup’s thresholds', () => {
     const row = (name: string) => SCALE_ROWS.find((r) => r.name === name)!.cells
-    expect(row('Quake')).toEqual(['below M5', 'M5–5.9', 'M6–6.9', 'M7+'])
-    expect(row('Fire')).toEqual(['below 2× norm', '2–4× norm', '4×+ norm, or forest-fire alert', 'large fire near a town'])
+    expect(row('Quake')).toEqual(['under 5', '5–5.9', '6–6.9', '7 and over'])
+    expect(row('Fire')).toEqual(['under 2 times usual', '2–4 times usual', '4+ times usual, or a forest-fire alert', 'a large fire near a town'])
     expect(row('Air')).toEqual(['poor', 'very poor', 'severe, 1 city', 'severe, 3+ cities'])
   })
 })

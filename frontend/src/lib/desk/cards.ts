@@ -1,6 +1,7 @@
-// Key figures for each desk item, per category: the strip of numbers under a
-// Level 2+ item, a line of context, and a link to the source's own page.
-// Only what the snapshot's figures hold, so past editions print the same.
+// The evidence under each Level 2+ item: a strip of exact figures, a line of
+// detail and a link to the source's own page. The story itself is in copy.ts;
+// this is the measurement behind it. Only what the snapshot's figures hold, so
+// past editions print the same.
 
 import { counted, AIR_BANDS, type DeskEntry } from './entries'
 import { ratioText } from './headline'
@@ -18,7 +19,8 @@ export interface Cell {
 
 export interface Card {
   cells: Cell[]
-  text: string | null
+  /** One line of exact detail: busiest districts, next worst cities. */
+  detail: string | null
   link: { href: string; text: string } | null
 }
 
@@ -40,11 +42,12 @@ function count(n: number | undefined | null): string {
 
 function fireCard(f: Figures): Card {
   const cells: Cell[] = [
-    { value: count(f.district_count), label: 'Districts active', short: 'Districts' },
-    { value: count(f.fire_events), label: f.day ? `Fire events, ${dayText(f.day)}` : 'Fire events', short: 'Fires' },
+    { value: count(f.fire_events), label: f.day ? `Fires on ${dayText(f.day)}` : 'Fires', short: 'Fires' },
+    { value: count(f.district_count), label: 'Districts', short: 'Districts' },
   ]
   if (typeof f.ratio_to_norm === 'number') {
-    cells.push({ value: `${ratioText(f.ratio_to_norm)}×`, label: 'Seasonal norm', short: 'Norm' })
+    const norm = typeof f.norm_daily_events === 'number' ? `Usual ${normText(f.norm_daily_events)}/day` : 'Times usual'
+    cells.push({ value: `${ratioText(f.ratio_to_norm)}×`, label: norm, short: 'Times usual' })
   }
   cells.push({
     value: count(Array.isArray(f.large_fires_near_people) ? f.large_fires_near_people.length : 0),
@@ -52,19 +55,14 @@ function fireCard(f: Figures): Card {
     wideOnly: true,
   })
   const parts: string[] = []
-  if (typeof f.norm_daily_events === 'number') {
-    const years = (typeof f.norm_years === 'string' ? f.norm_years : SCALE.fire.baselineYears).replace('-', '–')
-    // The baseline averages the same week and the week either side (fire.baseline.smooth_weeks).
-    let norm = `In ${years}, this time of year averaged ${normText(f.norm_daily_events)} fire events a day`
-    if (typeof f.norm_max_daily_events === 'number') norm += `; the busiest day had ${count(f.norm_max_daily_events)}`
-    parts.push(norm + '.')
-  }
   const districts = Array.isArray(f.districts) ? [...f.districts].sort((a, b) => b.fire_events - a.fire_events) : []
-  if (districts.length > 0) {
-    const top = districts.slice(0, 3).map((d) => `${d.district} (${d.fire_events})`)
-    parts.push(`Busiest districts: ${top.join(', ')}.`)
+  if (districts.length > 0) parts.push(`Busiest districts: ${districts.slice(0, 3).map((d) => `${d.district} ${d.fire_events}`).join(', ')}`)
+  if (typeof f.norm_max_daily_events === 'number') {
+    // The baseline covers the same week and the week either side (fire.baseline.smooth_weeks).
+    const years = (typeof f.norm_years === 'string' ? f.norm_years : SCALE.fire.baselineYears).replace('-', '–')
+    parts.push(`busiest day at this time of year in ${years}: ${count(f.norm_max_daily_events)}`)
   }
-  return { cells, text: parts.join(' ') || null, link: null }
+  return { cells, detail: parts.join(' · ') || null, link: null }
 }
 
 /** A city's reading: "AQI 301" (CPCB) or "PM2.5 182 µg/m³" (OpenAQ fallback, 24 h mean). */
@@ -97,19 +95,17 @@ function airCard(f: Figures): Card {
   if (typeof f.cities_reporting === 'number') {
     cells.push({ value: count(f.cities_reporting), label: 'Cities reporting', wideOnly: true })
   }
-  const worst = worstCities(f).slice(0, 3)
-  const text =
+  const worst = worstCities(f).slice(0, 4)
+  const detail =
     worst.length > 0
       ? `Worst: ${worst
           .map((x, i) => {
-            const where = x.state ? `${x.city}, ${x.state}` : x.city
-            const reading = cityReading(x)
-            const pollutant = i === 0 && x.prominent?.length && typeof x.aqi === 'number' ? ` (${x.prominent.join(', ')})` : ''
-            return `${where}, ${reading}${pollutant}`
+            const pollutant = i === 0 && x.prominent?.length ? ` (${x.prominent.join(', ')})` : ''
+            return `${x.city} ${cityReading(x)}${pollutant}`
           })
-          .join('; ')}.`
+          .join(', ')}`
       : null
-  return { cells, text, link: null }
+  return { cells, detail, link: null }
 }
 
 function quakeCard(f: Figures, sourceRef: string | null): Card {
@@ -119,22 +115,23 @@ function quakeCard(f: Figures, sourceRef: string | null): Card {
   }
   if (typeof f.depth_km === 'number') cells.push({ value: `${Math.round(f.depth_km)} km`, label: 'Depth' })
   if (f.in_india) cells.push({ value: 'In India', label: 'Epicentre', short: 'Epicentre' })
-  else if (typeof f.km_from_india === 'number') cells.push({ value: `${Math.round(f.km_from_india)} km`, label: 'From India' })
-  cells.push({ value: count(f.felt_reports ?? 0), label: 'Felt reports (USGS)', wideOnly: true })
+  else if (typeof f.km_from_india === 'number') cells.push({ value: `${Math.round(f.km_from_india)} km`, label: 'Outside India' })
+  cells.push({ value: count(f.felt_reports ?? 0), label: 'Felt reports', wideOnly: true })
   const parts: string[] = []
-  if (f.usgs_alert) parts.push(`USGS PAGER alert: ${f.usgs_alert}.`)
-  if (f.tsunami) parts.push('USGS has set its tsunami flag for this quake.')
+  if (f.usgs_alert) parts.push(`PAGER alert ${f.usgs_alert}`)
+  if (f.tsunami) parts.push('tsunami flag set')
   const id = sourceRef?.replace(/^USGS-/, '')
   return {
     cells,
-    text: parts.join(' ') || null,
+    detail: parts.join(' · ') || null,
     link: id ? { href: `https://earthquake.usgs.gov/earthquakes/eventpage/${id}`, text: 'USGS event page' } : null,
   }
 }
 
 function gdacsCard(f: Figures, cyclone: boolean): Card {
   const cells: Cell[] = []
-  if (f.alert_level) cells.push({ value: f.alert_level, label: 'GDACS alert', short: 'Alert' })
+  const colour = f.episode_alert_level ?? f.alert_level
+  if (colour) cells.push({ value: colour, label: 'GDACS alert', short: 'Alert' })
   if (typeof f.severity === 'number' && f.severity > 0 && f.severity_unit) {
     cells.push({
       value: `${Math.round(f.severity)} ${f.severity_unit}`,
@@ -148,7 +145,7 @@ function gdacsCard(f: Figures, cyclone: boolean): Card {
     cells.push({ value, label: 'Alert score', short: 'Score' })
   }
   if (typeof f.episode_id === 'number') cells.push({ value: String(f.episode_id), label: 'GDACS episode', wideOnly: true })
-  return { cells, text: null, link: f.gdacs_url ? { href: f.gdacs_url, text: 'GDACS report' } : null }
+  return { cells, detail: null, link: f.gdacs_url ? { href: f.gdacs_url, text: 'GDACS report' } : null }
 }
 
 /** The figures for a Level 2+ item; null for Level 1 rows and grouped quakes. */

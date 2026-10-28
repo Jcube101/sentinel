@@ -44,14 +44,14 @@ export function mag(m: number): string {
 
 /** One row per category: what each level means, from SCALE above. */
 export const SCALE_ROWS: { name: string; cells: [string, string, string, string] }[] = [
-  { name: 'Flood Cyclone', cells: ['GDACS green', 'green, rising', 'orange', 'red'] },
+  { name: 'Flood Cyclone', cells: ['green alert', 'green, rising', 'orange', 'red'] },
   {
     name: 'Quake',
     cells: [
-      `below M${mag(SCALE.quake.level2MinMagnitude)}`,
-      `M${mag(SCALE.quake.level2MinMagnitude)}–${mag(SCALE.quake.level3MinMagnitude - 0.1)}`,
-      `M${mag(SCALE.quake.level3MinMagnitude)}–${mag(SCALE.quake.level4MinMagnitude - 0.1)}`,
-      `M${mag(SCALE.quake.level4MinMagnitude)}+`,
+      `under ${mag(SCALE.quake.level2MinMagnitude)}`,
+      `${mag(SCALE.quake.level2MinMagnitude)}–${mag(SCALE.quake.level3MinMagnitude - 0.1)}`,
+      `${mag(SCALE.quake.level3MinMagnitude)}–${mag(SCALE.quake.level4MinMagnitude - 0.1)}`,
+      `${mag(SCALE.quake.level4MinMagnitude)} and over`,
     ],
   },
   {
@@ -66,10 +66,10 @@ export const SCALE_ROWS: { name: string; cells: [string, string, string, string]
   {
     name: 'Fire',
     cells: [
-      `below ${SCALE.fire.level2MinRatio}× norm`,
-      `${SCALE.fire.level2MinRatio}–${SCALE.fire.level3MinRatio}× norm`,
-      `${SCALE.fire.level3MinRatio}×+ norm, or forest-fire alert`,
-      'large fire near a town',
+      `under ${SCALE.fire.level2MinRatio} times usual`,
+      `${SCALE.fire.level2MinRatio}–${SCALE.fire.level3MinRatio} times usual`,
+      `${SCALE.fire.level3MinRatio}+ times usual, or a forest-fire alert`,
+      'a large fire near a town',
     ],
   },
 ]

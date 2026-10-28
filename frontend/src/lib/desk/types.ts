@@ -45,6 +45,7 @@ export interface Figures {
   severity_unit?: string | null
   severity_text?: string | null
   episode_id?: number | null
+  episode_alert_level?: string | null
   gdacs_url?: string | null
   // fire (fire_desk.state_candidate)
   state?: string
@@ -56,6 +57,9 @@ export interface Figures {
   ratio_to_norm?: number | null
   norm_daily_events?: number | null
   norm_max_daily_events?: number | null
+  norm_years?: string
+  ratio_level?: number
+  gdacs_level?: number | null
   large_fires_near_people?: unknown[]
   capped?: boolean
   firms_level?: number

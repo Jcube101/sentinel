@@ -1,5 +1,6 @@
 import { Fragment } from 'react'
 import { SCALE, SCALE_ROWS, mag } from '@/lib/desk/scale'
+import { numberWord } from '@/lib/desk/words'
 
 const q = SCALE.quake
 const a = SCALE.air
@@ -44,22 +45,22 @@ export default function ScalePanel({ heading = true }: { heading?: boolean }) {
       </div>
       <ul className="m-0 mt-3 p-0 list-none flex flex-col gap-1.5 text-[13px] leading-[1.45] text-ink-muted">
         <li>
-          Quakes within {q.indiaBufferKm} km of India, or M{mag(q.anywhereMinMagnitude)}+ elsewhere in the region (USGS). Floods and cyclones:
-          GDACS's alert for the current episode.
+          Quakes go by magnitude, within {q.indiaBufferKm} km of India, or {mag(q.anywhereMinMagnitude)} and over farther out (US Geological
+          Survey). Floods and cyclones go by the alert colour from the global disaster monitors (GDACS).
         </li>
         <li>
-          Air: CPCB AQI bands (poor {a.aqi.poorAbove + 1}–{a.aqi.veryPoorAbove}, very poor {a.aqi.veryPoorAbove + 1}–{a.aqi.severeAbove},
-          severe {a.aqi.severeAbove + 1}+). A city counts as severe after {a.severeConfirmRuns} runs in a row.
+          Air goes by India's air quality index: poor {a.aqi.poorAbove + 1}–{a.aqi.veryPoorAbove}, very poor {a.aqi.veryPoorAbove + 1}–
+          {a.aqi.severeAbove}, severe {a.aqi.severeAbove + 1} and over. A city counts as severe only after {numberWord(a.severeConfirmRuns)} reports in a row.
         </li>
         <li>
-          Fire: a state's fire events in a day against the same time of year in {f.baselineYears}, from {f.minFireEvents} events. Level 4: a fire
-          of {f.level4MinFrpMw} MW or more within {f.level4NearKm} km of a town of {f.level4MinPopulation.toLocaleString('en-IN')}+.
+          Fire goes by a state's fires in a day against the same time of year in {f.baselineYears}, once there are {f.minFireEvents} or more.
+          Level 4: a large fire within {f.level4NearKm} km of a town of {f.level4MinPopulation.toLocaleString('en-IN')} people or more.
         </li>
         {capped && (
           <li>
-            Fire levels from satellite counts stop at Level {f.calibrationCap} until live counts are checked against the archive. A GDACS
-            forest-fire alert can still lift a state to Level {f.gdacsWildfireLevel}. A dashed square marks the level a capped item would
-            have.
+            For now, fire levels from satellite counts stop at Level {f.calibrationCap}, until we've checked them against past years. A
+            forest-fire alert from the global disaster monitors can still raise a state to Level {f.gdacsWildfireLevel}. A dashed square shows
+            the level a held item would have.
           </li>
         )}
       </ul>

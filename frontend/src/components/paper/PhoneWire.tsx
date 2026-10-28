@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react'
 import { cityReading, fireDistricts, worstCities } from '@/lib/desk/cards'
+import { quakeMemberLine } from '@/lib/desk/copy'
 import { AIR_BAND_LABELS, counted, type DeskEntry } from '@/lib/desk/entries'
-import { sourceLines } from '@/lib/desk/sources'
+import { SOURCE_TITLES, sourceLines } from '@/lib/desk/sources'
 import type { Edition, Snapshot } from '@/lib/desk/types'
 import ScalePanel from './ScalePanel'
 
@@ -45,7 +46,7 @@ export default function PhoneWire({ run, snapshots, entries }: Props) {
         <ScalePanel heading={false} />
       </Wire>
       {fires.top.length > 0 && (
-        <Wire title="Fires by district" right={`${fires.total} active`}>
+        <Wire title="Fires by district" right={`${fires.total} districts`}>
           <ul className="m-0 p-0 list-none">
             {fires.top.map((d) => (
               <li key={`${d.state}:${d.district}`} className={rowClass}>
@@ -56,7 +57,7 @@ export default function PhoneWire({ run, snapshots, entries }: Props) {
               </li>
             ))}
           </ul>
-          <p className="m-0 pt-2 font-mono text-[11px] text-ink-muted uppercase">Fire events on the last complete day, busiest first</p>
+          <p className="m-0 pt-2 font-mono text-[11px] text-ink-muted uppercase">Fires on the last full day, busiest first</p>
         </Wire>
       )}
       {cities.length > 0 && air && (
@@ -74,12 +75,12 @@ export default function PhoneWire({ run, snapshots, entries }: Props) {
         </Wire>
       )}
       {quakes.length > 0 && (
-        <Wire title="Earthquakes" right={`${quakes.length} · max M${maxM.toFixed(1)}`}>
+        <Wire title="Earthquakes" right={`${quakes.length}, largest ${maxM.toFixed(1)}`}>
           <ul className="m-0 p-0 list-none">
             {quakes.map((qk) => (
               <li key={qk.key} className={rowClass}>
-                <span>{qk.title}</span>
-                <span className={num}>L{qk.level}</span>
+                <span>{quakeMemberLine(qk)}</span>
+                <span className={num}>Level {qk.level}</span>
               </li>
             ))}
           </ul>
@@ -87,7 +88,7 @@ export default function PhoneWire({ run, snapshots, entries }: Props) {
       )}
       {sources.length > 0 && (
         <Wire
-          title="Source desk"
+          title="Sources"
           right={
             late > 0 ? (
               <>
@@ -101,12 +102,12 @@ export default function PhoneWire({ run, snapshots, entries }: Props) {
           <ul className="m-0 p-0 list-none">
             {sources.map((s) => (
               <li key={s.id} className={rowClass}>
-                <span>{s.name}</span>
-                <span className={`${num} ${s.failed ? 'text-accent font-semibold' : ''}`}>{s.text}</span>
+                <span>{SOURCE_TITLES[s.id] ?? s.name}</span>
+                <span className={`${num} ${s.failed ? 'text-accent font-semibold' : ''}`}>{s.words}</span>
               </li>
             ))}
           </ul>
-          <p className="m-0 pt-2 font-mono text-[11px] text-ink-muted uppercase">Age of each source's newest data when this edition ran</p>
+          <p className="m-0 pt-2 font-mono text-[11px] text-ink-muted uppercase">How old each source's newest data was when this report ran</p>
         </Wire>
       )}
     </section>

@@ -2,9 +2,10 @@
 // Built from pipeline_runs.sources of that run, never from the current
 // sources table, so a past edition shows what was true when it ran.
 
-import { CATEGORY_NAMES } from './levels'
+import { CATEGORY_ORDER } from './entries'
 import { shortAge } from './ist'
-import type { CategoryStatus, Edition } from './types'
+import type { Category, CategoryStatus, Edition } from './types'
+import { SOURCE_WORDS, cap, listText } from './words'
 
 export const SOURCE_ORDER = ['FIRMS', 'USGS', 'GDACS', 'EONET', 'OPENAQ', 'DATAGOV'] as const
 
@@ -27,12 +28,32 @@ const STATUS_WORDS: Record<string, string> = {
   empty: 'came back empty',
 }
 
+/** What each source is, for readers (the phone wire's source list). */
+export const SOURCE_TITLES: Record<string, string> = {
+  FIRMS: 'NASA fire satellites (FIRMS)',
+  USGS: 'US Geological Survey (USGS)',
+  GDACS: 'Global disaster monitors (GDACS)',
+  EONET: 'NASA natural-event tracker (EONET)',
+  OPENAQ: 'Public air monitors (OpenAQ)',
+  DATAGOV: 'Pollution control board live feed (CPCB)',
+}
+
 export interface SourceLine {
   id: string
   name: string
   failed: boolean
   /** "11H 53M" (age of its newest data when the edition was published), "QUIET", "TIMED OUT" */
   text: string
+  /** The same in words: "12 hours old", "no new events", "didn't answer". */
+  words: string
+}
+
+function ageWords(ms: number): string {
+  const mins = Math.max(0, Math.round(ms / 60_000))
+  if (mins < 60) return `${mins} ${mins === 1 ? 'minute' : 'minutes'} old`
+  const hours = Math.round(mins / 60)
+  if (hours < 48) return `${hours} ${hours === 1 ? 'hour' : 'hours'} old`
+  return `${Math.round(hours / 24)} days old`
 }
 
 export function sourceLines(run: Edition): SourceLine[] {
@@ -43,23 +64,19 @@ export function sourceLines(run: Edition): SourceLine[] {
     if (!r) continue
     const name = SOURCE_NAMES[id]
     if (r.status !== 'ok') {
-      out.push({ id, name, failed: true, text: (STATUS_WORDS[r.status] ?? r.status).toUpperCase() })
+      const words = r.status === 'empty' ? 'sent nothing' : "didn't answer"
+      out.push({ id, name, failed: true, text: (STATUS_WORDS[r.status] ?? r.status).toUpperCase(), words })
       continue
     }
     const newest = r.newest_observation_at ? new Date(r.newest_observation_at).getTime() : null
     const age = newest === null ? null : at - newest
     if (EVENT_DRIVEN.has(id) && (age === null || age > QUIET_AFTER_MS)) {
-      out.push({ id, name, failed: false, text: 'QUIET' })
+      out.push({ id, name, failed: false, text: 'QUIET', words: 'no new events' })
     } else {
-      out.push({ id, name, failed: false, text: age === null ? '—' : shortAge(age) })
+      out.push({ id, name, failed: false, text: age === null ? '—' : shortAge(age), words: age === null ? 'no data' : ageWords(age) })
     }
   }
   return out
-}
-
-function listText(items: string[]): string {
-  if (items.length <= 1) return items.join('')
-  return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`
 }
 
 /**
@@ -67,23 +84,30 @@ function listText(items: string[]): string {
  * category is last-known in it; null when everything answered.
  */
 export function lateNotice(run: Edition, status: CategoryStatus[]): string | null {
-  const byVerb = new Map<string, string[]>()
+  const silent: string[] = []
+  const empty: string[] = []
   for (const id of SOURCE_ORDER) {
     const r = run.sources?.[id]
     if (!r || r.status === 'ok') continue
-    const verb = STATUS_WORDS[r.status] ?? r.status
-    byVerb.set(verb, [...(byVerb.get(verb) ?? []), SOURCE_NAMES[id]])
+    ;(r.status === 'empty' ? empty : silent).push(SOURCE_WORDS[id] ?? id)
   }
-  const sentences: string[] = []
-  for (const [verb, names] of byVerb) sentences.push(`${listText(names)} ${verb} in this run.`)
-
   const stale = status
     .filter((c) => c.last_known)
     .map((c) => c.category)
-    .sort()
-  if (stale.length > 0) {
-    const names = stale.map((c, i) => (i === 0 ? CATEGORY_NAMES[c] : CATEGORY_NAMES[c].toLowerCase()))
-    sentences.push(`${listText(names)} ${stale.length === 1 ? 'is' : 'are'} shown as last known.`)
-  }
-  return sentences.length > 0 ? sentences.join(' ') : null
+    .sort((a: Category, b: Category) => CATEGORY_ORDER.indexOf(a) - CATEGORY_ORDER.indexOf(b))
+  const news = stale.length > 0 ? `${listText(stale.map((c) => CATEGORY_WORDS[c]))} news is as last reported` : null
+
+  const said: string[] = []
+  if (silent.length > 0) said.push(`${listText(silent)} didn't answer this time`)
+  if (empty.length > 0) said.push(`${listText(empty)} sent nothing this time`)
+  if (said.length === 0) return news ? `${cap(news)}.` : null
+  return `${cap(listText(said))}${news ? `, so ${news}` : ''}.`
+}
+
+const CATEGORY_WORDS: Record<Category, string> = {
+  cyclone: 'cyclone',
+  flood: 'flood',
+  earthquake: 'earthquake',
+  air: 'air quality',
+  fire: 'fire',
 }

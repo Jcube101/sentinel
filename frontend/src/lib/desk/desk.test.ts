@@ -44,15 +44,15 @@ describe('editionTitle', () => {
 })
 
 describe('deskEntries', () => {
-  it('ranks by level, then ratio to norm, never by count (edition 25)', () => {
+  it('ranks by level, then category, then ratio to norm, never by count (edition 25)', () => {
     expect(deskEntries(editions[25].snapshots).map((e) => e.key)).toEqual([
       'cyclone:GDACS-TC-1001345',
+      'air:IN', // same level as the fires: cyclone, flood, earthquake, air, fire
       'fire:chhattisgarh', // 9.07×
       'fire:telangana', // 6.11×
       'fire:maharashtra', // 3.86×
-      'fire:madhya-pradesh', // 2.91×, though it has the most fire events
+      'fire:madhya-pradesh', // 2.91×, though it has the most fires
       'fire:uttar-pradesh', // 2.74×
-      'air:IN',
     ])
   })
 
@@ -62,7 +62,7 @@ describe('deskEntries', () => {
     expect(quakes).toHaveLength(1)
     expect(quakes[0].members.map((m) => m.key)).toEqual(['earthquake:USGS-us6000u4f5', 'earthquake:USGS-us6000u4p1'])
     expect(quakes[0].title).toBe('2 small earthquakes, the largest M4.6, 91 km ESE of Tuensang, India')
-    expect(quakes[0].reason).toBe('None reached M5 (USGS)')
+    expect(quakes[0].reason).toBe('None reached magnitude 5 (USGS)')
     expect(quakes[0].newMembers).toBe(1)
   })
 
@@ -83,13 +83,13 @@ describe('deskEntries', () => {
     const e = deskEntries(editions[25].snapshots).find((x) => x.key === 'fire:chhattisgarh')!
     expect(e.level).toBe(2)
     expect(e.wouldBe).toBe(3)
-    expect(e.labels).toEqual([{ kind: 'cap', text: 'Capped at L2 · would be L3' }])
+    expect(e.labels).toEqual([{ kind: 'cap', text: 'Held at Level 2 · would be 3' }])
     expect(e.reason).toBe('27 fire events on 26 Oct, 9.07× the seasonal norm (3.0/day)')
   })
 
-  it('labels air from data.gov.in as unvalidated', () => {
+  it('labels air from data.gov.in as provisional (unvalidated)', () => {
     const air = deskEntries(editions[25].snapshots).find((x) => x.key === 'air:IN')!
-    expect(air.labels).toEqual([{ kind: 'unvalidated', text: 'CPCB real-time · unvalidated' }])
+    expect(air.labels).toEqual([{ kind: 'unvalidated', text: 'Provisional' }])
   })
 
   it('marks last-known items with the reason the pipeline gave (edition 19)', () => {
@@ -125,15 +125,15 @@ describe('splitReason', () => {
 describe('sources', () => {
   it('flags the failed sources of edition 19 and calls quiet event sources quiet', () => {
     const lines = Object.fromEntries(sourceLines(editions[19].run).map((l) => [l.id, l]))
-    expect(lines.FIRMS).toMatchObject({ failed: true, text: 'TIMED OUT' })
+    expect(lines.FIRMS).toMatchObject({ failed: true, text: 'TIMED OUT', words: "didn't answer" })
     expect(lines.GDACS).toMatchObject({ failed: true, text: 'TIMED OUT' })
-    expect(lines.USGS).toMatchObject({ failed: false, text: 'QUIET' })
+    expect(lines.USGS).toMatchObject({ failed: false, text: 'QUIET', words: 'no new events' })
     expect(lines.OPENAQ.failed).toBe(false)
   })
 
   it('writes the late notice for edition 19, and none for edition 25', () => {
     expect(lateNotice(editions[19].run, editions[19].status)).toBe(
-      'FIRMS and GDACS timed out in this run. Cyclone, fire and flood are shown as last known.',
+      "NASA's fire satellites and the global disaster monitors didn't answer this time, so cyclone, flood and fire news is as last reported.",
     )
     expect(lateNotice(editions[25].run, editions[25].status)).toBeNull()
   })

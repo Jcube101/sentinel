@@ -4,7 +4,8 @@ import { supabase } from '@/lib/supabase'
 import { useChangeWindow, useEdition, useLatestEditionId } from '@/hooks/useEdition'
 import { sinceLabel, sinceYesterday, type Movement } from '@/lib/desk/changes'
 import { deskEntries } from '@/lib/desk/entries'
-import { changeCounts, headline, levelCounts } from '@/lib/desk/headline'
+import { copyContext, itemCopy, pageHeadline, sinceLines } from '@/lib/desk/copy'
+import { changeCounts, levelCounts } from '@/lib/desk/headline'
 import { istDate, istShortDate, istTime } from '@/lib/desk/ist'
 import { SCALE } from '@/lib/desk/scale'
 import { lateNotice, sourceLines } from '@/lib/desk/sources'
@@ -93,6 +94,7 @@ export default function Desk() {
     const moves = since?.byItem ?? (changeWindow.isError ? new Map<string, Movement>() : undefined)
     return deskEntries(data.snapshots, moves)
   }, [data, since, changeWindow.isError])
+  const ctx = useMemo(() => (data ? copyContext(entries, since, data.run) : null), [data, entries, since])
   const notice = data ? lateNotice(data.run, data.status) : null
 
   useEffect(() => {
@@ -171,7 +173,7 @@ export default function Desk() {
         ) : (
           <>
             <DeskHero
-              headline={headline(entries, since)}
+              headline={ctx ? pageHeadline(entries, ctx) : ''}
               counts={levelCounts(entries)}
               changes={since ? (changeCounts(since) ?? 'No change since yesterday') : null}
             />
@@ -186,7 +188,7 @@ export default function Desk() {
                 {entries.length === 0 ? (
                   <Message>Nothing is open on the desk in this edition.</Message>
                 ) : (
-                  entries.map((e, i) => <DeskEntryRow key={e.key} entry={e} rank={i + 1} />)
+                  ctx && entries.map((e, i) => <DeskEntryRow key={e.key} entry={e} copy={itemCopy(e, ctx)} rank={i + 1} />)
                 )}
               </main>
               <aside className="flex-[1_1_340px] min-w-0 flex flex-col gap-8 sm:pt-6">
@@ -195,7 +197,7 @@ export default function Desk() {
                 </div>
                 <SinceYesterday
                   label={changeWindow.data ? sinceLabel(changeWindow.data.ref, data.run) : 'Since yesterday'}
-                  since={since}
+                  lines={ctx && since ? sinceLines(entries, ctx) : null}
                   error={changeWindow.isError}
                   onRetry={() => changeWindow.refetch()}
                 />

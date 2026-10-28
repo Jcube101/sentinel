@@ -1,21 +1,23 @@
 import { CATEGORY_NAMES, LEVEL_NAMES } from '@/lib/desk/levels'
 import { entryCard, type Card } from '@/lib/desk/cards'
+import { quakeMemberLine, type ItemCopy } from '@/lib/desk/copy'
 import type { DeskEntry, DeskLabel } from '@/lib/desk/entries'
 import type { Change } from '@/lib/desk/types'
+import { lastKnownWords } from '@/lib/desk/words'
 import LevelSquares from './LevelSquares'
 
 const CHANGE_TEXT: Record<Change, string> = {
   opened: '+ New',
-  reopened: '+ Reopened',
-  escalated: '▲ Escalated',
-  deescalated: '▼ De-escalated',
+  reopened: '+ Back',
+  escalated: '▲ Up',
+  deescalated: '▼ Down',
   closed: '− Closed',
 }
 
 const TITLE_SIZE = {
-  4: 'text-[23px] sm:text-[32px] leading-[1.1]',
-  3: 'text-[22px] sm:text-[30px] leading-[1.1]',
-  2: 'text-[21px] sm:text-[28px] leading-[1.12]',
+  4: 'text-[24px] sm:text-[32px] leading-[1.1]',
+  3: 'text-[23px] sm:text-[30px] leading-[1.1]',
+  2: 'text-[22px] sm:text-[28px] leading-[1.12]',
   1: 'text-[18px] sm:text-[23px] leading-[1.18]',
 } as const
 
@@ -35,9 +37,7 @@ function Chips({ entry }: { entry: DeskEntry }) {
       </span>
       <span className="border border-ink px-[7px] sm:px-2 py-0.5">{CATEGORY_NAMES[entry.category]}</span>
       {entry.change && (
-        <span
-          className={`px-[7px] sm:px-2 py-0.5 border ${isNew ? 'border-accent text-accent font-semibold' : 'border-ink'}`}
-        >
+        <span className={`px-[7px] sm:px-2 py-0.5 border ${isNew ? 'border-accent text-accent font-semibold' : 'border-ink'}`}>
           {CHANGE_TEXT[entry.change]}
         </span>
       )}
@@ -50,38 +50,10 @@ function Chips({ entry }: { entry: DeskEntry }) {
   )
 }
 
-/** The item's key figures: a strip of numbers (three on phones) and a line of context. */
-function Figures({ card }: { card: Card }) {
-  return (
-    <>
-      {card.text && <p className="m-0 text-[15px] sm:text-[17px] leading-[1.55] max-w-[760px]">{card.text}</p>}
-      {card.cells.length > 0 && (
-        <dl className="m-0 grid grid-flow-col auto-cols-fr border-y border-rule max-w-[760px]">
-          {card.cells.map((c, i) => (
-            <div
-              key={c.label}
-              className={`${c.wideOnly ? 'hidden sm:flex' : 'flex'} flex-col-reverse justify-end gap-0.5 py-2.5 sm:py-3 min-w-0 ${
-                i === 0 ? 'pr-2 sm:pr-4' : 'px-2 sm:px-4 border-l border-rule'
-              }`}
-            >
-              <dt className="font-mono text-[10px] sm:text-[11px] uppercase tracking-[0.06em]">
-                <span className="sm:hidden">{c.short ?? c.label}</span>
-                <span className="hidden sm:inline">{c.label}</span>
-              </dt>
-              <dd className="m-0 font-cond font-bold text-[20px] sm:text-[26px] leading-[1.1] whitespace-nowrap">{c.value}</dd>
-            </div>
-          ))}
-        </dl>
-      )}
-    </>
-  )
-}
-
 /** Level 1 rows are compact: one muted line instead of chips. */
 function MinorLine({ entry }: { entry: DeskEntry }) {
   const parts = [`Level 1 · ${LEVEL_NAMES[1]}`, CATEGORY_NAMES[entry.category]]
-  if (entry.members.length > 0) parts.push(`${entry.members.length} in this edition`)
-  else parts.push(entry.change ? CHANGE_TEXT[entry.change] : 'Steady')
+  if (entry.change) parts.push(CHANGE_TEXT[entry.change])
   return (
     <div className="font-mono text-[10px] sm:text-[12px] tracking-[0.06em] uppercase text-ink-muted">
       {parts.join(' · ')}
@@ -93,16 +65,40 @@ function MinorLine({ entry }: { entry: DeskEntry }) {
   )
 }
 
+const meta = 'font-mono text-[11px] sm:text-[12px] leading-[1.5]'
+
+/** The figures strip: exact numbers, set small (three cells on phones). */
+function Strip({ card }: { card: Card }) {
+  return (
+    <dl className="m-0 grid grid-flow-col auto-cols-fr border-t border-rule max-w-[640px]">
+      {card.cells.map((c, i) => (
+        <div
+          key={c.label}
+          className={`${c.wideOnly ? 'hidden sm:flex' : 'flex'} flex-col-reverse justify-end gap-0.5 pt-2 min-w-0 ${
+            i === 0 ? 'pr-2 sm:pr-3' : 'px-2 sm:px-3 border-l border-rule'
+          }`}
+        >
+          <dt className="font-mono text-[10px] uppercase tracking-[0.05em] text-ink-muted">
+            <span className="sm:hidden">{c.short ?? c.label}</span>
+            <span className="hidden sm:inline">{c.label}</span>
+          </dt>
+          <dd className="m-0 font-mono text-[14px] sm:text-[15px] font-semibold leading-[1.2] whitespace-nowrap">{c.value}</dd>
+        </div>
+      ))}
+    </dl>
+  )
+}
+
 interface Props {
   entry: DeskEntry
+  copy: ItemCopy
   rank: number
 }
 
-/** One item on the desk, as in the DeskSeverity and DeskPhone mockups. */
-export default function DeskEntryRow({ entry, rank }: Props) {
+/** One item on the desk: the story first, the evidence under it. */
+export default function DeskEntryRow({ entry, copy, rank }: Props) {
   const major = entry.level >= 2
   const card = entryCard(entry)
-  const meta = 'font-mono text-[11px] sm:text-[12px] leading-[1.5]'
   return (
     <article className={`flex gap-3.5 sm:gap-6 border-b border-ink ${major ? 'py-5 sm:pt-6 sm:pb-[26px]' : 'py-3.5 sm:py-5'}`}>
       <div className="flex flex-col gap-2 sm:gap-2.5 w-10 sm:w-[52px] flex-none">
@@ -117,37 +113,48 @@ export default function DeskEntryRow({ entry, rank }: Props) {
       </div>
       <div className={`flex flex-col min-w-0 flex-1 ${major ? 'gap-2.5' : 'gap-1.5 sm:gap-2'}`}>
         {major ? <Chips entry={entry} /> : <MinorLine entry={entry} />}
-        <h2 className={`m-0 font-cond font-semibold ${TITLE_SIZE[entry.level]}`}>{entry.title}</h2>
+        <h2 className={`m-0 font-cond font-semibold ${TITLE_SIZE[entry.level]}`}>{copy.title}</h2>
+        {major && copy.standfirst && (
+          <p className="m-0 text-[16px] sm:text-[18px] leading-[1.55] max-w-[760px]">{copy.standfirst}</p>
+        )}
         {entry.members.length > 0 && (
-          <ul className={`${meta} m-0 p-0 list-none`}>
+          <ul className="m-0 p-0 list-none text-[15px] leading-[1.45]">
             {entry.members.map((m) => (
               <li key={m.key}>
-                {m.title}
+                {quakeMemberLine(m)}
                 {m.lastKnown && <span className="text-accent"> · last known</span>}
               </li>
             ))}
           </ul>
         )}
-        {card && <Figures card={card} />}
-        <p className={`${meta} m-0 text-ink-muted`}>
-          <span className="uppercase tracking-[0.04em]">Level from:</span> {entry.reason}
-          {card?.link && (
-            <>
-              {' · '}
-              <a href={card.link.href} target="_blank" rel="noreferrer" className="uppercase tracking-[0.04em] border-b border-ink-muted hover:text-accent hover:border-accent">
-                {card.link.text} ↗
-              </a>
-            </>
-          )}
-        </p>
-        {entry.notes.map((n) => (
-          <p key={n.text} className={`${meta} m-0 text-ink-muted`}>
-            {n.text}
+        <div className={`flex flex-col gap-1.5 text-ink-muted ${major ? 'pt-1' : ''}`}>
+          {card && card.cells.length > 0 && <Strip card={card} />}
+          <p className={`${meta} m-0`}>
+            <span className="uppercase tracking-[0.04em]">Level from:</span> {entry.reason}
+            {card?.link && (
+              <>
+                {' · '}
+                <a
+                  href={card.link.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="uppercase tracking-[0.04em] border-b border-ink-muted hover:text-accent hover:border-accent"
+                >
+                  {card.link.text} ↗
+                </a>
+              </>
+            )}
           </p>
-        ))}
+          {card?.detail && <p className={`${meta} m-0`}>{card.detail}</p>}
+          {entry.notes.map((n) => (
+            <p key={n.text} className={`${meta} m-0`}>
+              {n.text}
+            </p>
+          ))}
+        </div>
         {entry.lastKnown && (
-          <p className={`${meta} m-0 text-accent font-semibold uppercase tracking-[0.04em]`}>
-            Last-known · {entry.lastKnownWhy ?? 'its source did not answer in this run'}
+          <p className={`${meta} m-0 text-accent font-semibold`}>
+            <span className="uppercase tracking-[0.04em]">Last known:</span> {lastKnownWords(entry.lastKnownWhy)}
           </p>
         )}
       </div>

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { sinceLabel, sinceYesterday } from './changes'
 import { deskEntries, missingCategories } from './entries'
-import { changeCounts, headline, levelCounts, numberWord } from './headline'
+import { changeCounts } from './headline'
 import { dayBefore, istDay } from './ist'
 import type { ChangeWindow, EditionData } from './types'
 import e14 from './__fixtures__/edition-14.json'
@@ -59,7 +59,7 @@ describe('sinceYesterday', () => {
   })
 
   it('counts new and reopened together', () => {
-    expect(changeCounts(since(17))).toBe('5 new · 1 de-escalated · 1 closed')
+    expect(changeCounts(since(17))).toBe('5 new · 1 down · 1 closed')
     expect(changeCounts(since(25))).toBe('1 new · 1 closed')
   })
 
@@ -92,7 +92,7 @@ describe('deskEntries with the day’s changes', () => {
     const s = { ...editions[25].snapshots.find((x) => x.item_id === 'fire:telangana')!, carried_from: 24 }
     const [e] = deskEntries([s], new Map())
     expect(e.lastKnown).toBe(true)
-    expect(e.lastKnownWhy).toBe('its stage failed in this run; figures from No. 24')
+    expect(e.lastKnownWhy).toBe("this report's fire check failed; figures from No. 24")
     expect(e.carriedFrom).toBe(24)
   })
 })
@@ -106,50 +106,6 @@ describe('missingCategories', () => {
     const ed = editions[25]
     const without = ed.snapshots.filter((s) => s.category !== 'fire')
     expect(missingCategories(without, ed.status)).toEqual(['fire'])
-  })
-})
-
-describe('headline', () => {
-  it('edition 25: the cyclone leads; Chhattisgarh is new', () => {
-    const entries = deskEntries(editions[25].snapshots, since(25).byItem)
-    expect(headline(entries, since(25))).toBe(
-      'Tropical Cyclone ARNAB-26 is the most severe item on the desk. ' +
-        'New since yesterday: fire activity in Chhattisgarh at 9.07× the seasonal norm.',
-    )
-    expect(levelCounts(entries)).toEqual({ 4: 1, 3: 0, 2: 6, 1: 0 })
-  })
-
-  it('edition 14: a quake leads, its place closed with a comma; a new quake follows', () => {
-    const entries = deskEntries(editions[14].snapshots, since(14).byItem)
-    expect(headline(entries, since(14))).toBe(
-      'An M7.0 earthquake 191 km ENE of Nagqu, China, is the most severe item on the desk. ' +
-        'New since yesterday: an M4.6 earthquake 91 km ESE of Tuensang, India.',
-    )
-  })
-
-  it('edition 17: several items share the top level; same-category items are counted together', () => {
-    const entries = deskEntries(editions[17].snapshots, since(17).byItem)
-    expect(headline(entries, since(17))).toBe(
-      'Four items lead the desk at Level 2: fire activity in four states. ' +
-        'New since yesterday: fire activity in Gujarat at 8.19× the seasonal norm and four more.',
-    )
-  })
-
-  it('says when nothing changed, and when nothing is above Level 1', () => {
-    const quiet = deskEntries(editions[25].snapshots.filter((s) => s.category === 'air'), new Map())
-    const air1 = quiet.map((e) => ({ ...e, level: 1 as const }))
-    const none = { ref: null, moves: [], byItem: new Map(), counts: { new: 0, reopened: 0, escalated: 0, deescalated: 0, closed: 0 } }
-    expect(headline(air1, none)).toBe('Nothing on the desk is above Level 1. No change since yesterday.')
-    expect(headline([], null)).toBe('Nothing is open on the desk.')
-  })
-
-  it('without the comparison, prints the lead only', () => {
-    const entries = deskEntries(editions[25].snapshots)
-    expect(headline(entries, null)).toBe('Tropical Cyclone ARNAB-26 is the most severe item on the desk.')
-  })
-
-  it('spells out one to nine', () => {
-    expect([numberWord(1), numberWord(9), numberWord(10)]).toEqual(['one', 'nine', '10'])
   })
 })
 

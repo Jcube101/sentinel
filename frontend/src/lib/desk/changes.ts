@@ -27,6 +27,8 @@ export interface Movement {
 
 export interface SinceYesterday {
   ref: ChangeWindow['ref']
+  /** Each item's level in the reference edition (open items only). */
+  refLevels: Map<string, Level>
   /** Ordered: new, reopened, escalated, de-escalated, closed; most severe first in each. */
   moves: Movement[]
   byItem: Map<string, Movement>
@@ -95,7 +97,7 @@ export function sinceYesterday(edition: Snapshot[], window: ChangeWindow): Since
   )
   const counts = { new: 0, reopened: 0, escalated: 0, deescalated: 0, closed: 0 }
   for (const m of moves) counts[m.kind] += 1
-  return { ref: window.ref, moves, byItem: new Map(moves.map((m) => [m.itemId, m])), counts }
+  return { ref: window.ref, refLevels: levelAtRef, moves, byItem: new Map(moves.map((m) => [m.itemId, m])), counts }
 }
 
 /** "Since yesterday 20:30", or "Since 24 Oct 20:30" when the reference edition is older. */

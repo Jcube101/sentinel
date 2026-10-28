@@ -104,12 +104,12 @@ function labels(s: Snapshot): { labels: DeskLabel[]; wouldBe: Level | null } {
   const out: DeskLabel[] = []
   let wouldBe: Level | null = null
   if (s.category === 'air') {
-    if (f.source === 'datagov' || f.unvalidated) out.push({ kind: 'unvalidated', text: 'CPCB real-time · unvalidated' })
-    else if (f.approximate) out.push({ kind: 'approximate', text: 'Approximate' })
+    if (f.source === 'datagov' || f.unvalidated) out.push({ kind: 'unvalidated', text: 'Provisional' })
+    else if (f.approximate) out.push({ kind: 'approximate', text: 'Estimate' })
   }
   if (s.category === 'fire' && f.capped && typeof f.firms_level === 'number' && f.firms_level > s.severity_level) {
     wouldBe = f.firms_level as Level
-    out.push({ kind: 'cap', text: `Capped at L${s.severity_level} · would be L${wouldBe}` })
+    out.push({ kind: 'cap', text: `Held at Level ${s.severity_level} · would be ${wouldBe}` })
   }
   return { labels: out, wouldBe }
 }
@@ -122,13 +122,18 @@ const MOVE_CHANGE: Record<Movement['kind'], Change> = {
   closed: 'closed',
 }
 
+/** One snapshot as a desk row (closed items too, for Since yesterday). */
+export function snapshotEntry(s: Snapshot, moves?: Map<string, Movement>): DeskEntry {
+  return toEntry(s, moves)
+}
+
 function toEntry(s: Snapshot, moves?: Map<string, Movement>): DeskEntry {
   const { base, notes } = splitReason(s.severity_reason)
   const lastKnownNote = notes.find((n) => n.kind === 'last_known')
   const { labels: ls, wouldBe } = labels(s)
   const carried = s.carried_from ?? null
   const move = moves?.get(s.item_id)
-  const why = carried !== null ? `its stage failed in this run; figures from No. ${carried}` : (lastKnownNote?.text ?? null)
+  const why = carried !== null ? `this report's ${s.category} check failed; figures from No. ${carried}` : (lastKnownNote?.text ?? null)
   return {
     key: s.item_id,
     itemIds: [s.item_id],
@@ -153,9 +158,17 @@ function toEntry(s: Snapshot, moves?: Map<string, Movement>): DeskEntry {
   }
 }
 
-/** Level, then strength, then title: the order watch.py ranks open items in. */
+/**
+ * At the same level, categories in this order (Job, 28 Oct): their strengths
+ * (fire ratio, quake magnitude) can't be compared with each other, and fire
+ * is the one category that fills many rows at once.
+ */
+export const CATEGORY_ORDER: Category[] = ['cyclone', 'flood', 'earthquake', 'air', 'fire']
+
+/** Level, then category, then strength, then title. Within a category, the order watch.py ranks in. */
 export function compareEntries(a: DeskEntry, b: DeskEntry): number {
   if (a.level !== b.level) return b.level - a.level
+  if (a.category !== b.category) return CATEGORY_ORDER.indexOf(a.category) - CATEGORY_ORDER.indexOf(b.category)
   if (a.strength !== b.strength) return b.strength - a.strength
   return a.title < b.title ? -1 : a.title > b.title ? 1 : 0
 }
@@ -178,7 +191,7 @@ function quakeGroup(quakes: DeskEntry[]): DeskEntry {
     wouldBe: null,
     title:
       `${ranked.length} small earthquakes, the largest M${largest.strength.toFixed(1)}` + (place ? `, ${place}` : ''),
-    reason: `None reached M${SCALE.quake.level2MinMagnitude} (USGS)`,
+    reason: `None reached magnitude ${SCALE.quake.level2MinMagnitude} (USGS)`,
     labels: [],
     lastKnown: ranked.some((q) => q.lastKnown),
     lastKnownWhy: why,

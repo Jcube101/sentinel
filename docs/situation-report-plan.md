@@ -1,6 +1,6 @@
 # Sentinel — "Situation Report" frontend (Phase 7): plan
 
-Status: **plan updated 28 Oct 2026 with Job's answers; steps 1 and 2 done.** Branch
+Status: **plan updated 28 Oct 2026 with Job's answers; steps 1 and 2 done, then the copy rewritten to `docs/style-guide.md` (step 2b).** Branch
 `frontend/situation-report`, worktree `../sentinel-situation-report`. Design reference:
 `docs/design/` (DeskSeverity, DeskQuiet, DeskPhone, MapView, ItemFire), read as visual and
 copy spec, not code. Data model: `docs/severity-pipeline.md` and
@@ -45,9 +45,13 @@ How the pages work:
   snapshot, marked last-known ("figures from No. m"). Not seen in editions 1-25.
 - **Latest edition** = the newest `pipeline_runs` row that isn't `running`. A failed
   edition is still shown, with what failed (from `pipeline_runs.sources`).
-- **Ranking:** level, then strength (fire `ratio_to_norm`, quake magnitude), then title:
-  the same order as `watch.py` (`category_status`). Never by count. Open question below
-  (*Ranking within a level*).
+- **Ranking:** level; then, at the same level, category in a fixed order (cyclone, flood,
+  earthquake, air, fire: Job, 28 Oct); then strength within the category (fire
+  `ratio_to_norm`, quake magnitude), then title. Within a category this is the order
+  `watch.py` ranks in (`category_status`). Never by count.
+- **Copy:** every generated line follows `docs/style-guide.md` (templates in
+  `lib/desk/copy.ts`, tests in `copy.test.ts`). Built only from the edition's own data,
+  with dates relative to the edition, so the archive reads as published.
 - **Since yesterday** compares the edition with the latest edition that started at least
   23 hours before it (the same slot a day earlier, with an hour's slack for late runs). An
   item is new or reopened if it opened or reopened after that edition; escalated or
@@ -223,6 +227,10 @@ checked on the Pi preview against live data. Smallest shippable step first.
      Quake: magnitude, depth, distance from India, felt reports, PAGER alert, USGS link.
      Cyclone and flood: GDACS alert, wind speed, alert score, episode, GDACS link.
    - The sidebar's map image waits for step 6 (the map).
+   - **2b, the copy (Job, 28 Oct):** step 3 paused to rewrite every generated line as news
+     for ordinary readers: `docs/style-guide.md` first, then titles with verbs,
+     standfirsts, the page headline, Since yesterday, the late notice and the wire. The
+     exact figures stay, set smaller, as evidence under each story.
 3. **Desk, quiet day.** Watching list (latest edition only until P2), all-clear table,
    14-day strip and days since Level 3+ (both from snapshots, so past editions work),
    recently closed.
@@ -322,21 +330,16 @@ Needed so past editions can be shown exactly as published (section 2):
 Also:
 - **P5.** Lat/lon per city in the air figures (the feed has station coordinates; no
   migration).
+- **P6.** Each fire item's national rank by fires that day (e.g. `figures.state_rank`,
+  and the number of states with fires), so a title can say "the most fires of any state".
+  An edition holds only the states on the desk, so today the copy says "the most fires of
+  the five states above normal" (No. 25: Punjab had 53 fires but no item).
 - The air all-clear line always says "approx. CPCB band", even when data.gov.in set the
   level (`watch.all_clear`).
 - Grants on `sources`, `events`, `aqi_readings` (already a follow-up): fix before the new
   site goes live, since it is public and uses the anon key.
 - Never delete `pipeline_runs` or `desk_items` rows by hand: the cascades take editions'
   snapshots and status with them.
-
-## Open questions
-
-- **Ranking within a level** (Job, 28 Oct): should fire size count, not only the ratio
-  (Chhattisgarh, 27 fire events at 9.07×, ranks above Madhya Pradesh, 200 at 2.91×)?
-  Recommendation in the step 2 report: keep the ratio. Related: across categories at the
-  same level the tie-break compares fire ratios with quake magnitudes, and air, cyclone and
-  flood items have no strength, so they sink below every fire state at their level (No. 25:
-  air is 7th of 7). Unchanged until Job decides.
 
 ## Decisions (Job, 28 Oct 2026)
 
@@ -349,3 +352,7 @@ Also:
    `map-news.svg`. No screenshots.
 6. New: the front page is a newspaper archive (`/edition/:n`, `/date/YYYY-MM-DD`,
    Archive by day), section 2.
+7. The copy reads as news for ordinary readers (`docs/style-guide.md`); exact figures stay
+   as evidence under each story.
+8. Ranking: keep the ratio within fires; at the same level, categories in the order
+   cyclone, flood, earthquake, air, fire.
