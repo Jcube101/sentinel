@@ -2,9 +2,8 @@ import { CATEGORY_NAMES, LEVEL_NAMES } from '@/lib/desk/levels'
 import { entryCard, type Card, type FireRow } from '@/lib/desk/cards'
 import { quakeMemberLine, type ItemCopy } from '@/lib/desk/copy'
 import { itemPath } from '@/lib/desk/paths'
-import type { DeskEntry, DeskLabel } from '@/lib/desk/entries'
+import type { DeskEntry } from '@/lib/desk/entries'
 import type { Change } from '@/lib/desk/types'
-import { lastKnownWords } from '@/lib/desk/words'
 import { Link } from 'react-router-dom'
 import LevelSquares from './LevelSquares'
 
@@ -23,12 +22,6 @@ const TITLE_SIZE = {
   1: 'text-[18px] sm:text-[23px] leading-[1.18]',
 } as const
 
-const LABEL_STYLE: Record<DeskLabel['kind'], string> = {
-  unvalidated: 'border border-ink',
-  approximate: 'border border-accent text-accent',
-  cap: 'border border-dashed border-ink',
-}
-
 export function Chips({ entry }: { entry: DeskEntry }) {
   const isNew = entry.change === 'opened' || entry.change === 'reopened'
   return (
@@ -46,11 +39,6 @@ export function Chips({ entry }: { entry: DeskEntry }) {
       {entry.members.length > 0 && entry.newMembers > 0 && (
         <span className="px-[7px] sm:px-2 py-0.5 border border-accent text-accent font-semibold">+ {entry.newMembers} new</span>
       )}
-      {entry.labels.map((l) => (
-        <span key={l.kind} className={`px-[7px] sm:px-2 py-0.5 ${LABEL_STYLE[l.kind]}`}>
-          {l.text}
-        </span>
-      ))}
     </div>
   )
 }
@@ -63,14 +51,22 @@ function MinorLine({ entry }: { entry: DeskEntry }) {
     <div className="font-mono text-[10px] sm:text-[12px] tracking-[0.06em] uppercase text-ink-muted">
       {parts.join(' · ')}
       {entry.newMembers > 0 && <span className="text-accent font-semibold"> · + {entry.newMembers} new</span>}
-      {entry.labels.map((l) => (
-        <span key={l.kind}> · {l.text}</span>
-      ))}
     </div>
   )
 }
 
 const meta = 'font-mono text-[11px] sm:text-[12px] leading-[1.5]'
+
+/** "As of Saturday" over a last-known item's title: a kicker, not a sentence. */
+export function Kicker({ text }: { text: string | null }) {
+  if (!text) return null
+  return <p className="m-0 font-mono text-[11px] sm:text-[12px] font-semibold uppercase tracking-[0.08em] text-accent">{text}</p>
+}
+
+/** The item's source line, like a photo credit: "Source: CPCB live data (unvalidated)". */
+export function SourceLine({ text }: { text: string }) {
+  return <p className="m-0 font-mono text-[11px] leading-[1.5] text-ink-muted">Source: {text}</p>
+}
 
 /** The figures strip: exact numbers, set small (three cells on phones). */
 export function Strip({ card }: { card: Card }) {
@@ -94,9 +90,8 @@ export function Strip({ card }: { card: Card }) {
   )
 }
 
-/** The fire roundup's state table: the evidence under the story. */
+/** The fire roundup's state table: the evidence under the story. A held state shows its dashed square (explained in Notes). */
 export function StateTable({ rows, day, edition }: { rows: FireRow[]; day: string | null; edition?: string }) {
-  const held = rows.filter((r) => r.wouldBe !== null)
   const th = 'py-1.5 pr-3 font-normal text-left text-[10px] uppercase tracking-[0.05em]'
   return (
     <div className="max-w-[640px]">
@@ -113,10 +108,12 @@ export function StateTable({ rows, day, edition }: { rows: FireRow[]; day: strin
           {rows.map((r) => (
             <tr key={r.key} className="border-b border-rule">
               <th scope="row" className="py-1.5 pr-3 font-normal text-left text-ink">
-                <Link to={itemPath(r.key) + (edition ?? '')} className="border-b border-rule hover:text-accent hover:border-accent">
-                  {r.state}
-                </Link>
-                {r.wouldBe !== null && '*'}
+                <span className="inline-flex items-center gap-2">
+                  <LevelSquares level={r.level} wouldBe={r.wouldBe} />
+                  <Link to={itemPath(r.key) + (edition ?? '')} className="border-b border-rule hover:text-accent hover:border-accent">
+                    {r.state}
+                  </Link>
+                </span>
               </th>
               <td className="py-1.5 pr-3 text-right text-ink font-semibold">{r.fires}</td>
               <td className="py-1.5 pr-3 text-right">{r.usual}</td>
@@ -125,11 +122,6 @@ export function StateTable({ rows, day, edition }: { rows: FireRow[]; day: strin
           ))}
         </tbody>
       </table>
-      {held.length > 0 && (
-        <p className="m-0 pt-1 font-mono text-[11px]">
-          * Held at Level {held[0].level} for now; would be {held[0].wouldBe}.
-        </p>
-      )}
     </div>
   )
 }
@@ -137,13 +129,17 @@ export function StateTable({ rows, day, edition }: { rows: FireRow[]; day: strin
 interface Props {
   entry: DeskEntry
   copy: ItemCopy
+  /** "As of Saturday" on a last-known item. */
+  kicker: string | null
+  /** The source line's text. */
+  source: string
   rank: number
   /** "?edition=19" on a past edition, so item links open it as of that edition. */
   query?: string
 }
 
 /** One item on the desk: the story first, the evidence under it. */
-export default function DeskEntryRow({ entry, copy, rank, query = '' }: Props) {
+export default function DeskEntryRow({ entry, copy, kicker, source, rank, query = '' }: Props) {
   const major = entry.level >= 2
   const card = entryCard(entry)
   return (
@@ -160,6 +156,7 @@ export default function DeskEntryRow({ entry, copy, rank, query = '' }: Props) {
       </div>
       <div className={`flex flex-col min-w-0 flex-1 ${major ? 'gap-2.5' : 'gap-1.5 sm:gap-2'}`}>
         {major ? <Chips entry={entry} /> : <MinorLine entry={entry} />}
+        <Kicker text={kicker} />
         <h2 className={`m-0 font-cond font-semibold ${TITLE_SIZE[entry.level]}`}>
           {entry.members.length === 0 ? (
             <Link to={itemPath(entry.key) + query} className="hover:text-accent">
@@ -179,11 +176,11 @@ export default function DeskEntryRow({ entry, copy, rank, query = '' }: Props) {
                 <Link to={itemPath(m.key) + query} className="border-b border-rule hover:text-accent hover:border-accent">
                   {quakeMemberLine(m)}
                 </Link>
-                {m.lastKnown && <span className="text-accent"> · last known</span>}
               </li>
             ))}
           </ul>
         )}
+        <SourceLine text={source} />
         <div className={`flex flex-col gap-1.5 text-ink-muted ${major ? 'pt-1' : ''}`}>
           {card && card.cells.length > 0 && <Strip card={card} />}
           {card?.table && <StateTable rows={card.table} day={card.tableDay ?? null} edition={query} />}
@@ -210,11 +207,6 @@ export default function DeskEntryRow({ entry, copy, rank, query = '' }: Props) {
             </p>
           ))}
         </div>
-        {entry.lastKnown && (
-          <p className={`${meta} m-0 text-accent font-semibold`}>
-            <span className="uppercase tracking-[0.04em]">Last known:</span> {lastKnownWords(entry.lastKnownWhy)}
-          </p>
-        )}
       </div>
     </article>
   )

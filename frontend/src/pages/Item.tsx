@@ -12,12 +12,13 @@ import { editionQuery, itemPath } from '@/lib/desk/paths'
 import { SCALE } from '@/lib/desk/scale'
 import type { Change, Figures, TimedSnapshot } from '@/lib/desk/types'
 import { placeOf, placeText } from '@/lib/desk/where'
-import { lastKnownWords } from '@/lib/desk/words'
 import PaperShell from '@/components/paper/PaperShell'
 import LevelSquares from '@/components/paper/LevelSquares'
 import MiniMap from '@/components/paper/MiniMap'
 import { fireDayOf, mapItems } from '@/lib/desk/mapdata'
-import { Chips, Strip } from '@/components/paper/DeskEntryRow'
+import { Chips, Kicker, SourceLine, Strip } from '@/components/paper/DeskEntryRow'
+import PageNotes from '@/components/paper/PageNotes'
+import { asOfKicker, deskNotes, sourceCredit } from '@/lib/desk/notes'
 
 const head = 'm-0 font-mono font-normal text-[11px] sm:text-[12px] tracking-[0.08em] uppercase pb-2 sm:pb-2.5 border-b border-ink flex justify-between gap-3'
 const meta = 'font-mono text-[11px] sm:text-[12px] leading-[1.5]'
@@ -337,9 +338,10 @@ export default function Item() {
   const next = index >= 0 && index < entries.length - 1 ? entries[index + 1] : null
   const others = entries.filter((e) => !e.itemIds.includes(id))
   const observed = item.data?.item?.observed_at ?? null
+  const notes = deskNotes([entry])
 
   return (
-    <PaperShell footer={<span>{`Item ${id}`}</span>}>
+    <PaperShell footer={<span>{`Item ${id}`}</span>} notes={notes.length > 0 ? <PageNotes notes={notes} /> : null}>
       <div className="flex flex-wrap justify-between gap-3 py-2 sm:py-2.5 border-b border-ink font-mono text-[11px] sm:text-[12px] tracking-[0.04em] uppercase">
         <span>
           <Link to={run.id === latestId ? '/' : `/edition/${run.id}`} className="hover:text-accent">
@@ -373,17 +375,14 @@ export default function Item() {
             <Chips entry={entry} />
           )}
         </div>
+        <Kicker text={asOfKicker(entry, run.started_at)} />
         <h1 className="m-0 font-cond font-semibold text-[30px] sm:text-[46px] leading-[1.06] tracking-[-0.01em]">{copy.title}</h1>
         {copy.standfirst && <p className="m-0 text-[17px] sm:text-[19px] leading-[1.55]">{copy.standfirst}</p>}
+        <SourceLine text={sourceCredit(entry)} />
         <p className={`${meta} m-0 text-ink-muted uppercase tracking-[0.04em]`}>
           {since_ && !closed && <>Open since {istShortDate(since_)} · </>}
           Level from: <span className="normal-case">{entry.reason}</span>
         </p>
-        {entry.lastKnown && (
-          <p className={`${meta} m-0 text-accent font-semibold`}>
-            <span className="uppercase tracking-[0.04em]">Last known:</span> {lastKnownWords(entry.lastKnownWhy)}
-          </p>
-        )}
         {card && card.cells.length > 0 && (
           <div className="pt-1 text-ink-muted">
             <Strip card={card} />

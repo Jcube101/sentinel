@@ -116,7 +116,7 @@ function Watching({ rows, latest, ctx }: { rows: WatchRow[] | null; latest: bool
   )
 }
 
-function AllClear({ entries, status }: { entries: DeskEntry[]; status: CategoryStatus[] }) {
+function AllClear({ entries, status, editionAt }: { entries: DeskEntry[]; status: CategoryStatus[]; editionAt: string }) {
   return (
     <section aria-label="All clear by category">
       <h2 className={head}>
@@ -124,7 +124,7 @@ function AllClear({ entries, status }: { entries: DeskEntry[]; status: CategoryS
         <span className="text-ink-muted tracking-[0.04em]">level now</span>
       </h2>
       <ul className="m-0 p-0 list-none">
-        {allClearRows(entries, status).map((r) => (
+        {allClearRows(entries, status, editionAt).map((r) => (
           <li
             key={r.category}
             className="grid grid-cols-[40px_minmax(0,1fr)_auto] sm:grid-cols-[52px_120px_minmax(0,1fr)_auto] gap-x-3 sm:gap-x-4 gap-y-1 py-3.5 border-b border-rule items-baseline"
@@ -132,7 +132,10 @@ function AllClear({ entries, status }: { entries: DeskEntry[]; status: CategoryS
             <span className="pt-1">{r.level ? <LevelSquares level={r.level} /> : <NoSquares />}</span>
             <span className="font-cond font-semibold text-[17px] sm:text-[19px]">{r.name}</span>
             <span className={`${meta} text-ink-muted text-right sm:order-last`}>{r.source}</span>
-            <span className={`col-start-2 col-span-2 sm:col-start-auto sm:col-span-1 text-[15px] leading-[1.5] ${r.lastKnown ? 'text-accent' : ''}`}>
+            <span className="col-start-2 col-span-2 sm:col-start-auto sm:col-span-1 text-[15px] leading-[1.5]">
+              {r.kicker && (
+                <span className="block font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-accent">{r.kicker}</span>
+              )}
               {r.line}
             </span>
           </li>
@@ -238,7 +241,7 @@ export default function QuietDesk({ run, entries, status, history, watching, lat
       <div className="flex flex-wrap gap-x-12 gap-y-8 pt-6 sm:pt-8">
         <main className="flex-[999_1_560px] min-w-0 flex flex-col gap-8">
           <Watching rows={watching} latest={latest} ctx={ctx} />
-          <AllClear entries={entries} status={status} />
+          <AllClear entries={entries} status={status} editionAt={run.started_at} />
         </main>
         <aside className="flex-[1_1_340px] min-w-0 flex flex-col gap-8">
           <DayStrip days={days} lastText={lastText} />

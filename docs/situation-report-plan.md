@@ -1,6 +1,6 @@
 # Sentinel — "Situation Report" frontend (Phase 7): plan
 
-Status: **plan updated 28 Oct 2026 with Job's answers; steps 1 to 8 done; the copy follows `docs/style-guide.md` (2b–2d).** Branch
+Status: **plan updated 28 Oct 2026 with Job's answers; steps 1 to 8 done; the copy follows `docs/style-guide.md` (2b–2d); caveats moved out of the stories and per-hazard map symbols (decisions 11–12).** Branch
 `frontend/situation-report`, worktree `../sentinel-situation-report`. Design reference:
 `docs/design/` (DeskSeverity, DeskQuiet, DeskPhone, MapView, ItemFire), read as visual and
 copy spec, not code. Data model: `docs/severity-pipeline.md` and
@@ -310,6 +310,12 @@ checked on the Pi preview against live data. Smallest shippable step first.
 
 ## 5. Labels: last-known, air, fire cap
 
+**Superseded in part by decision 11 (28 Oct):** no labels in the story. Air's
+provisional/estimate status and an incomplete fire day are in the item's source line;
+last-known is an "As of …" kicker over the title plus "didn't answer this time" in the
+source line; the fire cap is the dashed square, explained once in the page's Notes. The
+data each one reads, below, is unchanged.
+
 ### Last-known items
 From: `last_known` on snapshots; `category_status.last_known` and `source_status`; the
 reason's ` · last known: <why>` suffix; per-source status in `pipeline_runs.sources`.
@@ -382,7 +388,11 @@ Needed so past editions can be shown exactly as published (section 2):
 
 Also:
 - **P5.** Lat/lon per city in the air figures (the feed has station coordinates; no
-  migration).
+  migration). **Requested by Job on 28 Oct** for the map's air layer (decision 12): the
+  frontend builds the layer against the field names the pipeline session gives, and keeps
+  the "Air has no place on the map yet" placeholder until then. It needs, for each city
+  at poor or worse in `figures.cities`, a position (station mean or city centre) and its
+  band and reading, as the figures already carry.
 - **P7.** A cyclone's current position: GDACS's point (`Class: Point_Centroid`) is the
   centre of the area it maps for the event, not the storm. The latest track point would
   let the copy say where the storm is.
@@ -424,3 +434,20 @@ Also:
    title for No. 25) rather than splitting the state out; "spreading" compares with the
    edition a day earlier, like Since yesterday.
 10. "How levels are set" moves to a collapsed footer section and About.
+11. Facts in the story, caveats in notes (style guide). Titles and standfirsts state one
+    fact per sentence, without hedges. Each item has a source line ("Source: CPCB live
+    data (unvalidated)"); a last-known item gets an "As of Saturday" kicker; the fire cap
+    shows only as the dashed square (also in the state table), explained once in the
+    page's Notes, with any Severe city not yet confirmed. States that fell back are in
+    Since yesterday, not in another state's story. Within its range a state's title keeps
+    the plain multiple ("run at twice the usual") and the standfirst gives it against the
+    average ("about double the late-October average but normal for the season"), as in
+    Job's example.
+12. Map symbols per hazard, ink on paper: fire stays dots; a cyclone is a spiral sized
+    by wind speed, an earthquake concentric rings sized by magnitude, a flood a wave; the
+    rank number is a small badge on the symbol (a fire state's badge sits at the centre of
+    its fires). Red only at Level 3 and up, fire dots included (red in a state at Level 3+);
+    one slow pulse at Level 4, none with reduced motion. The map page's Layers list is the
+    key. Air goes on the map once P5 lands: cities at poor or worse as small soft squares
+    tinted by band, under the hazard symbols, the worst city labelled, its own layer toggle
+    (on).

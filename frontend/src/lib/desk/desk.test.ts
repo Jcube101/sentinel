@@ -88,23 +88,18 @@ describe('deskEntries', () => {
     expect(deskEntries(editions[14].snapshots).some((e) => e.key === 'fire:madhya-pradesh')).toBe(false)
   })
 
-  it('labels the fire cap and drops it from the shown reason (edition 25, Chhattisgarh)', () => {
+  it('keeps the level the fire cap holds back, and drops the cap from the shown reason (edition 25, Chhattisgarh)', () => {
     const e = flat(deskEntries(editions[25].snapshots)).find((x) => x.key === 'fire:chhattisgarh')!
     expect(e.level).toBe(2)
     expect(e.wouldBe).toBe(3)
-    expect(e.labels).toEqual([{ kind: 'cap', text: 'Held at Level 2 · would be 3' }])
     expect(e.reason).toBe('27 fire events on 26 Oct, 9.07× the seasonal norm (3.0/day)')
-  })
-
-  it('labels air from data.gov.in as provisional (unvalidated)', () => {
-    const air = deskEntries(editions[25].snapshots).find((x) => x.key === 'air:IN')!
-    expect(air.labels).toEqual([{ kind: 'unvalidated', text: 'Provisional' }])
   })
 
   it('marks last-known items with the reason the pipeline gave (edition 19)', () => {
     const e = flat(deskEntries(editions[19].snapshots)).find((x) => x.key === 'fire:telangana')!
     expect(e.lastKnown).toBe(true)
     expect(e.lastKnownWhy).toBe('FIRMS fetch failed this run')
+    expect(e.asOf).toBe('2026-10-24') // the fire day its figures are for
     expect(e.wouldBe).toBe(3)
     expect(e.reason).toBe('34 fire events on 24 Oct, 5.33× the seasonal norm (6.4/day)')
   })

@@ -78,12 +78,13 @@ describe('the quiet desk copy (edition 19, Level 2+ taken out)', () => {
   })
 
   it('all clear: one row per category, with the source and what was not updated', () => {
-    expect(allClearRows(entries, ed19.status).map((r) => `${r.name} [${r.level ?? '-'} ${r.source}] ${r.line}`)).toEqual([
-      "Cyclones [- GDACS] None open. Not updated: the global disaster monitors didn't answer this time.",
-      "Floods [- GDACS] None open. Not updated: the global disaster monitors didn't answer this time.",
+    const rows = allClearRows(entries, ed19.status, ed19.run.started_at)
+    expect(rows.map((r) => `${r.name} [${r.level ?? '-'} ${r.source}]${r.kicker ? ` ${r.kicker} /` : ''} ${r.line}`)).toEqual([
+      'Cyclones [- GDACS] Not updated / None open.',
+      'Floods [- GDACS] Not updated / None open.',
       'Earthquakes [1 USGS] Magnitude 4.3, 71 km from Rikaze, China.',
       'Air [1 CPCB] Poor in six cities, worst in Khairthal at 282.',
-      "Fire [- FIRMS] No state's fires are well above normal for the time of year. Not updated: NASA's fire satellites didn't answer this time.",
+      "Fire [- FIRMS] Not updated / No state's fires are well above normal for the time of year.",
     ])
   })
 })

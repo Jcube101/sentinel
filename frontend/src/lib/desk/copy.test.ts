@@ -5,12 +5,11 @@ import { deskEntries } from './entries'
 import type { ChangeWindow, EditionData } from './types'
 import { placeOf, placeText } from './where'
 import {
-  aboutCount,
-  inYears,
   partOfMonth,
   relativeDay,
   roundKm,
-  timesNormal,
+  timesAverage,
+  theUsual,
   timesUsual,
   whereStates,
 } from './words'
@@ -50,20 +49,20 @@ describe('edition 25 (Wed 28 Oct, 02:30 IST)', () => {
     expect(edition(25).headline).toBe('Cyclone Arnab holds at red alert as fires spread across central India.')
   })
 
-  it('cyclone', () => {
+  it('cyclone: no position, since a later edition moved it (P1)', () => {
     expect(item(25, 'cyclone:GDACS-TC-1001345')).toMatchObject({
       title: 'Cyclone Arnab',
       standfirst: 'Global disaster monitors give it their highest alert, red, with winds of up to 222 km/h.',
     })
   })
 
-  it('fires: one roundup, led by the strongest angle (a spike in Chhattisgarh), the multiple once', () => {
+  it('fires: one roundup, led by the strongest angle (a spike in Chhattisgarh)', () => {
     expect(item(25, 'fire:roundup')).toMatchObject({
       title: 'Fires run above normal in five states, led by a spike in Chhattisgarh',
       standfirst:
         // The fire day is Monday 26 Oct: two days before this 02:30 edition, so not "yesterday".
-        'Chhattisgarh, newly above normal, had 27 fires on Monday, about nine times usual for late October and more than on any day ' +
-        "at this time of year in 2024 or 2025. Madhya Pradesh had the most, with 200, though that's within its range for the season. " +
+        'Chhattisgarh logged 27 fires on Monday across 10 districts, about nine times the late-October average and a two-year high ' +
+        'for the season. Madhya Pradesh had the most fires, 200, about three times the late-October average but normal for the season. ' +
         'Telangana, Maharashtra and Uttar Pradesh are also above normal.',
     })
   })
@@ -71,9 +70,7 @@ describe('edition 25 (Wed 28 Oct, 02:30 IST)', () => {
   it('air', () => {
     expect(item(25, 'air:IN')).toMatchObject({
       title: 'Air is very poor in Panipat and poor in 16 more cities',
-      standfirst:
-        "Panipat, in Haryana, is worst, at 301 on India's air quality index, which the Central Pollution Control Board rates very poor. " +
-        "16 more cities are poor, out of 267 reporting. These are the board's live readings, before its own checks.",
+      standfirst: "Panipat had the worst air in the country, with an index of 301, rated 'very poor'. 16 other cities were rated poor.",
     })
   })
 
@@ -92,20 +89,23 @@ describe('edition 26 (Wed 28 Oct, 14:30 IST): four fire states fall back on an i
 
   it('the cyclone: where global disaster monitors place it, in words', () => {
     expect(item(26, 'cyclone:GDACS-TC-1001345').standfirst).toBe(
-      'Global disaster monitors give it their highest alert, red, with winds of up to 222 km/h, and place it near the Andhra Pradesh coast.',
+      'Global disaster monitors give it their highest alert, red, with winds of up to 222 km/h. They place it near the Andhra Pradesh coast.',
     )
   })
 
-  it('fires: the one state still above normal leads; the others are named; the gap in the data is said', () => {
+  it('fires: the one state still above normal, said plainly; those that fell back are in Since yesterday', () => {
     expect(item(26, 'fire:roundup')).toEqual({
       key: 'fire:roundup',
-      // Within its range: the title gives the plain multiple, so the story gives the usual count.
       title: "Madhya Pradesh's fires run at twice the usual",
       standfirst:
-        "145 fires yesterday across 21 districts, where late October usually sees about 70. That's within its range for the season. " +
-        'Maharashtra, Uttar Pradesh, Telangana and Chhattisgarh have dropped back on these counts. ' +
-        "The counts for yesterday are incomplete: nothing had come in from NASA's fire satellites after 14:37 IST.",
+        'Madhya Pradesh logged 145 fires yesterday across 21 districts, about double the late-October average but normal for the season.',
     })
+  })
+
+  it('air: the worst city, then the rest, one fact a sentence', () => {
+    expect(item(26, 'air:IN').standfirst).toBe(
+      "Panipat had the worst air in the country, with an index of 293, just short of 'very poor'. 22 other cities were rated poor.",
+    )
   })
 
   it('since yesterday: the four states that fell back share one line', () => {
@@ -127,7 +127,7 @@ describe('edition 26 (Wed 28 Oct, 14:30 IST): four fire states fall back on an i
       title: 'Fires ease across central India, with Madhya Pradesh still above normal',
       standfirst:
         'Maharashtra, Uttar Pradesh, Telangana and Chhattisgarh fell back toward normal since yesterday. ' +
-        "Madhya Pradesh is still above normal, with 145 fires yesterday, about twice the usual for late October, though that's within its range for the season.",
+        'Madhya Pradesh logged 145 fires yesterday across 21 districts, about double the late-October average but normal for the season.',
     })
   })
 })
@@ -141,8 +141,8 @@ describe('edition 17 (Sun 25 Oct, 14:30 IST)', () => {
     expect(item(17, 'fire:roundup')).toMatchObject({
       title: 'Fires run above normal in four states, led by a spike in Gujarat',
       standfirst:
-        'Gujarat, newly above normal, had 46 fires yesterday, about eight times usual for late October and more than on any day ' +
-        "at this time of year in 2024 or 2025. Madhya Pradesh had the most, with 185, though that's within its range for the season. " +
+        'Gujarat logged 46 fires yesterday across 14 districts, about eight times the late-October average and a two-year high for the ' +
+        'season. Madhya Pradesh had the most fires, 185, about three times the late-October average but normal for the season. ' +
         'Telangana and Maharashtra are also above normal.',
     })
   })
@@ -158,7 +158,10 @@ describe('edition 17 (Sun 25 Oct, 14:30 IST)', () => {
   })
 
   it('air at Level 1', () => {
-    expect(item(17, 'air:IN').title).toBe('Air is poor in six cities, worst in Khairthal')
+    expect(item(17, 'air:IN')).toMatchObject({
+      title: 'Air is poor in six cities, worst in Khairthal',
+      standfirst: "Khairthal had the worst air in the country, with an index of 260, rated 'poor'. Five other cities were rated poor.",
+    })
   })
 
   it('since yesterday: the M7.0 closed after two days', () => {
@@ -171,7 +174,7 @@ describe('edition 17 (Sun 25 Oct, 14:30 IST)', () => {
 
 describe('edition 19 (Mon 26 Oct, 02:30 IST, a failed run)', () => {
   it('the same roundup, dated Saturday: the figures are last known from No. 17', () => {
-    expect(item(19, 'fire:roundup').standfirst).toMatch(/^Gujarat, newly above normal, had 46 fires on Saturday, /)
+    expect(item(19, 'fire:roundup').standfirst).toMatch(/^Gujarat logged 46 fires on Saturday across 14 districts, /)
     expect(edition(19).headline).toBe('Fires spread to four states, led by a spike in Gujarat.')
   })
 })
@@ -183,12 +186,12 @@ describe('edition 14 (Sat 24 Oct, 14:30 IST)', () => {
     )
   })
 
-  it('the quake: what happened, then the source in words', () => {
+  it('the quake: what happened; the alert as the US Geological Survey\'s own', () => {
     expect(item(14, 'earthquake:USGS-us6000u43g')).toMatchObject({
       title: 'Major earthquake strikes 350 km outside India',
       standfirst:
-        'The magnitude 7.0 quake struck 191 km from Nagqu, China, 18 km below the surface, according to the US Geological Survey. ' +
-        'Its alert for likely impact is orange, the second-highest of four. Eight people reported feeling it.',
+        'The magnitude 7.0 quake struck 191 km from Nagqu, China, 18 km below the surface. ' +
+        "The US Geological Survey's alert for likely impact is orange, the second-highest of four. Eight people reported feeling it.",
     })
   })
 
@@ -196,8 +199,8 @@ describe('edition 14 (Sat 24 Oct, 14:30 IST)', () => {
     expect(item(14, 'air:IN')).toMatchObject({
       title: 'Air is very poor in three cities and poor in 10 more cities',
       standfirst:
-        "Baraut, in Uttar Pradesh, is worst, at 335 on India's air quality index, which the Central Pollution Control Board rates very poor. " +
-        "Meerut and Gajraula are also very poor, and 10 more cities are poor, out of 264 reporting. These are the board's live readings, before its own checks.",
+        "Baraut had the worst air in the country, with an index of 335, rated 'very poor'. Meerut and Gajraula were also rated very poor. " +
+        '10 more cities were rated poor.',
     })
   })
 })
@@ -232,7 +235,7 @@ describe('fire roundup rules', () => {
     expect(roundupTitle(old, oldWindow)).toBe('Fires run above normal in five states, up from four')
   })
 
-  it('a lone fire state gets its own story, with no multiple in the title', () => {
+  it('a lone fire state gets its own story: the plain multiple in the title, the average in the standfirst', () => {
     const only = ed25.snapshots.filter((s) => s.category !== 'fire' || s.item_id === 'fire:telangana')
     const entries = deskEntries(only, new Map())
     const ctx = copyContext(entries, null, ed25.run)
@@ -240,7 +243,7 @@ describe('fire roundup rules', () => {
     expect(fire.key).toBe('fire:telangana')
     expect(itemCopy(fire, ctx)).toEqual({
       title: "Telangana's fires run at six times the usual",
-      standfirst: "39 fires on Monday across 17 districts, where late October usually sees about 6. That's within its range for the season.",
+      standfirst: 'Telangana logged 39 fires on Monday across 17 districts, about six times the late-October average but normal for the season.',
     })
   })
 
@@ -253,16 +256,23 @@ describe('fire roundup rules', () => {
     expect(itemCopy(entries[3], ctx).title).toBe('Fires also run above normal in four more states, led by a spike in Chhattisgarh')
   })
 
-  it('intensity words match the verdict: no "well/far above normal" or × in titles; the multiple at most once per story', () => {
-    const multiple = /times usual|times the usual|twice the usual/g
+  it('intensity words match the verdict: no "well/far above normal" or × in titles; at most one multiple in a title', () => {
     for (const n of [14, 17, 19, 25, 26]) {
       const { headline, items, since } = edition(n)
       for (const t of [headline, ...items.map((i) => i.title), ...since.map((l) => l.text)]) {
         expect(t, `No. ${n}: ${t}`).not.toMatch(/times normal|twice normal|×|well above normal/)
+        expect((t.match(/times the usual|twice the usual/g) ?? []).length, `No. ${n}: ${t}`).toBeLessThanOrEqual(1)
       }
-      for (const i of items) {
-        const story = `${i.title} ${i.standfirst ?? ''}`
-        expect((story.match(multiple) ?? []).length, `No. ${n}: ${story}`).toBeLessThanOrEqual(1)
+    }
+  })
+
+  it('states facts with confidence: caveats are in the source line or Notes, not the story', () => {
+    for (const n of [14, 17, 19, 25, 26]) {
+      const { headline, items } = edition(n)
+      for (const t of [headline, ...items.flatMap((i) => [i.title, i.standfirst ?? ''])]) {
+        expect(t, `No. ${n}: ${t}`).not.toMatch(
+          /on these counts|before its own checks|estimate|incomplete|according to|not yet confirmed|held at|would be|last known|dropped back/i,
+        )
       }
     }
   })
@@ -279,16 +289,20 @@ describe('fire roundup rules', () => {
 
 describe('words', () => {
   it('translates multiples and rounds', () => {
-    expect([9.07, 6.11, 2.91, 2.1, 1.5].map(timesNormal)).toEqual([
-      'nine times normal',
-      'six times normal',
-      'three times normal',
-      'twice normal',
-      'one and a half times normal',
+    expect([9.07, 6.11, 2.91, 2.1, 1.5, 23].map(theUsual)).toEqual([
+      'nine times the usual',
+      'six times the usual',
+      'three times the usual',
+      'twice the usual',
+      'one and a half times the usual',
+      '25 times the usual',
     ])
     expect(timesUsual(2.91)).toBe('about three times usual')
-    expect(timesNormal(23)).toBe('25 times normal')
-    expect([2.98, 68.7, 42.0, 137, 0.2].map(aboutCount)).toEqual(['about 3', 'about 70', 'about 40', 'about 140', 'almost none'])
+    expect([2.109, 9.07, 1.5].map((r) => timesAverage(r, 'late October'))).toEqual([
+      'about double the late-October average',
+      'about nine times the late-October average',
+      'about one and a half times the late-October average',
+    ])
     expect([47.8, 347.9, 1234].map(roundKm)).toEqual([50, 350, 1250])
   })
 
@@ -303,7 +317,6 @@ describe('words', () => {
       'mid-October',
       'early November',
     ])
-    expect(inYears('2024-2025')).toBe('in 2024 or 2025')
   })
 
   it('says where fire states are', () => {

@@ -4,12 +4,6 @@ import { SCALE } from './scale'
 import { splitReason, type ReasonNote } from './levels'
 import type { Movement } from './changes'
 import type { AirBand, AirCity, Category, CategoryStatus, Change, Figures, Level, Snapshot } from './types'
-import { numberWord } from './words'
-
-export interface DeskLabel {
-  kind: 'unvalidated' | 'approximate' | 'cap'
-  text: string
-}
 
 export interface DeskEntry {
   key: string
@@ -21,11 +15,15 @@ export interface DeskEntry {
   title: string
   /** The rule that set the level, without the notes the pipeline appends. */
   reason: string
-  labels: DeskLabel[]
   lastKnown: boolean
   /** Why the item is last-known, from the reason's note. */
   lastKnownWhy: string | null
-  /** Other notes worth printing (e.g. Severe cities not yet confirmed). */
+  /**
+   * When a last-known item's figures date from: a fire day key, the air
+   * readings' time, or a carried snapshot's time; null if unknown.
+   */
+  asOf: string | null
+  /** The pipeline's other notes, printed with the evidence (held levels and unconfirmed Severe cities go to the page's Notes). */
   notes: ReasonNote[]
   /**
    * The change since yesterday (when the desk has it), else the change in
@@ -105,19 +103,21 @@ export function snapshotStrength(s: Snapshot): number {
   return (typeof f.ratio_to_norm === 'number' && f.ratio_to_norm) || (typeof f.magnitude === 'number' && f.magnitude) || 0
 }
 
-function labels(s: Snapshot): { labels: DeskLabel[]; wouldBe: Level | null } {
+/** A fire item held below its satellite level by the calibration cap: the level it would have. */
+function heldAt(s: Snapshot): Level | null {
   const f = s.figures ?? {}
-  const out: DeskLabel[] = []
-  let wouldBe: Level | null = null
-  if (s.category === 'air') {
-    if (f.source === 'datagov' || f.unvalidated) out.push({ kind: 'unvalidated', text: 'Provisional' })
-    else if (f.approximate) out.push({ kind: 'approximate', text: 'Estimate' })
-  }
-  if (s.category === 'fire' && f.capped && typeof f.firms_level === 'number' && f.firms_level > s.severity_level) {
-    wouldBe = f.firms_level as Level
-    out.push({ kind: 'cap', text: `Held at Level ${s.severity_level} · would be ${wouldBe}` })
-  }
-  return { labels: out, wouldBe }
+  return s.category === 'fire' && f.capped && typeof f.firms_level === 'number' && f.firms_level > s.severity_level
+    ? (f.firms_level as Level)
+    : null
+}
+
+/** When a snapshot's figures date from, for the "As of" kicker. */
+function asOf(s: Snapshot): string | null {
+  if (s.carried_from != null) return s.taken_at
+  const f = s.figures ?? {}
+  if (s.category === 'fire' && typeof f.day === 'string') return f.day
+  if (s.category === 'air' && typeof f.data_as_of === 'string') return f.data_as_of
+  return null
 }
 
 const MOVE_CHANGE: Record<Movement['kind'], Change> = {
@@ -136,22 +136,22 @@ export function snapshotEntry(s: Snapshot, moves?: Map<string, Movement>): DeskE
 function toEntry(s: Snapshot, moves?: Map<string, Movement>): DeskEntry {
   const { base, notes } = splitReason(s.severity_reason)
   const lastKnownNote = notes.find((n) => n.kind === 'last_known')
-  const { labels: ls, wouldBe } = labels(s)
   const carried = s.carried_from ?? null
   const move = moves?.get(s.item_id)
-  const why = carried !== null ? `this report's ${s.category} check failed; figures from No. ${carried}` : (lastKnownNote?.text ?? null)
+  const why = carried !== null ? `the ${s.category} check failed; figures from No. ${carried}` : (lastKnownNote?.text ?? null)
+  const stale = s.last_known || carried !== null
   return {
     key: s.item_id,
     itemIds: [s.item_id],
     category: s.category,
     level: s.severity_level,
-    wouldBe,
+    wouldBe: heldAt(s),
     title: editionTitle(s),
     reason: base,
-    labels: ls,
-    lastKnown: s.last_known || carried !== null,
-    lastKnownWhy: s.last_known || carried !== null ? why : null,
-    notes: notes.filter((n) => n.kind === 'severe_unconfirmed' || n.kind === 'other'),
+    lastKnown: stale,
+    lastKnownWhy: stale ? why : null,
+    asOf: stale ? asOf(s) : null,
+    notes: notes.filter((n) => n.kind === 'other'),
     change: moves ? (move ? MOVE_CHANGE[move.kind] : null) : carried !== null ? null : s.change,
     from: move?.from ?? null,
     newMembers: 0,
@@ -192,7 +192,7 @@ function quakeGroup(quakes: DeskEntry[]): DeskEntry {
   const ranked = [...quakes].sort(compareEntries)
   const largest = ranked[0]
   const place = largest.title.includes(', ') ? largest.title.slice(largest.title.indexOf(', ') + 2) : null
-  const why = ranked.find((q) => q.lastKnownWhy)?.lastKnownWhy ?? null
+  const stale = ranked.find((q) => q.lastKnown)
   return {
     key: 'earthquake:level-1',
     itemIds: ranked.map((q) => q.key),
@@ -202,9 +202,9 @@ function quakeGroup(quakes: DeskEntry[]): DeskEntry {
     title:
       `${ranked.length} small earthquakes, the largest M${largest.strength.toFixed(1)}` + (place ? `, ${place}` : ''),
     reason: `None reached magnitude ${SCALE.quake.level2MinMagnitude} (USGS)`,
-    labels: [],
-    lastKnown: ranked.some((q) => q.lastKnown),
-    lastKnownWhy: why,
+    lastKnown: stale !== undefined,
+    lastKnownWhy: stale?.lastKnownWhy ?? null,
+    asOf: stale?.asOf ?? null,
     notes: [],
     change: null,
     from: null,
@@ -230,11 +230,6 @@ function fireRoundup(states: DeskEntry[], ownStories: number): DeskEntry {
   const top = ranked[0]
   const capped = ranked.filter((x) => x.wouldBe !== null)
   const wouldBe = capped.length > 0 ? (Math.max(...capped.map((x) => x.wouldBe!)) as Level) : null
-  const labels: DeskLabel[] = []
-  if (wouldBe !== null) {
-    const who = capped.length === 1 ? 'one state' : `${numberWord(capped.length)} states`
-    labels.push({ kind: 'cap', text: `Held at Level ${top.level} · ${who} would be ${wouldBe}` })
-  }
   const stale = ranked.find((x) => x.lastKnown)
   return {
     key: FIRE_ROUNDUP_KEY,
@@ -244,9 +239,9 @@ function fireRoundup(states: DeskEntry[], ownStories: number): DeskEntry {
     wouldBe: wouldBe !== null && wouldBe > top.level ? wouldBe : null,
     title: `Fire activity above normal in ${ranked.length} states` + (ownStories > 0 ? ' (more elsewhere)' : ''),
     reason: `${top.figures.state ?? top.title}: ${top.reason}`,
-    labels,
     lastKnown: stale !== undefined,
     lastKnownWhy: stale?.lastKnownWhy ?? null,
+    asOf: stale?.asOf ?? null,
     notes: [],
     change: null,
     from: null,

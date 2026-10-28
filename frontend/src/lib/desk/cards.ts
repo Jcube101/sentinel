@@ -6,7 +6,7 @@
 import { counted, AIR_BANDS, type DeskEntry } from './entries'
 import { ratioText } from './headline'
 import { SCALE } from './scale'
-import type { AirCity, Figures, Snapshot } from './types'
+import type { AirCity, Figures, Level, Snapshot } from './types'
 
 export interface Cell {
   value: string
@@ -26,8 +26,8 @@ export interface FireRow {
   usual: string
   /** "busiest in 2 years", "matches busiest", "within range" */
   vsPast: string
-  level: number
-  wouldBe: number | null
+  level: Level
+  wouldBe: Level | null
   lastKnown: boolean
 }
 

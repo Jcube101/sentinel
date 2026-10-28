@@ -30,14 +30,6 @@ function roundMultiple(r: number): number {
   return r < 20 ? Math.round(r) : Math.round(r / 5) * 5
 }
 
-/** A multiple for titles: "nine times normal", "twice normal", "normal". */
-export function timesNormal(r: number): string {
-  if (r < 1.25) return 'normal'
-  if (r < 1.75) return 'one and a half times normal'
-  if (r < 2.5) return 'twice normal'
-  return `${numberWord(roundMultiple(r))} times normal`
-}
-
 /** A plain multiple for titles: "twice the usual", "six times the usual". */
 export function theUsual(r: number): string {
   if (r < 1.25) return 'the usual'
@@ -54,12 +46,16 @@ export function timesUsual(r: number): string {
   return `about ${numberWord(roundMultiple(r))} times usual`
 }
 
-/** A typical count, rounded: "about 3", "about 70", "about 140", "almost none". */
-export function aboutCount(n: number): string {
-  if (n < 0.5) return 'almost none'
-  if (n < 10) return `about ${Math.round(n)}`
-  if (n < 100) return `about ${Math.round(n / 5) * 5}`
-  return `about ${Math.round(n / 10) * 10}`
+/**
+ * A multiple against the average for the time of year, for standfirsts:
+ * "about double the late-October average", "about nine times the mid-October average".
+ */
+export function timesAverage(r: number, period: string): string {
+  const avg = `the ${period.replace(' ', '-')} average`
+  if (r < 1.25) return `about ${avg}`
+  if (r < 1.75) return `about one and a half times ${avg}`
+  if (r < 2.5) return `about double ${avg}`
+  return `about ${numberWord(roundMultiple(r))} times ${avg}`
 }
 
 /** A distance, rounded: 48 → 50, 348 → 350, 1,234 → 1,250. */
@@ -95,14 +91,6 @@ export function partOfMonth(day: string): string {
   const date = d.getUTCDate()
   const month = LONG_MONTH.format(d)
   return date <= 10 ? `early ${month}` : date <= 20 ? `mid-${month}` : `late ${month}`
-}
-
-/** The baseline years after "any day at this time of year": "in 2024 or 2025", "between 2019 and 2025". */
-export function inYears(years: string): string {
-  const [a, b] = years.split(/[-–]/).map((y) => y.trim())
-  if (!b || a === b) return `in ${a}`
-  if (Number(b) - Number(a) === 1) return `in ${a} or ${b}`
-  return `between ${a} and ${b}`
 }
 
 /** USGS magnitude classes. */
@@ -153,7 +141,7 @@ export function lastKnownWords(why: string | null): string {
   const fetch = /^(\w+) fetch failed this run$/.exec(why)
   if (fetch) return `${SOURCE_WORDS[fetch[1]] ?? fetch[1]} didn't answer this time`
   const stage = /^(\w+) assessment failed this run$/.exec(why)
-  if (stage) return `this report's ${stage[1]} check failed`
+  if (stage) return `the ${stage[1]} check failed this time`
   return why
 }
 

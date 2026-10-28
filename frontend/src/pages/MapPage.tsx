@@ -12,6 +12,9 @@ import type { Category, Level } from '@/lib/desk/types'
 import PaperShell from '@/components/paper/PaperShell'
 import PaperMap from '@/components/paper/PaperMap'
 import LevelSquares from '@/components/paper/LevelSquares'
+import { SourceLine } from '@/components/paper/DeskEntryRow'
+import { badgeHtml, symbolSvg } from '@/components/paper/mapSymbols'
+import { sourceCredit } from '@/lib/desk/notes'
 
 const LAYERS: Category[] = ['cyclone', 'flood', 'earthquake', 'fire']
 const LAYER_NAMES: Record<Category, string> = { cyclone: 'Cyclones', flood: 'Floods', earthquake: 'Earthquakes', fire: 'Fire activity', air: 'Air' }
@@ -30,6 +33,22 @@ function Toggle({ on, onClick, children }: { on: boolean; onClick: () => void; c
 }
 
 const DAY = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' })
+
+/** A layer's symbol in the key, drawn by the same code as the map's markers. */
+function KeySymbol({ category, level = 2 }: { category: Category; level?: Level }) {
+  if (category === 'fire') {
+    return (
+      <span className="inline-flex items-center justify-center gap-[3px] w-[22px] h-[20px]" aria-hidden="true">
+        {[0, 1, 2].map((i) => (
+          <span key={i} className={`w-[4px] h-[4px] rounded-full ${level >= 3 ? 'bg-accent' : 'bg-ink'} opacity-60`} />
+        ))}
+      </span>
+    )
+  }
+  return <span className="inline-block w-[22px]" aria-hidden="true" dangerouslySetInnerHTML={{ __html: symbolSvg({ category, size: 20, level }) }} />
+}
+
+const keyRow = 'flex items-center gap-2.5 font-mono text-[11px] leading-[1.45] text-ink-muted'
 
 /** The map: the edition's items and the day's fires, with the list beside it. */
 export default function MapPage() {
@@ -142,6 +161,7 @@ export default function MapPage() {
                     {isSel && (
                       <div className="px-1 pb-3 pl-12 flex flex-col gap-2">
                         {copy.standfirst && <p className="m-0 text-[14px] leading-[1.5]">{copy.standfirst}</p>}
+                        <SourceLine text={sourceCredit(row)} />
                         <Link
                           to={row.members.length > 0 ? itemPath(selected!) + query : itemPath(row.key) + query}
                           className="self-start font-mono text-[11px] uppercase tracking-[0.06em] border-b border-ink hover:text-accent"
@@ -154,9 +174,7 @@ export default function MapPage() {
                 )
               })}
             </ul>
-            <p className="m-0 pt-2 font-mono text-[11px] text-ink-muted">
-              Air has no place on the map yet: its figures carry no city positions. Fire states sit at the centre of their fires.
-            </p>
+            <p className="m-0 pt-2 font-mono text-[11px] text-ink-muted">Air has no place on the map yet: its figures carry no city positions.</p>
           </section>
 
           <section aria-label="Layers">
@@ -166,6 +184,7 @@ export default function MapPage() {
                 <li key={c} className="flex justify-between items-center py-2 border-b border-rule">
                   <label className="flex items-center gap-2 text-[15px] cursor-pointer">
                     <input type="checkbox" checked={layers.has(c)} onChange={() => toggleLayer(c)} className="accent-[#17171B]" />
+                    <KeySymbol category={c} />
                     {LAYER_NAMES[c]}
                   </label>
                   <span className="font-mono text-[11px] text-ink-muted">
@@ -181,6 +200,31 @@ export default function MapPage() {
             {fireDay && firesKept && fireCount === 0 && (
               <p className="m-0 pt-2 font-mono text-[11px] text-ink-muted">Fire points are kept for 14 days; none are left for this day.</p>
             )}
+            <ul aria-label="Map key" className="m-0 p-0 pt-3 list-none flex flex-col gap-2">
+              <li className={keyRow}>
+                <span className="flex items-end gap-0.5 flex-none w-[46px]">
+                  <span className="inline-block" dangerouslySetInnerHTML={{ __html: symbolSvg({ category: 'cyclone', size: 14, level: 2 }) }} />
+                  <span className="inline-block" dangerouslySetInnerHTML={{ __html: symbolSvg({ category: 'cyclone', size: 24, level: 2 }) }} />
+                </span>
+                Spirals grow with a cyclone's wind speed, rings with an earthquake's magnitude.
+              </li>
+              <li className={keyRow}>
+                <span className="flex gap-1 flex-none w-[46px]">
+                  <KeySymbol category="earthquake" level={3} />
+                </span>
+                Red: Level 3 or 4. A slow pulse: Level 4.
+              </li>
+              <li className={keyRow}>
+                <span className="relative flex-none w-[46px] h-[16px]" dangerouslySetInnerHTML={{ __html: badgeHtml(2, 2, 'left:3px;top:0;') }} />
+                The number matches the list. A fire state's number sits at the centre of its fires.
+              </li>
+              <li className={keyRow}>
+                <span className="flex-none w-[46px]">
+                  <KeySymbol category="fire" />
+                </span>
+                Each dot is a fire seen by NASA's satellites; red in a state at Level 3 or 4.
+              </li>
+            </ul>
           </section>
         </aside>
 

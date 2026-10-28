@@ -94,7 +94,7 @@ describe('deskEntries with the day’s changes', () => {
     const s = { ...editions[25].snapshots.find((x) => x.item_id === 'fire:telangana')!, carried_from: 24 }
     const [e] = deskEntries([s], new Map())
     expect(e.lastKnown).toBe(true)
-    expect(e.lastKnownWhy).toBe("this report's fire check failed; figures from No. 24")
+    expect(e.lastKnownWhy).toBe("the fire check failed; figures from No. 24")
     expect(e.carriedFrom).toBe(24)
   })
 })

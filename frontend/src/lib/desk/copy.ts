@@ -10,19 +10,17 @@ import { counted, snapshotEntry, type DeskEntry } from './entries'
 import type { MoveKind, Movement, SinceYesterday } from './changes'
 import { LEVEL_NAMES } from './levels'
 import { SCALE } from './scale'
-import type { AirBand, Category, CategoryStatus, Edition, Level, TimedSnapshot, WatchRow } from './types'
+import type { AirBand, AirCity, Category, CategoryStatus, Edition, Level, TimedSnapshot, WatchRow } from './types'
 import { CATEGORY_ORDER } from './entries'
 import { SOURCE_NAMES } from './sources'
-import { istDay, istTime } from './ist'
+import { istDay } from './ist'
 import { placeOf, placeText } from './where'
+import { asOfKicker, fireDayCutOff } from './notes'
 import {
   SOURCE_WORDS,
-  aboutCount,
   alertRank,
   alertRankWord,
   cap,
-  inYears,
-  lastKnownWords,
   listText,
   numberWord,
   partOfMonth,
@@ -31,7 +29,7 @@ import {
   relativeDay,
   roundKm,
   theUsual,
-  timesUsual,
+  timesAverage,
   whereStates,
 } from './words'
 
@@ -100,8 +98,16 @@ interface StateFacts {
   counted: boolean
   /** The day against the baseline's busiest day at this time of year. */
   record: 'above' | 'equal' | 'within' | null
-  /** "in 2024 or 2025" */
-  years: string
+  /** How many years the baseline covers: 2 for 2024–2025. */
+  span: number
+}
+
+/** How many years the fire baseline covers: 2 for "2024-2025". */
+function baselineYears(e: DeskEntry): number {
+  const [a, b] = String(e.figures.norm_years ?? SCALE.fire.baselineYears)
+    .split(/[-–]/)
+    .map(Number)
+  return b ? b - a + 1 : 1
 }
 
 function stateFacts(e: DeskEntry, ctx: CopyContext): StateFacts {
@@ -118,43 +124,37 @@ function stateFacts(e: DeskEntry, ctx: CopyContext): StateFacts {
     r,
     counted: r !== null && n >= SCALE.fire.minFireEvents,
     record: max === null ? null : n > max ? 'above' : n === max ? 'equal' : 'within',
-    years: inYears(typeof f.norm_years === 'string' ? f.norm_years : SCALE.fire.baselineYears),
+    span: baselineYears(e),
   }
 }
 
-/** "more than on any day at this time of year in 2024 or 2025", or null. */
-function recordClause(f: StateFacts): string | null {
-  if (f.record === 'above') return `more than on any day at this time of year ${f.years}`
-  if (f.record === 'equal') return `level with the busiest day at this time of year ${f.years}`
-  return null
+/**
+ * The verdict against past years, closing a state sentence: " but normal for
+ * the season", " and a two-year high for the season".
+ */
+function verdictClause(f: StateFacts): string {
+  if (f.record === 'above') return ` and a ${numberWord(f.span)}-year high for the season`
+  if (f.record === 'equal') return ` and level with its busiest day for the season in ${numberWord(f.span)} years`
+  if (f.record === 'within') return ' but normal for the season'
+  return ''
 }
 
-function baselineYears(e: DeskEntry): number {
-  const [a, b] = String(e.figures.norm_years ?? SCALE.fire.baselineYears)
-    .split(/[-–]/)
-    .map(Number)
-  return b ? b - a + 1 : 1
+/**
+ * A state's fires in one sentence, said plainly (style guide): "Madhya
+ * Pradesh logged 145 fires yesterday across 21 districts, about double the
+ * late-October average but normal for the season."
+ */
+function stateSentence(f: StateFacts, verdict = true): string {
+  if (f.n === 0) return `NASA's fire satellites saw no fires in ${f.state} ${f.day}.`
+  const across = f.districts > 0 ? ` across ${counted_(f.districts, 'district', 'districts')}` : ''
+  const vs = f.counted && f.r !== null ? `, ${timesAverage(f.r, f.period)}${verdict ? verdictClause(f) : ''}` : ''
+  return `${f.state} logged ${plural(f.n, 'fire', 'fires')} ${f.day}${across}${vs}.`
 }
 
-// FIRMS's night pass over India ends around 21:00 UTC. A day whose data stops
-// before this hour lacks it, so its counts are incomplete (No. 26: 27 Oct ran
-// only to 09:07 UTC).
-const NIGHT_PASS_UTC = 'T18:00:00Z'
-
-/** The IST time a fire day's data stops at, when the night pass is missing; null when complete or unknown. */
-export function fireDayCutOff(e: DeskEntry): string | null {
-  const f = e.figures
-  const to = typeof f.data_to === 'string' ? f.data_to : null
-  if (!f.day || !to) return null
-  return Date.parse(to) < Date.parse(`${f.day}${NIGHT_PASS_UTC}`) ? istTime(to) : null
-}
-
-/** "The counts for yesterday are incomplete: …", or null. */
-function cutOffSentence(e: DeskEntry, ctx: CopyContext): string | null {
-  const at = fireDayCutOff(e)
-  if (!at || !e.figures.day) return null
-  const day = relativeDay(e.figures.day, ctx.editionAt).replace(/^on /, '')
-  return `The counts for ${day} are incomplete: nothing had come in from NASA's fire satellites after ${at} IST.`
+/** The roundup's biggest count, when another state leads: "Madhya Pradesh had the most fires, 200, …". */
+function mostSentence(f: StateFacts): string {
+  const vs = f.counted && f.r !== null ? `, ${timesAverage(f.r, f.period)}${verdictClause(f)}` : ''
+  return `${f.state} had the most fires, ${f.n}${vs}.`
 }
 
 /** Fire states that fell a level since yesterday, and how many rose. */
@@ -187,7 +187,7 @@ function fireEasing(ctx: CopyContext): string[] | null {
 function stateTitle(e: DeskEntry, ctx: CopyContext): string {
   const f = stateFacts(e, ctx)
   const S = possessive(f.state)
-  if (f.record === 'above' && f.counted) return `${S} fires spike to a ${numberWord(baselineYears(e))}-year high for the season`
+  if (f.record === 'above' && f.counted) return `${S} fires spike to a ${numberWord(f.span)}-year high for the season`
   if (f.record === 'equal' && f.counted) return `${S} fires match their busiest day for the season`
   const usual = f.counted && f.r !== null ? theUsual(f.r) : null
   switch (e.change) {
@@ -204,55 +204,34 @@ function stateTitle(e: DeskEntry, ctx: CopyContext): string {
   return usual ? `${S} fires run at ${usual}` : `${S} fires run above normal`
 }
 
-/** The title already gives the multiple: within the range, not a record (see stateTitle). */
-function titleHasMultiple(f: StateFacts, level: number, change: string | null): boolean {
-  if (!f.counted || f.r === null || f.record === 'above' || f.record === 'equal') return false
-  return level >= 2 || (change !== null && change !== 'deescalated')
-}
-
-/** A state's own story: the title, then the count with the multiple, once. */
+/** A state's own story: the news in the title, the count and how it compares in the standfirst. */
 function fireStateCopy(e: DeskEntry, ctx: CopyContext): ItemCopy {
   const ff = e.figures
   const f = stateFacts(e, ctx)
   const near = (Array.isArray(ff.large_fires_near_people) ? ff.large_fires_near_people[0] : undefined) as NearFire | undefined
   const wildfire = (Array.isArray(ff.gdacs_wildfire) ? ff.gdacs_wildfire[0] : undefined) as WildfireAlert | undefined
-  const inTitle = titleHasMultiple(f, e.level, e.change)
-  const norm = typeof ff.norm_daily_events === 'number' ? ff.norm_daily_events : null
-  const count =
-    f.counted && f.r !== null
-      ? `${plural(f.n, 'fire', 'fires')} ${f.day} across ${counted_(f.districts, 'district', 'districts')}` +
-        (inTitle && norm !== null ? `, where ${f.period} usually sees ${aboutCount(norm)}.` : `, ${timesUsual(f.r)} for ${f.period}.`)
-      : null
-  const rc = recordClause(f)
-  const context = rc ? ` That's ${rc}.` : f.record === 'within' ? " That's within its range for the season." : ''
 
   if (near?.place) {
     const where = near.district ? ` in ${near.district} district` : ''
     return {
       title: `A large fire burns ${Math.max(1, Math.round(near.km ?? 0))} km from ${near.place}`,
       standfirst:
-        `NASA's fire satellites picked up a large fire${where}, close to a town of ${SCALE.fire.level4MinPopulation.toLocaleString('en-IN')} people or more.` +
-        (count ? ` ${f.state} had ${count}` : ''),
+        `NASA's fire satellites picked up a large fire${where}, close to a town of ${SCALE.fire.level4MinPopulation.toLocaleString('en-IN')} people or more. ` +
+        stateSentence(f),
     }
   }
   if (wildfire && (!f.counted || (ff.gdacs_level ?? 0) > (ff.ratio_level ?? 0))) {
     const colour = (wildfire.alert_level ?? '').toLowerCase()
     return {
       title: `Global monitors put a forest fire in ${f.state} on alert`,
-      standfirst:
-        `Global disaster monitors have a ${colour ? `${colour} ` : ''}forest-fire alert in ${f.state}.` +
-        (count ? ` NASA's fire satellites counted ${count}` : ''),
+      standfirst: `Global disaster monitors have a ${colour ? `${colour} ` : ''}forest-fire alert in ${f.state}. ${stateSentence(f)}`,
     }
   }
-  if (f.n === 0) return { title: `Satellites see no fires in ${f.state}`, standfirst: `NASA's fire satellites saw none ${f.day}.` }
-  if (!f.counted) {
-    return {
-      title: `${f.state} is down to ${plural(f.n, 'fire', 'fires')}`,
-      standfirst: `${plural(f.n, 'fire', 'fires')} ${f.day}, too few to compare with past years: levels count from ${SCALE.fire.minFireEvents} fires a day.`,
-    }
-  }
-  const cut = cutOffSentence(e, ctx)
-  return { title: stateTitle(e, ctx), standfirst: count ? cap(count) + context + (cut ? ` ${cut}` : '') : cut }
+  if (f.n === 0) return { title: `Satellites see no fires in ${f.state}`, standfirst: stateSentence(f) }
+  if (!f.counted) return { title: `${f.state} is down to ${plural(f.n, 'fire', 'fires')}`, standfirst: stateSentence(f) }
+  // A record title already gives the verdict; the standfirst doesn't repeat it.
+  const recordTitle = f.record === 'above' || f.record === 'equal'
+  return { title: stateTitle(e, ctx), standfirst: stateSentence(f, !recordTitle) }
 }
 
 type AngleKind = 'record' | 'new' | 'spreading' | 'largest' | 'multiple'
@@ -318,53 +297,34 @@ function angleSuffix(a: Angle): string {
   }
 }
 
-/** The fire roundup: one story for the fire states, led by the strongest angle. */
+/**
+ * The fire roundup: one story for the fire states, led by the strongest
+ * angle. Only the states still above normal are in it; those that fell back
+ * are in Since yesterday, unless easing is the story.
+ */
 function roundupCopy(e: DeskEntry, ctx: CopyContext): ItemCopy {
   const above = e.members.filter((x) => x.level >= 2)
-  const below = e.members.filter((x) => x.level < 2)
-  const cut = cutOffSentence(e.members[0], ctx)
-  const backNames = below.map(stateName)
-  const have = backNames.length === 1 ? 'has' : 'have'
-  const back =
-    backNames.length === 0
-      ? null
-      : cut
-        ? `${listText(backNames)} ${have} dropped back on these counts`
-        : `${listText(backNames)} ${have} fallen back toward normal`
   const eased = fireEasing(ctx)
 
   if (eased) {
     // Lead with easing (style guide, Fire roundup): the states that fell back, then those still above.
     const aboveNames = above.map(stateName)
-    const where = whereStates(eased).inText
-    const title = `Fires ease ${where}` + (aboveNames.length > 0 ? `, with ${listText(aboveNames)} still above normal` : '')
+    const title = `Fires ease ${whereStates(eased).inText}` + (aboveNames.length > 0 ? `, with ${listText(aboveNames)} still above normal` : '')
     const sentences = [`${listText(eased)} fell back toward normal since yesterday.`]
-    if (above.length > 0) {
-      const sf = stateFacts(above[0], ctx)
-      const rc = recordClause(sf)
-      sentences.push(
-        `${sf.state} is still above normal, with ${plural(sf.n, 'fire', 'fires')} ${sf.day}` +
-          (sf.r !== null ? `, ${timesUsual(sf.r)} for ${sf.period}` : '') +
-          (rc ? `, and ${rc}` : sf.record === 'within' ? ", though that's within its range for the season" : '') +
-          '.',
-      )
-      const others = above.slice(1).map(stateName)
-      if (others.length > 0) sentences.push(`${listText(others)} ${others.length === 1 ? 'is' : 'are'} also still above normal.`)
-    }
+    if (above.length > 0) sentences.push(stateSentence(stateFacts(above[0], ctx)))
+    const others = above.slice(1).map(stateName)
+    if (others.length > 0) sentences.push(`${listText(others)} ${others.length === 1 ? 'is' : 'are'} also still above normal.`)
     return { title, standfirst: sentences.join(' ') }
   }
 
   if (above.length === 0) {
+    const names = e.members.map(stateName)
     return {
-      title: `Fires fall back toward normal in ${counted_(e.members.length, 'state', 'states')}`,
-      standfirst: [`${cap(back!)}.`, cut].filter(Boolean).join(' '),
+      title: `Fires fall back toward normal in ${counted_(names.length, 'state', 'states')}`,
+      standfirst: `${listText(names)} ${names.length === 1 ? 'has' : 'have'} fallen back toward normal.`,
     }
   }
-  if (above.length === 1) {
-    const one = fireStateCopy(above[0], ctx)
-    const body = (one.standfirst ?? '').replace(` ${cut ?? ''}`, '')
-    return { title: one.title, standfirst: [body, back ? `${cap(back)}.` : null, cut].filter(Boolean).join(' ') }
-  }
+  if (above.length === 1) return fireStateCopy(above[0], ctx)
 
   const also = ctx.ownFires.some((x) => x.level >= 2)
   const angle = fireAngle(above, ctx, !also)
@@ -375,32 +335,12 @@ function roundupCopy(e: DeskEntry, ctx: CopyContext): ItemCopy {
 
   // The standout: the state the angle names, else the furthest above normal.
   const standout = angle.kind === 'record' || angle.kind === 'new' ? angle.states[0] : above[0]
-  const sf = stateFacts(standout, ctx)
-  const who = isNewChange(standout) ? `${sf.state}, newly above normal,` : sf.state
-  const rc = recordClause(sf)
-  const sentences = [
-    sf.r !== null
-      ? `${who} had ${plural(sf.n, 'fire', 'fires')} ${sf.day}, ${timesUsual(sf.r)} for ${sf.period}${rc ? ` and ${rc}` : ''}.`
-      : `${who} had ${plural(sf.n, 'fire', 'fires')} ${sf.day}.`,
-  ]
+  const sentences = [stateSentence(stateFacts(standout, ctx))]
   const byCount = [...above].sort((a, b) => stateFacts(b, ctx).n - stateFacts(a, ctx).n)
   const biggest = byCount[0] !== standout && stateFacts(byCount[0], ctx).n > stateFacts(byCount[1], ctx).n ? byCount[0] : null
-  if (biggest) {
-    const bf = stateFacts(biggest, ctx)
-    const brc = recordClause(bf)
-    sentences.push(
-      `${bf.state} had the most, with ${bf.n}` +
-        (brc ? `, also ${brc}` : bf.record === 'within' ? ", though that's within its range for the season" : '') +
-        '.',
-    )
-  }
+  if (biggest) sentences.push(mostSentence(stateFacts(biggest, ctx)))
   const others = above.filter((x) => x !== standout && x !== biggest).map(stateName)
-  const tail = [
-    others.length > 0 ? `${listText(others)} ${others.length === 1 ? 'is' : 'are'} also above normal` : null,
-    back,
-  ].filter(Boolean) as string[]
-  if (tail.length > 0) sentences.push(`${cap(tail.join('; '))}.`)
-  if (cut) sentences.push(cut)
+  if (others.length > 0) sentences.push(`${listText(others)} ${others.length === 1 ? 'is' : 'are'} also above normal.`)
   return { title, standfirst: sentences.join(' ') }
 }
 
@@ -423,6 +363,26 @@ function fireMoveText(m: Movement, e: DeskEntry): string {
 
 // --- air -----------------------------------------------------------------------------
 
+type AirMetric = 'aqi' | 'pm25' | 'pm10'
+
+const NEXT_BAND: Partial<Record<AirBand, { band: AirBand; above: (m: AirMetric) => number }>> = {
+  poor: { band: 'very_poor', above: (m) => SCALE.air[m].veryPoorAbove },
+  very_poor: { band: 'severe', above: (m) => SCALE.air[m].severeAbove },
+}
+
+/**
+ * The worst city's reading against the bands: "rated 'very poor'", "just
+ * short of 'very poor'" (within 5% of it), or, for a Severe reading not yet
+ * confirmed, "past the 'severe' line in the latest report".
+ */
+function bandPhrase(v: number, city: AirCity, metric: AirMetric): string {
+  const band = counted(city)
+  const next = NEXT_BAND[band]
+  if (next && v > next.above(metric)) return `past the '${BAND_WORDS[next.band]}' line in the latest report`
+  if (next && v >= next.above(metric) * 0.95) return `just short of '${BAND_WORDS[next.band]}'`
+  return `rated '${BAND_WORDS[band]}'`
+}
+
 function airCopy(e: DeskEntry): ItemCopy {
   const f = e.figures
   const worst = worstCities(f)
@@ -443,45 +403,30 @@ function airCopy(e: DeskEntry): ItemCopy {
     title = `Air is severe in ${where}` + (rest > 0 ? ` and poor or worse in ${counted_(rest, 'more city', 'more cities')}` : '')
   }
 
+  // One fact per sentence: the worst city, then the rest by band (style guide, Air).
   const w = worst[0]
-  const at = w.state ? `${w.city}, in ${w.state},` : w.city
   const sentences: string[] = []
   if (typeof w.aqi === 'number') {
-    sentences.push(
-      `${at} is worst, at ${w.aqi} on India's air quality index, which the Central Pollution Control Board rates ${BAND_WORDS[w.band]}.`,
-    )
+    sentences.push(`${w.city} had the worst air in the country, with an index of ${w.aqi}, ${bandPhrase(w.aqi, w, 'aqi')}.`)
   } else {
     const pm25 = typeof w.pm25_24h === 'number'
     const v = Math.round((pm25 ? w.pm25_24h : w.pm10_24h) ?? 0)
-    const what = pm25 ? 'fine-particle pollution (PM2.5)' : 'coarse dust (PM10)'
-    sentences.push(`${at} is worst, with ${what} averaging ${v} µg/m³ over a day, ${BAND_WORDS[w.band]} on India's scale.`)
+    const what = pm25 ? 'fine particles (PM2.5)' : 'coarse dust (PM10)'
+    sentences.push(`${w.city} had the worst air in the country, with ${what} averaging ${v} µg/m³ over a day, ${bandPhrase(v, w, pm25 ? 'pm25' : 'pm10')}.`)
   }
-  const others: string[] = []
   const alsoTop = inTop.slice(1)
-  if (alsoTop.length > 0) {
-    others.push(
-      alsoTop.length <= 2
-        ? `${listText(alsoTop.map((x) => x.city))} ${alsoTop.length === 1 ? 'is' : 'are'} also ${BAND_WORDS[top]}`
-        : `${counted_(alsoTop.length, 'more city is', 'more cities are')} also ${BAND_WORDS[top]}`,
-    )
+  if (alsoTop.length > 0 && alsoTop.length <= 2) {
+    sentences.push(`${listText(alsoTop.map((x) => x.city))} ${alsoTop.length === 1 ? 'was' : 'were'} also rated ${BAND_WORDS[top]}.`)
+  } else if (alsoTop.length > 2) {
+    sentences.push(`${cap(counted_(alsoTop.length, 'other city was', 'other cities were'))} rated ${BAND_WORDS[top]}.`)
   }
   const lower: AirBand[] = top === 'severe' ? ['very_poor', 'poor'] : top === 'very_poor' ? ['poor'] : []
   for (const b of lower) {
     const k = c[b] ?? 0
-    if (k > 0) others.push(`${counted_(k, 'more city is', 'more cities are')} ${BAND_WORDS[b]}`)
+    if (k === 0) continue
+    const word = sentences.length === 1 ? 'other' : 'more'
+    sentences.push(`${cap(counted_(k, `${word} city was`, `${word} cities were`))} rated ${BAND_WORDS[b]}.`)
   }
-  if (others.length > 0) {
-    const out = typeof f.cities_reporting === 'number' ? `, out of ${f.cities_reporting} reporting` : ''
-    sentences.push(`${cap(others.join(', and '))}${out}.`)
-  }
-  if (Array.isArray(f.severe_unconfirmed) && f.severe_unconfirmed.length > 0) {
-    sentences.push(`${listText(f.severe_unconfirmed)} read severe, but a city counts as severe only after two reports in a row.`)
-  }
-  sentences.push(
-    f.source === 'openaq' || f.approximate
-      ? "These are Sentinel's estimates from public monitors on OpenAQ, not official readings."
-      : "These are the board's live readings, before its own checks.",
-  )
   return { title, standfirst: sentences.join(' ') }
 }
 
@@ -517,10 +462,10 @@ function quakeCopy(e: DeskEntry): ItemCopy {
   const m = f.magnitude ?? e.strength
   const p = quakePlace(e.placeName)
   const depth = typeof f.depth_km === 'number' ? `, ${Math.round(f.depth_km)} km below the surface` : ''
-  const parts = [`The magnitude ${m.toFixed(1)} quake struck ${p.phrase ?? quakeWhere(e)}${depth}, according to the US Geological Survey.`]
+  const parts = [`The magnitude ${m.toFixed(1)} quake struck ${p.phrase ?? quakeWhere(e)}${depth}.`]
   if (f.usgs_alert) {
     const rank = alertRankWord(f.usgs_alert)
-    parts.push(`Its alert for likely impact is ${f.usgs_alert.toLowerCase()}${rank ? `, the ${rank} of four` : ''}.`)
+    parts.push(`The US Geological Survey's alert for likely impact is ${f.usgs_alert.toLowerCase()}${rank ? `, the ${rank} of four` : ''}.`)
   }
   if (typeof f.felt_reports === 'number' && f.felt_reports > 0) {
     parts.push(`${cap(counted_(f.felt_reports, 'person', 'people'))} reported feeling it.`)
@@ -578,8 +523,8 @@ function gdacsStandfirst(e: DeskEntry, cyclone: boolean): string {
       ? `, with winds of up to ${Math.round(f.severity)} km/h`
       : ''
   // Where GDACS places the event (its point is the centre of the area it maps, not a track).
-  const where = e.coords ? `, and place it ${placeText(placeOf(e.coords[0], e.coords[1]))}` : ''
-  let s = `Global disaster monitors give it ${alertRank(now, 'their')}${wind}${where}.`
+  let s = `Global disaster monitors give it ${alertRank(now, 'their')}${wind}.`
+  if (e.coords) s += ` They place it ${placeText(placeOf(e.coords[0], e.coords[1]))}.`
   if (f.rising) s += ' Its alert score went up in their latest update.'
   if ((COLOUR_RANK[peak] ?? 0) > (COLOUR_RANK[now] ?? 0)) s += ` It was rated ${peak} earlier.`
   return s
@@ -914,7 +859,8 @@ export interface ClearRow {
   line: string
   /** Where the category's figures come from in this edition: "GDACS", "CPCB". */
   source: string
-  lastKnown: boolean
+  /** "As of Saturday" when the category's source didn't answer; null when up to date. */
+  kicker: string | null
 }
 
 const CLEAR_NAMES: Record<Category, string> = {
@@ -926,7 +872,7 @@ const CLEAR_NAMES: Record<Category, string> = {
 }
 
 /** The all-clear table: one row per category, from the edition's items and category_status. */
-export function allClearRows(entries: DeskEntry[], status: CategoryStatus[]): ClearRow[] {
+export function allClearRows(entries: DeskEntry[], status: CategoryStatus[], editionAt: string): ClearRow[] {
   return CATEGORY_ORDER.map((category) => {
     const st = status.find((c) => c.category === category)
     const rows = entries.filter((e) => e.category === category)
@@ -963,15 +909,14 @@ export function allClearRows(entries: DeskEntry[], status: CategoryStatus[]): Cl
         break
       }
     }
-    const note = st?.last_known ? st.summary.split(' · last known: ')[1] ?? null : null
-    if (st?.last_known) line += ` Not updated: ${lastKnownWords(note)}.`
+    const stale = rows.find((e) => e.lastKnown)
     return {
       category,
       name: CLEAR_NAMES[category],
       level,
       line,
       source: st ? (SOURCE_NAMES[st.source] ?? st.source) : '',
-      lastKnown: !!st?.last_known,
+      kicker: st?.last_known ? ((stale && asOfKicker(stale, editionAt)) ?? 'Not updated') : null,
     }
   })
 }
@@ -1040,7 +985,7 @@ export function watchCopy(row: WatchRow, ctx: CopyContext): WatchCopy {
       const band = next ? (AIR_NEXT[next] ?? `Level ${next}`) : 'the next level'
       const aqi = row.metric.startsWith('CPCB AQI')
       const title = past
-        ? `${possessive(city)} air reads ${band}, not yet confirmed`
+        ? `${possessive(city)} air reads ${band}`
         : rising
           ? `${possessive(city)} air has risen for ${numberWord(row.rising_updates)} reports toward ${band}`
           : `${possessive(city)} air is close to ${band}`
@@ -1063,7 +1008,7 @@ export function watchCopy(row: WatchRow, ctx: CopyContext): WatchCopy {
     case 'earthquake':
       return {
         title: `A magnitude ${v} quake came close to Level ${next}`,
-        standfirst: `On the US Geological Survey's figures; Level ${next} starts at magnitude ${t}.`,
+        standfirst: `Level ${next} starts at magnitude ${t}.`,
         trend: null,
       }
     case 'cyclone':

@@ -5,6 +5,7 @@ import { useChangeWindow, useDeskHistory, useEdition, useFirePoints, useLatestEd
 import { sinceLabel, sinceYesterday, type Movement } from '@/lib/desk/changes'
 import { deskEntries } from '@/lib/desk/entries'
 import { copyContext, itemCopy, pageHeadline, sinceLines } from '@/lib/desk/copy'
+import { asOfKicker, deskNotes, sourceCredit } from '@/lib/desk/notes'
 import { changeCounts, levelCounts } from '@/lib/desk/headline'
 import { istDate, istDay, istShortDate, istTime } from '@/lib/desk/ist'
 import { SCALE } from '@/lib/desk/scale'
@@ -18,6 +19,7 @@ import NoteBox from '@/components/paper/NoteBox'
 import PhoneWire from '@/components/paper/PhoneWire'
 import QuietDesk from '@/components/paper/QuietDesk'
 import MiniMap from '@/components/paper/MiniMap'
+import PageNotes from '@/components/paper/PageNotes'
 import { fireDayOf, mapItems } from '@/lib/desk/mapdata'
 import SinceYesterday from '@/components/paper/SinceYesterday'
 
@@ -240,7 +242,15 @@ export default function Desk({ editionId, dayNote }: DeskProps = {}) {
                 ) : (
                   ctx &&
                   entries.map((e, i) => (
-                    <DeskEntryRow key={e.key} entry={e} copy={itemCopy(e, ctx)} rank={i + 1} query={editionQuery(data.run.id, latestId)} />
+                    <DeskEntryRow
+                      key={e.key}
+                      entry={e}
+                      copy={itemCopy(e, ctx)}
+                      kicker={asOfKicker(e, data.run.started_at)}
+                      source={sourceCredit(e)}
+                      rank={i + 1}
+                      query={editionQuery(data.run.id, latestId)}
+                    />
                   ))
                 )}
               </main>
@@ -263,5 +273,13 @@ export default function Desk({ editionId, dayNote }: DeskProps = {}) {
     )
   }
 
-  return <PaperShell footer={data && data.run.status !== 'running' ? <SourceFooter run={data.run} /> : null}>{body}</PaperShell>
+  const notes = data && data.run.status !== 'running' ? deskNotes(entries) : []
+  return (
+    <PaperShell
+      footer={data && data.run.status !== 'running' ? <SourceFooter run={data.run} /> : null}
+      notes={notes.length > 0 ? <PageNotes notes={notes} /> : null}
+    >
+      {body}
+    </PaperShell>
+  )
 }

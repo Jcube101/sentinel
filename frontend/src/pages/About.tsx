@@ -44,7 +44,7 @@ function Source({ name, href, children }: { name: string; href: string; children
 
 const pop = f.level4MinPopulation.toLocaleString('en-IN')
 
-/** About: how levels are set, what the labels mean, when reports come out, sources and credits. */
+/** About: how levels are set, source lines and marks, when reports come out, sources and credits. */
 export default function About() {
   useEffect(() => {
     document.title = 'Sentinel · About'
@@ -104,18 +104,28 @@ export default function About() {
           </dl>
         </Section>
 
-        <Section title="What the labels mean">
+        <Section title="Sources, notes and marks">
+          <P>
+            Stories state what the figures show. How far to trust a figure is said once, in small type: in the source line under each
+            story, or in the Notes at the foot of the page.
+          </P>
           <dl className="m-0">
-            <Term term="Provisional">Live readings from the pollution control board, before the board's own checks.</Term>
-            <Term term="Estimate">Sentinel's estimate from public monitors, used when the board's live feed is down. Not an official reading.</Term>
-            <Term term="Held at Level 2">
-              A fire level from satellite counts that would be higher. The squares show it:{' '}
+            <Term term="Source line">
+              Under each story, where its figures come from, like a photo credit. "CPCB live data (unvalidated)": live readings from the
+              Central Pollution Control Board, before the board's own checks. "Sentinel estimate from OpenAQ monitors": used when the
+              board's feed is down; not an official reading. "Incomplete": the fire satellites' data for that day stops early, so its
+              counts may still rise.
+            </Term>
+            <Term term="As of Saturday">
+              Over a title: the item's source didn't answer this time, so these are the last figures we had, from that day.
+            </Term>
+            <Term term="Dashed square">
+              A fire level from satellite counts that would be higher, held back for now. The squares show it:{' '}
               <span className="inline-block align-middle">
                 <LevelSquares level={2} wouldBe={3} />
               </span>{' '}
-              is held at 2 and would be 3.
+              is held at 2 and would be 3. The Notes name the states it holds.
             </Term>
-            <Term term="Last known">A source didn't answer when the report was made, so these are the last figures we had.</Term>
             <Term term="New, back, up, down">
               Compared with the report about a day earlier: an item that wasn't on it, one that returned, or one whose level went up or down.
             </Term>
