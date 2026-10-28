@@ -81,8 +81,10 @@ pattern (as in migrations 002-005):
 
 A view gets the same `revoke all`, then `grant select` to anon and to
 service_role. Without the grants, the API returns "permission denied". The
-older tables predate this pattern; checking their grants is a follow-up in
-docs/severity-pipeline.md.
+older tables (events, aqi_readings, sources, categories) predate this pattern:
+anon could still UPDATE them (RLS stopped it, the grant didn't). Migration 007
+puts them on it, keeping anon's SELECT while the live site reads events and
+aqi_readings; dropping that SELECT waits for the frontend switch.
 
 ## Tests
 
@@ -292,8 +294,10 @@ migration only after it has been applied.
 
 Applied (checked 28 Oct 2026, every table and view answers): 001 pipeline_runs and
 source freshness, 002 desk_items and snapshots, 003 fire_events, 004 fire_baseline,
-005 quiet-day desk, 006 the DATAGOV sources row. Planned next, with the frontend phase:
-a `last_known` column in the `desk_last_level3` view (docs/severity-pipeline.md).
+005 quiet-day desk, 006 the DATAGOV sources row. Written 29 Oct, not yet applied: 007
+read-only grants on the pre-001 tables (no code depends on it). Planned next, with the
+frontend phase: a `last_known` column in the `desk_last_level3` view
+(docs/severity-pipeline.md), now migration 008.
 
 ## Schema — events table
 id: text (primary key, deterministic)

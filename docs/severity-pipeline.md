@@ -338,6 +338,11 @@ Open as of 28 Oct 2026 (first listed 21 Oct, when the spec was completed).
   predates the grant pattern). Fix with a migration in the standard pattern (revoke all
   from anon/authenticated, grant select to anon, grant writes to service_role), and check
   the other older tables (`events`, `aqi_readings`, `categories`) the same way.
+  **28 Oct:** the same probe (an update matching no row) got HTTP 200 on all four older
+  tables and "permission denied" on every table from 001 on. Migration 007 applies the
+  pattern to the four (RLS on with a read policy, the id sequence too) and keeps anon's
+  SELECT, since the live site reads `events` and `aqi_readings`. Removing that SELECT
+  from the tables the new site doesn't read waits for the frontend switch.
 - **Live vs archive fire counts:** the baseline uses the reprocessed FIRMS product (SP), the
   live feed is near-real-time (NRT). If NRT detects systematically more or fewer hotspots,
   every `ratio_to_norm` shifts. Only one partial day overlapped in Oct 2026 and FIRMS timed
