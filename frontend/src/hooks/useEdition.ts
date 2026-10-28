@@ -242,3 +242,67 @@ export function useWatching(enabled: boolean) {
     enabled: !!supabase && enabled,
   })
 }
+
+/** A desk_items row: the item's current state (title, status, times). */
+export interface ItemRow {
+  id: string
+  category: Category
+  title: string
+  place_name: string | null
+  source: string
+  source_ref: string | null
+  status: 'open' | 'closed'
+  severity_level: number
+  peak_level: number
+  opened_at: string
+  closed_at: string | null
+  observed_at: string | null
+  last_run_id: number | null
+}
+
+/**
+ * One item: its desk_items row and its snapshots, up to an edition when one
+ * is given (the archive's view of it), else all of them.
+ */
+export function useItem(id: string, edition: number | null) {
+  return useQuery({
+    queryKey: ['item', id, edition],
+    queryFn: async (): Promise<{ item: ItemRow | null; snapshots: TimedSnapshot[] }> => {
+      if (!supabase) return { item: null, snapshots: [] }
+      let snaps = supabase.from('desk_item_snapshots').select(TIMED_SNAPSHOT_SELECT).eq('item_id', id)
+      if (edition !== null) snaps = snaps.lte('run_id', edition)
+      const [item, rows] = await Promise.all([
+        supabase
+          .from('desk_items')
+          .select('id,category,title,place_name,source,source_ref,status,severity_level,peak_level,opened_at,closed_at,observed_at,last_run_id')
+          .eq('id', id)
+          .maybeSingle(),
+        snaps.order('run_id'),
+      ])
+      if (item.error) throw item.error
+      if (rows.error) throw rows.error
+      return { item: (item.data ?? null) as ItemRow | null, snapshots: (rows.data ?? []) as unknown as TimedSnapshot[] }
+    },
+    staleTime: edition !== null ? Infinity : 5 * 60_000,
+    enabled: !!supabase,
+  })
+}
+
+/** A state's fires per UTC day, kept for 14 days (fire_state_daily). */
+export function useFireDaily(state: string | null) {
+  return useQuery({
+    queryKey: ['fire-daily', state],
+    queryFn: async (): Promise<{ acq_date: string; fire_events: number; districts: number; hotspots: number }[]> => {
+      if (!supabase || !state) return []
+      const { data, error } = await supabase
+        .from('fire_state_daily')
+        .select('acq_date,fire_events,districts,hotspots')
+        .eq('state', state)
+        .order('acq_date')
+      if (error) throw error
+      return (data ?? []) as { acq_date: string; fire_events: number; districts: number; hotspots: number }[]
+    },
+    staleTime: 5 * 60_000,
+    enabled: !!supabase && !!state,
+  })
+}

@@ -1,9 +1,11 @@
 import { CATEGORY_NAMES, LEVEL_NAMES } from '@/lib/desk/levels'
 import { entryCard, type Card, type FireRow } from '@/lib/desk/cards'
 import { quakeMemberLine, type ItemCopy } from '@/lib/desk/copy'
+import { itemPath } from '@/lib/desk/paths'
 import type { DeskEntry, DeskLabel } from '@/lib/desk/entries'
 import type { Change } from '@/lib/desk/types'
 import { lastKnownWords } from '@/lib/desk/words'
+import { Link } from 'react-router-dom'
 import LevelSquares from './LevelSquares'
 
 const CHANGE_TEXT: Record<Change, string> = {
@@ -27,7 +29,7 @@ const LABEL_STYLE: Record<DeskLabel['kind'], string> = {
   cap: 'border border-dashed border-ink',
 }
 
-function Chips({ entry }: { entry: DeskEntry }) {
+export function Chips({ entry }: { entry: DeskEntry }) {
   const isNew = entry.change === 'opened' || entry.change === 'reopened'
   return (
     <div className="flex flex-wrap gap-1.5 sm:gap-2 font-mono text-[10px] sm:text-[12px] tracking-[0.06em] uppercase">
@@ -71,7 +73,7 @@ function MinorLine({ entry }: { entry: DeskEntry }) {
 const meta = 'font-mono text-[11px] sm:text-[12px] leading-[1.5]'
 
 /** The figures strip: exact numbers, set small (three cells on phones). */
-function Strip({ card }: { card: Card }) {
+export function Strip({ card }: { card: Card }) {
   return (
     <dl className="m-0 grid grid-flow-col auto-cols-fr border-t border-rule max-w-[640px]">
       {card.cells.map((c, i) => (
@@ -93,7 +95,7 @@ function Strip({ card }: { card: Card }) {
 }
 
 /** The fire roundup's state table: the evidence under the story. */
-function StateTable({ rows, day }: { rows: FireRow[]; day: string | null }) {
+export function StateTable({ rows, day, edition }: { rows: FireRow[]; day: string | null; edition?: string }) {
   const held = rows.filter((r) => r.wouldBe !== null)
   const th = 'py-1.5 pr-3 font-normal text-left text-[10px] uppercase tracking-[0.05em]'
   return (
@@ -111,7 +113,9 @@ function StateTable({ rows, day }: { rows: FireRow[]; day: string | null }) {
           {rows.map((r) => (
             <tr key={r.key} className="border-b border-rule">
               <th scope="row" className="py-1.5 pr-3 font-normal text-left text-ink">
-                {r.state}
+                <Link to={itemPath(r.key) + (edition ?? '')} className="border-b border-rule hover:text-accent hover:border-accent">
+                  {r.state}
+                </Link>
                 {r.wouldBe !== null && '*'}
               </th>
               <td className="py-1.5 pr-3 text-right text-ink font-semibold">{r.fires}</td>
@@ -134,10 +138,12 @@ interface Props {
   entry: DeskEntry
   copy: ItemCopy
   rank: number
+  /** "?edition=19" on a past edition, so item links open it as of that edition. */
+  query?: string
 }
 
 /** One item on the desk: the story first, the evidence under it. */
-export default function DeskEntryRow({ entry, copy, rank }: Props) {
+export default function DeskEntryRow({ entry, copy, rank, query = '' }: Props) {
   const major = entry.level >= 2
   const card = entryCard(entry)
   return (
@@ -154,7 +160,15 @@ export default function DeskEntryRow({ entry, copy, rank }: Props) {
       </div>
       <div className={`flex flex-col min-w-0 flex-1 ${major ? 'gap-2.5' : 'gap-1.5 sm:gap-2'}`}>
         {major ? <Chips entry={entry} /> : <MinorLine entry={entry} />}
-        <h2 className={`m-0 font-cond font-semibold ${TITLE_SIZE[entry.level]}`}>{copy.title}</h2>
+        <h2 className={`m-0 font-cond font-semibold ${TITLE_SIZE[entry.level]}`}>
+          {entry.members.length === 0 ? (
+            <Link to={itemPath(entry.key) + query} className="hover:text-accent">
+              {copy.title}
+            </Link>
+          ) : (
+            copy.title
+          )}
+        </h2>
         {major && copy.standfirst && (
           <p className="m-0 text-[16px] sm:text-[18px] leading-[1.55] max-w-[760px]">{copy.standfirst}</p>
         )}
@@ -162,7 +176,9 @@ export default function DeskEntryRow({ entry, copy, rank }: Props) {
           <ul className="m-0 p-0 list-none text-[15px] leading-[1.45]">
             {entry.members.map((m) => (
               <li key={m.key}>
-                {quakeMemberLine(m)}
+                <Link to={itemPath(m.key) + query} className="border-b border-rule hover:text-accent hover:border-accent">
+                  {quakeMemberLine(m)}
+                </Link>
                 {m.lastKnown && <span className="text-accent"> · last known</span>}
               </li>
             ))}
@@ -170,7 +186,7 @@ export default function DeskEntryRow({ entry, copy, rank }: Props) {
         )}
         <div className={`flex flex-col gap-1.5 text-ink-muted ${major ? 'pt-1' : ''}`}>
           {card && card.cells.length > 0 && <Strip card={card} />}
-          {card?.table && <StateTable rows={card.table} day={card.tableDay ?? null} />}
+          {card?.table && <StateTable rows={card.table} day={card.tableDay ?? null} edition={query} />}
           <p className={`${meta} m-0`}>
             <span className="uppercase tracking-[0.04em]">Level from:</span> {entry.reason}
             {card?.link && (

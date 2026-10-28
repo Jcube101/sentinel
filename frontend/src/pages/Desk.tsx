@@ -8,6 +8,7 @@ import { copyContext, itemCopy, pageHeadline, sinceLines } from '@/lib/desk/copy
 import { changeCounts, levelCounts } from '@/lib/desk/headline'
 import { istDate, istShortDate, istTime } from '@/lib/desk/ist'
 import { SCALE } from '@/lib/desk/scale'
+import { editionQuery } from '@/lib/desk/paths'
 import { FOOTER_NAMES, lateNotice, sourceLines } from '@/lib/desk/sources'
 import type { Edition } from '@/lib/desk/types'
 import PaperShell from '@/components/paper/PaperShell'
@@ -214,7 +215,10 @@ export default function Desk() {
                 {entries.length === 0 ? (
                   <Message>Nothing is open on the desk in this edition.</Message>
                 ) : (
-                  ctx && entries.map((e, i) => <DeskEntryRow key={e.key} entry={e} copy={itemCopy(e, ctx)} rank={i + 1} />)
+                  ctx &&
+                  entries.map((e, i) => (
+                    <DeskEntryRow key={e.key} entry={e} copy={itemCopy(e, ctx)} rank={i + 1} query={editionQuery(data.run.id, latestId)} />
+                  ))
                 )}
               </main>
               <aside className="flex-[1_1_340px] min-w-0 flex flex-col gap-8 sm:pt-6">
