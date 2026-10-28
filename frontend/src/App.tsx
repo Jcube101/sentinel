@@ -3,6 +3,7 @@ import Desk from './pages/Desk'
 import About from './pages/About'
 import Item from './pages/Item'
 import MapPage from './pages/MapPage'
+import Sources from './pages/Sources'
 import Placeholder from './pages/Placeholder'
 
 // The Situation Report redesign (docs/situation-report-plan.md). The old
@@ -24,10 +25,7 @@ export default function App() {
           />
         }
       />
-      <Route
-        path="/sources"
-        element={<Placeholder title="Sources" line="How each source answered in each run, and how fresh its data is. Coming in a later step of the redesign." />}
-      />
+      <Route path="/sources" element={<Sources />} />
       <Route path="/about" element={<About />} />
       <Route path="/insights" element={<Navigate to="/archive" replace />} />
       <Route path="/dashboard" element={<Navigate to="/map" replace />} />

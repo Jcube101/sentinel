@@ -385,3 +385,24 @@ export function useRecentClosed(run: Edition | null, enabled: boolean) {
     enabled: !!supabase && run !== null && enabled,
   })
 }
+
+/** The 21 runs up to an edition with their per-source results (the Sources page grid). */
+export function useRunSources(run: Edition | null) {
+  return useQuery({
+    queryKey: ['run-sources', run?.id],
+    queryFn: async (): Promise<Edition[]> => {
+      if (!supabase || !run) return []
+      const { data, error } = await supabase
+        .from('pipeline_runs')
+        .select(RUN_SELECT)
+        .lte('id', run.id)
+        .neq('status', 'running')
+        .order('id', { ascending: false })
+        .limit(21)
+      if (error) throw error
+      return ((data ?? []) as unknown as Edition[]).reverse()
+    },
+    staleTime: Infinity,
+    enabled: !!supabase && run !== null && run.status !== 'running',
+  })
+}

@@ -4,7 +4,7 @@
 
 import { CATEGORY_ORDER } from './entries'
 import { shortAge } from './ist'
-import type { Category, CategoryStatus, Edition } from './types'
+import type { Category, CategoryStatus, Edition, RunSourceResult } from './types'
 import { SOURCE_WORDS, cap, listText } from './words'
 
 export const SOURCE_ORDER = ['FIRMS', 'USGS', 'GDACS', 'EONET', 'OPENAQ', 'DATAGOV'] as const
@@ -120,4 +120,40 @@ const CATEGORY_WORDS: Record<Category, string> = {
   earthquake: 'earthquake',
   air: 'air quality',
   fire: 'fire',
+}
+
+/** What each source gives the desk, in words (the Sources page). */
+export const SOURCE_ROLES: Record<string, string> = {
+  FIRMS: 'Fire detections from the VIIRS instrument on the NOAA-20 satellite',
+  USGS: 'Earthquakes of magnitude 4 and above, worldwide',
+  GDACS: 'Cyclone, flood and forest-fire alerts',
+  EONET: 'Natural events; shown on no item, kept for the record',
+  OPENAQ: 'Readings from public air monitors; the backup for air',
+  DATAGOV: "India's live air quality index; the main source for air",
+}
+
+/** Which sources each category reads (static: the pipeline's stages). */
+export const CATEGORY_SOURCE_MAP: { category: Category; main: string; also: string | null }[] = [
+  { category: 'cyclone', main: 'GDACS', also: null },
+  { category: 'flood', main: 'GDACS', also: null },
+  { category: 'earthquake', main: 'USGS', also: null },
+  { category: 'air', main: 'DATAGOV', also: 'OPENAQ' },
+  { category: 'fire', main: 'FIRMS', also: 'GDACS' },
+]
+
+export type CellState = 'new' | 'same' | 'empty' | 'failed' | 'none'
+
+/** One source in one run, for the status grid: new data, nothing new, sent nothing, didn't answer, not read. */
+export function cellState(r: RunSourceResult | undefined): CellState {
+  if (!r) return 'none'
+  if (r.status === 'ok') return r.new_data ? 'new' : 'same'
+  return r.status === 'empty' ? 'empty' : 'failed'
+}
+
+export const CELL_WORDS: Record<CellState, string> = {
+  new: 'new data',
+  same: 'nothing new',
+  empty: 'sent nothing',
+  failed: "didn't answer",
+  none: 'not read',
 }

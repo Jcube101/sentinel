@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { compareEntries, deskEntries, editionTitle, type DeskEntry } from './entries'
 import { istDate, istTime, shortAge } from './ist'
 import { splitReason } from './levels'
-import { lateNotice, sourceLines } from './sources'
+import { CELL_WORDS, SOURCE_ORDER, cellState, lateNotice, sourceLines } from './sources'
 import type { EditionData } from './types'
 import e14 from './__fixtures__/edition-14.json'
 import e17 from './__fixtures__/edition-17.json'
@@ -145,6 +145,21 @@ describe('sources', () => {
       "NASA's fire satellites and the global disaster monitors didn't answer this time, so cyclone, flood and fire news is as last reported.",
     )
     expect(lateNotice(editions[25].run, editions[25].status)).toBeNull()
+  })
+})
+
+describe('the Sources page', () => {
+  it('says how each source answered in a run, from that run\'s own record', () => {
+    const states = (n: number) => Object.fromEntries(SOURCE_ORDER.map((id) => [id, CELL_WORDS[cellState(editions[n].run.sources?.[id])]]))
+    expect(states(19)).toEqual({
+      FIRMS: "didn't answer",
+      USGS: 'nothing new',
+      GDACS: "didn't answer",
+      EONET: 'nothing new',
+      OPENAQ: 'new data',
+      DATAGOV: 'new data',
+    })
+    expect(cellState(undefined)).toBe('none') // a source not read yet (CPCB before No. 9)
   })
 })
 

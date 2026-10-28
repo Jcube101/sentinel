@@ -1,6 +1,6 @@
 # Sentinel — "Situation Report" frontend (Phase 7): plan
 
-Status: **plan updated 28 Oct 2026 with Job's answers; steps 1 to 6 done; the copy follows `docs/style-guide.md` (2b–2d).** Branch
+Status: **plan updated 28 Oct 2026 with Job's answers; steps 1 to 7 done; the copy follows `docs/style-guide.md` (2b–2d).** Branch
 `frontend/situation-report`, worktree `../sentinel-situation-report`. Design reference:
 `docs/design/` (DeskSeverity, DeskQuiet, DeskPhone, MapView, ItemFire), read as visual and
 copy spec, not code. Data model: `docs/severity-pipeline.md` and
@@ -284,7 +284,13 @@ checked on the Pi preview against live data. Smallest shippable step first.
    run moved (P1); fire dots go back 14 days (P4). Leaflet adds about 75 KB gzipped: split
    the map pages into their own chunk in step 9.
 7. **Sources page.** Freshness table, per-run status grid, which categories depend on
-   which source.
+   which source. **Done.** `/sources` (`?edition=n`), built from each run's own
+   `pipeline_runs.sources` and `category_status`, so a past edition shows how its sources
+   answered then: each source's answer, newest data, rows and time taken; which part
+   reads which source and whether it is up to date or last known; a grid of the last 21
+   editions. Raw error text is not shown (it can carry request details); status words
+   only. The `sources` table isn't read, so its grants (section 7) no longer block this
+   page.
 8. **Archive and Date.** `/date/YYYY-MM-DD` with the day's other editions; the Archive's
    list of days with each day's top item; closed items.
 9. **Switch-over prep.** Redirects for old routes (`/insights` → `/archive`, `/event/:id`,
