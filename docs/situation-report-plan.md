@@ -1,6 +1,6 @@
 # Sentinel — "Situation Report" frontend (Phase 7): plan
 
-Status: **plan updated 28 Oct 2026 with Job's answers; steps 1, 2 and 4 done; the copy follows `docs/style-guide.md` (2b, 2c).** Branch
+Status: **plan updated 28 Oct 2026 with Job's answers; steps 1 to 4 done; the copy follows `docs/style-guide.md` (2b, 2c).** Branch
 `frontend/situation-report`, worktree `../sentinel-situation-report`. Design reference:
 `docs/design/` (DeskSeverity, DeskQuiet, DeskPhone, MapView, ItemFire), read as visual and
 copy spec, not code. Data model: `docs/severity-pipeline.md` and
@@ -241,7 +241,17 @@ checked on the Pi preview against live data. Smallest shippable step first.
      under it, no multiples in titles); the legend moved to the footer and About.
 3. **Desk, quiet day.** Watching list (latest edition only until P2), all-clear table,
    14-day strip and days since Level 3+ (both from snapshots, so past editions work),
-   recently closed.
+   recently closed. **Done.** Notes:
+   - The Desk switches to it when nothing open is above Level 1. No edition so far has
+     been quiet (every run from No. 2 to 26 had a Level 2+ item), so it was checked with
+     unit tests on real history and in the browser with the replies trimmed to Level 1.
+   - Everything reads runs and snapshots up to the edition (`useDeskHistory`), except the
+     watching list: on a past quiet edition it says the list is kept for the latest
+     report only (P2).
+   - "A quiet day, the third in a row" counts IST days with nothing above Level 1; a day
+     without an edition ends the count.
+   - Recently closed: the last five, each with its closing day, peak level and days on
+     the list since its latest opening (closing reasons aren't stored, gap A8).
 4. **About.** Levels, the cap, the air labels, the schedule, the not-an-alert-system
    disclaimer and the credits (clears the spec's TODO). Small and static. **Done** with 2c,
    since the full levels explanation moved there. The Esri basemap credit joins with the

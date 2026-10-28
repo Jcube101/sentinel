@@ -184,6 +184,22 @@ rule: "Gujarat's fires drop off the list after two quieter days"; "The major ear
 after two days"; "Cyclone Arnab is off the global disaster monitors' list"; "No city's air
 is poor any more".
 
+## The quiet desk
+
+When nothing is above Level 1:
+- **Headline:** "A quiet day: nothing in this report is above minor." With a run of quiet
+  days: "A quiet day, the third in a row: …"; two weeks: "A quiet fortnight: …".
+- **Standfirst:** every category in one or two sentences, then what's worth watching: "No
+  floods or cyclones are open. Fires have fallen back toward normal in four states, no
+  earthquakes are on the report and the worst air is poor, in 23 cities. One thing is
+  worth watching." (Watching is said only on the latest edition.)
+- **All clear:** a line per category: "None open.", "Poor in 23 cities, worst in Panipat
+  at 293.", and "Not updated: …" when a source didn't answer.
+- **Watching:** "Panipat's air is close to very poor" / "Its air quality index is 293;
+  very poor starts above 300." Rising: "… has risen for three reports toward very poor".
+- **Recently closed:** the item's name ("Gujarat's fires", "Magnitude 7.0 earthquake, 350
+  km outside India"), then "peaked at Level 2 · two days on the list".
+
 ## The late notice
 
 Which source didn't answer, in words, and what that means: "NASA's fire satellites and the

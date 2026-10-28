@@ -1,0 +1,1524 @@
+{
+ "runs": [
+  {
+   "id": 1,
+   "started_at": "2026-10-20T17:50:11.981119+00:00",
+   "status": "ok"
+  },
+  {
+   "id": 2,
+   "started_at": "2026-10-20T21:00:07.233742+00:00",
+   "status": "ok"
+  },
+  {
+   "id": 3,
+   "started_at": "2026-10-21T09:00:07.256813+00:00",
+   "status": "ok"
+  },
+  {
+   "id": 4,
+   "started_at": "2026-10-21T15:00:07.236885+00:00",
+   "status": "ok"
+  },
+  {
+   "id": 5,
+   "started_at": "2026-10-21T21:00:01.348665+00:00",
+   "status": "ok"
+  },
+  {
+   "id": 6,
+   "started_at": "2026-10-22T09:00:05.363246+00:00",
+   "status": "ok"
+  },
+  {
+   "id": 7,
+   "started_at": "2026-10-22T15:00:03.345782+00:00",
+   "status": "ok"
+  },
+  {
+   "id": 8,
+   "started_at": "2026-10-22T21:00:04.336488+00:00",
+   "status": "ok"
+  },
+  {
+   "id": 9,
+   "started_at": "2026-10-23T05:46:50.820863+00:00",
+   "status": "ok"
+  },
+  {
+   "id": 10,
+   "started_at": "2026-10-23T06:00:30.377809+00:00",
+   "status": "failed"
+  },
+  {
+   "id": 11,
+   "started_at": "2026-10-23T09:00:03.30883+00:00",
+   "status": "ok"
+  },
+  {
+   "id": 12,
+   "started_at": "2026-10-23T15:00:01.320936+00:00",
+   "status": "ok"
+  },
+  {
+   "id": 13,
+   "started_at": "2026-10-23T21:00:07.273861+00:00",
+   "status": "ok"
+  },
+  {
+   "id": 14,
+   "started_at": "2026-10-24T09:00:03.807957+00:00",
+   "status": "ok"
+  },
+  {
+   "id": 15,
+   "started_at": "2026-10-24T15:00:07.227788+00:00",
+   "status": "ok"
+  },
+  {
+   "id": 16,
+   "started_at": "2026-10-24T21:00:07.237701+00:00",
+   "status": "ok"
+  },
+  {
+   "id": 17,
+   "started_at": "2026-10-25T09:00:07.224737+00:00",
+   "status": "ok"
+  },
+  {
+   "id": 18,
+   "started_at": "2026-10-25T15:00:07.257097+00:00",
+   "status": "ok"
+  },
+  {
+   "id": 19,
+   "started_at": "2026-10-25T21:00:00.361476+00:00",
+   "status": "failed"
+  },
+  {
+   "id": 20,
+   "started_at": "2026-10-26T09:00:07.310132+00:00",
+   "status": "ok"
+  },
+  {
+   "id": 21,
+   "started_at": "2026-10-26T15:00:05.356485+00:00",
+   "status": "ok"
+  },
+  {
+   "id": 22,
+   "started_at": "2026-10-26T21:00:03.740588+00:00",
+   "status": "ok"
+  },
+  {
+   "id": 23,
+   "started_at": "2026-10-27T09:00:04.315879+00:00",
+   "status": "ok"
+  },
+  {
+   "id": 24,
+   "started_at": "2026-10-27T15:00:07.232747+00:00",
+   "status": "ok"
+  },
+  {
+   "id": 25,
+   "started_at": "2026-10-27T21:00:07.260158+00:00",
+   "status": "ok"
+  }
+ ],
+ "strip": [
+  {
+   "run_id": 2,
+   "severity_level": 2
+  },
+  {
+   "run_id": 3,
+   "severity_level": 2
+  },
+  {
+   "run_id": 3,
+   "severity_level": 2
+  },
+  {
+   "run_id": 3,
+   "severity_level": 2
+  },
+  {
+   "run_id": 3,
+   "severity_level": 2
+  },
+  {
+   "run_id": 4,
+   "severity_level": 2
+  },
+  {
+   "run_id": 4,
+   "severity_level": 2
+  },
+  {
+   "run_id": 4,
+   "severity_level": 2
+  },
+  {
+   "run_id": 4,
+   "severity_level": 2
+  },
+  {
+   "run_id": 5,
+   "severity_level": 2
+  },
+  {
+   "run_id": 5,
+   "severity_level": 2
+  },
+  {
+   "run_id": 5,
+   "severity_level": 2
+  },
+  {
+   "run_id": 5,
+   "severity_level": 2
+  },
+  {
+   "run_id": 6,
+   "severity_level": 2
+  },
+  {
+   "run_id": 6,
+   "severity_level": 2
+  },
+  {
+   "run_id": 6,
+   "severity_level": 1
+  },
+  {
+   "run_id": 6,
+   "severity_level": 1
+  },
+  {
+   "run_id": 7,
+   "severity_level": 2
+  },
+  {
+   "run_id": 7,
+   "severity_level": 2
+  },
+  {
+   "run_id": 7,
+   "severity_level": 1
+  },
+  {
+   "run_id": 7,
+   "severity_level": 1
+  },
+  {
+   "run_id": 8,
+   "severity_level": 2
+  },
+  {
+   "run_id": 8,
+   "severity_level": 2
+  },
+  {
+   "run_id": 8,
+   "severity_level": 1
+  },
+  {
+   "run_id": 8,
+   "severity_level": 1
+  },
+  {
+   "run_id": 9,
+   "severity_level": 2
+  },
+  {
+   "run_id": 9,
+   "severity_level": 4
+  },
+  {
+   "run_id": 9,
+   "severity_level": 1
+  },
+  {
+   "run_id": 10,
+   "severity_level": 2
+  },
+  {
+   "run_id": 10,
+   "severity_level": 4
+  },
+  {
+   "run_id": 10,
+   "severity_level": 1
+  },
+  {
+   "run_id": 11,
+   "severity_level": 1
+  },
+  {
+   "run_id": 11,
+   "severity_level": 4
+  },
+  {
+   "run_id": 11,
+   "severity_level": 1
+  },
+  {
+   "run_id": 12,
+   "severity_level": 1
+  },
+  {
+   "run_id": 12,
+   "severity_level": 4
+  },
+  {
+   "run_id": 12,
+   "severity_level": 1
+  },
+  {
+   "run_id": 13,
+   "severity_level": 2
+  },
+  {
+   "run_id": 13,
+   "severity_level": 4
+  },
+  {
+   "run_id": 13,
+   "severity_level": 1
+  },
+  {
+   "run_id": 14,
+   "severity_level": 2
+  },
+  {
+   "run_id": 14,
+   "severity_level": 4
+  },
+  {
+   "run_id": 14,
+   "severity_level": 1
+  },
+  {
+   "run_id": 15,
+   "severity_level": 2
+  },
+  {
+   "run_id": 15,
+   "severity_level": 1
+  },
+  {
+   "run_id": 16,
+   "severity_level": 2
+  },
+  {
+   "run_id": 16,
+   "severity_level": 1
+  },
+  {
+   "run_id": 17,
+   "severity_level": 1
+  },
+  {
+   "run_id": 17,
+   "severity_level": 1
+  },
+  {
+   "run_id": 17,
+   "severity_level": 1
+  },
+  {
+   "run_id": 17,
+   "severity_level": 2
+  },
+  {
+   "run_id": 17,
+   "severity_level": 2
+  },
+  {
+   "run_id": 17,
+   "severity_level": 2
+  },
+  {
+   "run_id": 17,
+   "severity_level": 2
+  },
+  {
+   "run_id": 18,
+   "severity_level": 1
+  },
+  {
+   "run_id": 18,
+   "severity_level": 1
+  },
+  {
+   "run_id": 18,
+   "severity_level": 1
+  },
+  {
+   "run_id": 18,
+   "severity_level": 2
+  },
+  {
+   "run_id": 18,
+   "severity_level": 2
+  },
+  {
+   "run_id": 18,
+   "severity_level": 2
+  },
+  {
+   "run_id": 18,
+   "severity_level": 2
+  },
+  {
+   "run_id": 19,
+   "severity_level": 1
+  },
+  {
+   "run_id": 19,
+   "severity_level": 1
+  },
+  {
+   "run_id": 19,
+   "severity_level": 2
+  },
+  {
+   "run_id": 19,
+   "severity_level": 2
+  },
+  {
+   "run_id": 19,
+   "severity_level": 2
+  },
+  {
+   "run_id": 19,
+   "severity_level": 2
+  },
+  {
+   "run_id": 20,
+   "severity_level": 1
+  },
+  {
+   "run_id": 20,
+   "severity_level": 4
+  },
+  {
+   "run_id": 20,
+   "severity_level": 1
+  },
+  {
+   "run_id": 20,
+   "severity_level": 1
+  },
+  {
+   "run_id": 20,
+   "severity_level": 2
+  },
+  {
+   "run_id": 20,
+   "severity_level": 2
+  },
+  {
+   "run_id": 20,
+   "severity_level": 2
+  },
+  {
+   "run_id": 20,
+   "severity_level": 2
+  },
+  {
+   "run_id": 21,
+   "severity_level": 2
+  },
+  {
+   "run_id": 21,
+   "severity_level": 4
+  },
+  {
+   "run_id": 21,
+   "severity_level": 1
+  },
+  {
+   "run_id": 21,
+   "severity_level": 1
+  },
+  {
+   "run_id": 21,
+   "severity_level": 2
+  },
+  {
+   "run_id": 21,
+   "severity_level": 2
+  },
+  {
+   "run_id": 21,
+   "severity_level": 2
+  },
+  {
+   "run_id": 21,
+   "severity_level": 2
+  },
+  {
+   "run_id": 22,
+   "severity_level": 2
+  },
+  {
+   "run_id": 22,
+   "severity_level": 4
+  },
+  {
+   "run_id": 22,
+   "severity_level": 1
+  },
+  {
+   "run_id": 22,
+   "severity_level": 2
+  },
+  {
+   "run_id": 22,
+   "severity_level": 2
+  },
+  {
+   "run_id": 22,
+   "severity_level": 2
+  },
+  {
+   "run_id": 22,
+   "severity_level": 2
+  },
+  {
+   "run_id": 23,
+   "severity_level": 1
+  },
+  {
+   "run_id": 23,
+   "severity_level": 4
+  },
+  {
+   "run_id": 23,
+   "severity_level": 2
+  },
+  {
+   "run_id": 23,
+   "severity_level": 2
+  },
+  {
+   "run_id": 23,
+   "severity_level": 2
+  },
+  {
+   "run_id": 23,
+   "severity_level": 2
+  },
+  {
+   "run_id": 23,
+   "severity_level": 2
+  },
+  {
+   "run_id": 24,
+   "severity_level": 1
+  },
+  {
+   "run_id": 24,
+   "severity_level": 4
+  },
+  {
+   "run_id": 24,
+   "severity_level": 2
+  },
+  {
+   "run_id": 24,
+   "severity_level": 2
+  },
+  {
+   "run_id": 24,
+   "severity_level": 2
+  },
+  {
+   "run_id": 24,
+   "severity_level": 2
+  },
+  {
+   "run_id": 24,
+   "severity_level": 2
+  },
+  {
+   "run_id": 25,
+   "severity_level": 2
+  },
+  {
+   "run_id": 25,
+   "severity_level": 4
+  },
+  {
+   "run_id": 25,
+   "severity_level": 2
+  },
+  {
+   "run_id": 25,
+   "severity_level": 2
+  },
+  {
+   "run_id": 25,
+   "severity_level": 2
+  },
+  {
+   "run_id": 25,
+   "severity_level": 2
+  },
+  {
+   "run_id": 25,
+   "severity_level": 2
+  }
+ ],
+ "lastLevel3": {
+  "run_id": 25,
+  "item_id": "cyclone:GDACS-TC-1001345",
+  "taken_at": "2026-10-27T21:10:53.853047+00:00",
+  "category": "cyclone",
+  "status": "open",
+  "severity_level": 4,
+  "severity_reason": "GDACS Red alert",
+  "last_known": false,
+  "new_data": true,
+  "change": null,
+  "figures": {
+   "rising": false,
+   "ends_at": "2026-10-27T18:00:00+00:00",
+   "severity": 222.2208,
+   "countries": [
+    "IND"
+   ],
+   "gdacs_url": "https://www.gdacs.org/report.aspx?eventid=1001345&episodeid=8&eventtype=TC",
+   "episode_id": 8,
+   "alert_level": "Red",
+   "alert_score": 3.0,
+   "severity_text": "Hurricane/Typhoon > 74 mph (maximum wind speed of 222 km/h)",
+   "severity_unit": "km/h",
+   "episode_alert_level": "Red",
+   "episode_alert_score": 3.0,
+   "prev_episode_alert_score": 3.0
+  },
+  "desk_items": {
+   "title": "Tropical Cyclone ARNAB-26",
+   "source": "GDACS",
+   "latitude": 16.2,
+   "longitude": 81.6,
+   "place_name": "India",
+   "source_ref": "GDACS-TC-1001345"
+  },
+  "pipeline_runs": {
+   "started_at": "2026-10-27T21:00:07.260158+00:00"
+  }
+ },
+ "closed": [
+  {
+   "run_id": 23,
+   "item_id": "fire:gujarat",
+   "taken_at": "2026-10-27T09:04:18.973024+00:00",
+   "category": "fire",
+   "status": "closed",
+   "severity_level": 1,
+   "severity_reason": "4 fire events on 26 Oct, too few to compare with the norm (minimum 25)",
+   "last_known": false,
+   "new_data": true,
+   "change": "closed",
+   "figures": {
+    "day": "2026-10-26",
+    "week": 43,
+    "state": "Gujarat",
+    "today": {
+     "date": "2026-10-27",
+     "partial": true,
+     "hotspots": 0,
+     "fire_events": 0,
+     "district_count": 0
+    },
+    "capped": false,
+    "data_to": "2026-10-26T21:53:00+00:00",
+    "product": "VIIRS NOAA-20 NRT",
+    "hotspots": 4,
+    "districts": [
+     {
+      "frp_max": 2.54,
+      "district": "Kachchh",
+      "hotspots": 2,
+      "district_id": "76128533B91881382098572",
+      "fire_events": 2
+     },
+     {
+      "frp_max": 1.32,
+      "district": "Devbhumi Dwarka",
+      "hotspots": 1,
+      "district_id": "76128533B74381554567803",
+      "fire_events": 1
+     },
+     {
+      "frp_max": 5.29,
+      "district": "Junagadh",
+      "hotspots": 1,
+      "district_id": "76128533B40923846274136",
+      "fire_events": 1
+     }
+    ],
+    "norm_years": "2024-2025",
+    "fire_events": 4,
+    "firms_level": 1,
+    "gdacs_level": null,
+    "quiet_since": "2026-10-25",
+    "ratio_level": 1,
+    "gdacs_checked": false,
+    "ratio_counted": false,
+    "ratio_to_norm": 0.712,
+    "district_count": 3,
+    "gdacs_wildfire": [],
+    "calibration_cap": 2,
+    "min_fire_events": 25,
+    "norm_daily_events": 5.619,
+    "norm_max_daily_events": 26,
+    "large_fires_near_people": []
+   },
+   "desk_items": {
+    "title": "Fire activity in 3 Gujarat districts",
+    "source": "FIRMS",
+    "latitude": 22.6774,
+    "longitude": 69.4391,
+    "place_name": "Gujarat",
+    "source_ref": null
+   },
+   "pipeline_runs": {
+    "started_at": "2026-10-27T09:00:04.315879+00:00"
+   }
+  },
+  {
+   "run_id": 22,
+   "item_id": "earthquake:USGS-us6000u4p1",
+   "taken_at": "2026-10-26T21:03:46.022146+00:00",
+   "category": "earthquake",
+   "status": "closed",
+   "severity_level": 1,
+   "severity_reason": "M4.3, 74 km from India (USGS)",
+   "last_known": false,
+   "new_data": false,
+   "change": "closed",
+   "figures": {
+    "tsunami": false,
+    "depth_km": 10.0,
+    "in_india": false,
+    "magnitude": 4.3,
+    "usgs_alert": null,
+    "felt_reports": null,
+    "km_from_india": 73.5,
+    "magnitude_type": "mb"
+   },
+   "desk_items": {
+    "title": "M4.3 earthquake, 71 km SW of Rikaze, China",
+    "source": "USGS",
+    "latitude": 28.7603,
+    "longitude": 88.3994,
+    "place_name": "71 km SW of Rikaze, China",
+    "source_ref": "USGS-us6000u4p1"
+   },
+   "pipeline_runs": {
+    "started_at": "2026-10-26T21:00:03.740588+00:00"
+   }
+  },
+  {
+   "run_id": 19,
+   "item_id": "earthquake:USGS-us6000u4f5",
+   "taken_at": "2026-10-25T21:08:18.981889+00:00",
+   "category": "earthquake",
+   "status": "closed",
+   "severity_level": 1,
+   "severity_reason": "M4.6, 48 km from India (USGS)",
+   "last_known": false,
+   "new_data": false,
+   "change": "closed",
+   "figures": {
+    "tsunami": false,
+    "depth_km": 116.703,
+    "in_india": false,
+    "magnitude": 4.6,
+    "usgs_alert": null,
+    "felt_reports": null,
+    "km_from_india": 47.8,
+    "magnitude_type": "mb"
+   },
+   "desk_items": {
+    "title": "M4.6 earthquake, 91 km ESE of Tuensang, India",
+    "source": "USGS",
+    "latitude": 25.9295,
+    "longitude": 95.6545,
+    "place_name": "91 km ESE of Tuensang, India",
+    "source_ref": "USGS-us6000u4f5"
+   },
+   "pipeline_runs": {
+    "started_at": "2026-10-25T21:00:00.361476+00:00"
+   }
+  },
+  {
+   "run_id": 15,
+   "item_id": "earthquake:USGS-us6000u43g",
+   "taken_at": "2026-10-24T15:04:05.510802+00:00",
+   "category": "earthquake",
+   "status": "closed",
+   "severity_level": 4,
+   "severity_reason": "M7.0, 348 km from India (USGS)",
+   "last_known": false,
+   "new_data": false,
+   "change": "closed",
+   "figures": {
+    "tsunami": false,
+    "depth_km": 18.0,
+    "in_india": false,
+    "magnitude": 7.0,
+    "usgs_alert": "orange",
+    "felt_reports": 8,
+    "km_from_india": 347.9,
+    "magnitude_type": "mww"
+   },
+   "desk_items": {
+    "title": "M7.0 earthquake, 191 km ENE of Nagqu, China",
+    "source": "USGS",
+    "latitude": 32.3805,
+    "longitude": 93.7797,
+    "place_name": "191 km ENE of Nagqu, China",
+    "source_ref": "USGS-us6000u43g"
+   },
+   "pipeline_runs": {
+    "started_at": "2026-10-24T15:00:07.227788+00:00"
+   }
+  },
+  {
+   "run_id": 14,
+   "item_id": "fire:madhya-pradesh",
+   "taken_at": "2026-10-24T09:04:08.225638+00:00",
+   "category": "fire",
+   "status": "closed",
+   "severity_level": 1,
+   "severity_reason": "109 fire events on 23 Oct, 1.59\u00d7 the seasonal norm (69/day)",
+   "last_known": false,
+   "new_data": true,
+   "change": "closed",
+   "figures": {
+    "day": "2026-10-23",
+    "week": 43,
+    "state": "Madhya Pradesh",
+    "today": {
+     "date": "2026-10-24",
+     "partial": true,
+     "hotspots": 0,
+     "fire_events": 0,
+     "district_count": 0
+    },
+    "capped": false,
+    "data_to": "2026-10-23T21:10:00+00:00",
+    "product": "VIIRS NOAA-20 NRT",
+    "hotspots": 132,
+    "districts": [
+     {
+      "frp_max": 11.68,
+      "district": "Ashoknagar",
+      "hotspots": 25,
+      "district_id": "76128533B75548370501185",
+      "fire_events": 21
+     },
+     {
+      "frp_max": 14.8,
+      "district": "Guna",
+      "hotspots": 18,
+      "district_id": "76128533B79048012717121",
+      "fire_events": 13
+     },
+     {
+      "frp_max": 4.08,
+      "district": "Sagar",
+      "hotspots": 12,
+      "district_id": "76128533B30447764775083",
+      "fire_events": 10
+     },
+     {
+      "frp_max": 6.78,
+      "district": "Seoni",
+      "hotspots": 13,
+      "district_id": "76128533B78482805703540",
+      "fire_events": 10
+     },
+     {
+      "frp_max": 11.72,
+      "district": "Hoshangabad",
+      "hotspots": 10,
+      "district_id": "76128533B45314020251888",
+      "fire_events": 9
+     },
+     {
+      "frp_max": 11.11,
+      "district": "Shivpuri",
+      "hotspots": 10,
+      "district_id": "76128533B66335428496945",
+      "fire_events": 9
+     },
+     {
+      "frp_max": 8.54,
+      "district": "Sehore",
+      "hotspots": 7,
+      "district_id": "76128533B39959897010345",
+      "fire_events": 6
+     },
+     {
+      "frp_max": 5.86,
+      "district": "Harda",
+      "hotspots": 4,
+      "district_id": "76128533B21179322085415",
+      "fire_events": 4
+     },
+     {
+      "frp_max": 4.41,
+      "district": "Damoh",
+      "hotspots": 4,
+      "district_id": "76128533B44250373880839",
+      "fire_events": 3
+     },
+     {
+      "frp_max": 3.39,
+      "district": "Datia",
+      "hotspots": 4,
+      "district_id": "76128533B80958502091898",
+      "fire_events": 3
+     },
+     {
+      "frp_max": 4.23,
+      "district": "Gwalior",
+      "hotspots": 3,
+      "district_id": "76128533B90551733723251",
+      "fire_events": 3
+     },
+     {
+      "frp_max": 12.9,
+      "district": "Sheopur",
+      "hotspots": 3,
+      "district_id": "76128533B82240600990321",
+      "fire_events": 3
+     },
+     {
+      "frp_max": 3.5,
+      "district": "Bhind",
+      "hotspots": 2,
+      "district_id": "76128533B57712033428660",
+      "fire_events": 2
+     },
+     {
+      "frp_max": 7.31,
+      "district": "Khandwa (East Nimar)",
+      "hotspots": 2,
+      "district_id": "76128533B71271011331008",
+      "fire_events": 2
+     },
+     {
+      "frp_max": 2.83,
+      "district": "Khargone (West Nimar)",
+      "hotspots": 2,
+      "district_id": "76128533B69481535535995",
+      "fire_events": 2
+     },
+     {
+      "frp_max": 9.4,
+      "district": "Narsimhapur",
+      "hotspots": 5,
+      "district_id": "76128533B20683890392439",
+      "fire_events": 2
+     },
+     {
+      "frp_max": 6.29,
+      "district": "Vidisha",
+      "hotspots": 2,
+      "district_id": "76128533B64834018186186",
+      "fire_events": 2
+     },
+     {
+      "frp_max": 3.72,
+      "district": "Chhindwara",
+      "hotspots": 1,
+      "district_id": "76128533B70646408240587",
+      "fire_events": 1
+     },
+     {
+      "frp_max": 6.24,
+      "district": "Dewas",
+      "hotspots": 2,
+      "district_id": "76128533B53549946596470",
+      "fire_events": 1
+     },
+     {
+      "frp_max": 3.15,
+      "district": "Katni",
+      "hotspots": 1,
+      "district_id": "76128533B16674973717653",
+      "fire_events": 1
+     },
+     {
+      "frp_max": 2.76,
+      "district": "Panna",
+      "hotspots": 1,
+      "district_id": "76128533B81607600692021",
+      "fire_events": 1
+     },
+     {
+      "frp_max": 1.05,
+      "district": "Singrauli",
+      "hotspots": 1,
+      "district_id": "76128533B50014751336341",
+      "fire_events": 1
+     }
+    ],
+    "norm_years": "2024-2025",
+    "fire_events": 109,
+    "firms_level": 1,
+    "gdacs_level": null,
+    "quiet_since": "2026-10-22",
+    "ratio_level": 1,
+    "gdacs_checked": false,
+    "ratio_counted": true,
+    "ratio_to_norm": 1.586,
+    "district_count": 22,
+    "gdacs_wildfire": [],
+    "calibration_cap": 2,
+    "min_fire_events": 25,
+    "norm_daily_events": 68.7381,
+    "norm_max_daily_events": 254,
+    "large_fires_near_people": []
+   },
+   "desk_items": {
+    "title": "Fire activity in 21 Madhya Pradesh districts",
+    "source": "FIRMS",
+    "latitude": 24.0578,
+    "longitude": 77.788,
+    "place_name": "Madhya Pradesh",
+    "source_ref": null
+   },
+   "pipeline_runs": {
+    "started_at": "2026-10-24T09:00:03.807957+00:00"
+   }
+  }
+ ],
+ "closedHistory": [
+  {
+   "run_id": 3,
+   "item_id": "fire:madhya-pradesh",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": "opened",
+   "pipeline_runs": {
+    "started_at": "2026-10-21T09:00:07.256813+00:00"
+   }
+  },
+  {
+   "run_id": 4,
+   "item_id": "fire:madhya-pradesh",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": null,
+   "pipeline_runs": {
+    "started_at": "2026-10-21T15:00:07.236885+00:00"
+   }
+  },
+  {
+   "run_id": 5,
+   "item_id": "fire:madhya-pradesh",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": null,
+   "pipeline_runs": {
+    "started_at": "2026-10-21T21:00:01.348665+00:00"
+   }
+  },
+  {
+   "run_id": 6,
+   "item_id": "fire:madhya-pradesh",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": null,
+   "pipeline_runs": {
+    "started_at": "2026-10-22T09:00:05.363246+00:00"
+   }
+  },
+  {
+   "run_id": 7,
+   "item_id": "fire:madhya-pradesh",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": null,
+   "pipeline_runs": {
+    "started_at": "2026-10-22T15:00:03.345782+00:00"
+   }
+  },
+  {
+   "run_id": 8,
+   "item_id": "fire:madhya-pradesh",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": null,
+   "pipeline_runs": {
+    "started_at": "2026-10-22T21:00:04.336488+00:00"
+   }
+  },
+  {
+   "run_id": 9,
+   "item_id": "earthquake:USGS-us6000u43g",
+   "category": "earthquake",
+   "status": "open",
+   "severity_level": 4,
+   "change": "opened",
+   "pipeline_runs": {
+    "started_at": "2026-10-23T05:46:50.820863+00:00"
+   }
+  },
+  {
+   "run_id": 9,
+   "item_id": "fire:madhya-pradesh",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 1,
+   "change": "deescalated",
+   "pipeline_runs": {
+    "started_at": "2026-10-23T05:46:50.820863+00:00"
+   }
+  },
+  {
+   "run_id": 10,
+   "item_id": "earthquake:USGS-us6000u43g",
+   "category": "earthquake",
+   "status": "open",
+   "severity_level": 4,
+   "change": null,
+   "pipeline_runs": {
+    "started_at": "2026-10-23T06:00:30.377809+00:00"
+   }
+  },
+  {
+   "run_id": 10,
+   "item_id": "fire:madhya-pradesh",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 1,
+   "change": null,
+   "pipeline_runs": {
+    "started_at": "2026-10-23T06:00:30.377809+00:00"
+   }
+  },
+  {
+   "run_id": 11,
+   "item_id": "earthquake:USGS-us6000u43g",
+   "category": "earthquake",
+   "status": "open",
+   "severity_level": 4,
+   "change": null,
+   "pipeline_runs": {
+    "started_at": "2026-10-23T09:00:03.30883+00:00"
+   }
+  },
+  {
+   "run_id": 11,
+   "item_id": "fire:madhya-pradesh",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 1,
+   "change": null,
+   "pipeline_runs": {
+    "started_at": "2026-10-23T09:00:03.30883+00:00"
+   }
+  },
+  {
+   "run_id": 12,
+   "item_id": "earthquake:USGS-us6000u43g",
+   "category": "earthquake",
+   "status": "open",
+   "severity_level": 4,
+   "change": null,
+   "pipeline_runs": {
+    "started_at": "2026-10-23T15:00:01.320936+00:00"
+   }
+  },
+  {
+   "run_id": 12,
+   "item_id": "fire:madhya-pradesh",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 1,
+   "change": null,
+   "pipeline_runs": {
+    "started_at": "2026-10-23T15:00:01.320936+00:00"
+   }
+  },
+  {
+   "run_id": 13,
+   "item_id": "earthquake:USGS-us6000u43g",
+   "category": "earthquake",
+   "status": "open",
+   "severity_level": 4,
+   "change": null,
+   "pipeline_runs": {
+    "started_at": "2026-10-23T21:00:07.273861+00:00"
+   }
+  },
+  {
+   "run_id": 13,
+   "item_id": "fire:madhya-pradesh",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 1,
+   "change": null,
+   "pipeline_runs": {
+    "started_at": "2026-10-23T21:00:07.273861+00:00"
+   }
+  },
+  {
+   "run_id": 14,
+   "item_id": "earthquake:USGS-us6000u43g",
+   "category": "earthquake",
+   "status": "open",
+   "severity_level": 4,
+   "change": null,
+   "pipeline_runs": {
+    "started_at": "2026-10-24T09:00:03.807957+00:00"
+   }
+  },
+  {
+   "run_id": 14,
+   "item_id": "earthquake:USGS-us6000u4f5",
+   "category": "earthquake",
+   "status": "open",
+   "severity_level": 1,
+   "change": "opened",
+   "pipeline_runs": {
+    "started_at": "2026-10-24T09:00:03.807957+00:00"
+   }
+  },
+  {
+   "run_id": 14,
+   "item_id": "fire:madhya-pradesh",
+   "category": "fire",
+   "status": "closed",
+   "severity_level": 1,
+   "change": "closed",
+   "pipeline_runs": {
+    "started_at": "2026-10-24T09:00:03.807957+00:00"
+   }
+  },
+  {
+   "run_id": 15,
+   "item_id": "earthquake:USGS-us6000u43g",
+   "category": "earthquake",
+   "status": "closed",
+   "severity_level": 4,
+   "change": "closed",
+   "pipeline_runs": {
+    "started_at": "2026-10-24T15:00:07.227788+00:00"
+   }
+  },
+  {
+   "run_id": 15,
+   "item_id": "earthquake:USGS-us6000u4f5",
+   "category": "earthquake",
+   "status": "open",
+   "severity_level": 1,
+   "change": null,
+   "pipeline_runs": {
+    "started_at": "2026-10-24T15:00:07.227788+00:00"
+   }
+  },
+  {
+   "run_id": 16,
+   "item_id": "earthquake:USGS-us6000u4f5",
+   "category": "earthquake",
+   "status": "open",
+   "severity_level": 1,
+   "change": null,
+   "pipeline_runs": {
+    "started_at": "2026-10-24T21:00:07.237701+00:00"
+   }
+  },
+  {
+   "run_id": 17,
+   "item_id": "earthquake:USGS-us6000u4f5",
+   "category": "earthquake",
+   "status": "open",
+   "severity_level": 1,
+   "change": null,
+   "pipeline_runs": {
+    "started_at": "2026-10-25T09:00:07.224737+00:00"
+   }
+  },
+  {
+   "run_id": 17,
+   "item_id": "earthquake:USGS-us6000u4p1",
+   "category": "earthquake",
+   "status": "open",
+   "severity_level": 1,
+   "change": "opened",
+   "pipeline_runs": {
+    "started_at": "2026-10-25T09:00:07.224737+00:00"
+   }
+  },
+  {
+   "run_id": 17,
+   "item_id": "fire:gujarat",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": "opened",
+   "pipeline_runs": {
+    "started_at": "2026-10-25T09:00:07.224737+00:00"
+   }
+  },
+  {
+   "run_id": 17,
+   "item_id": "fire:madhya-pradesh",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": "reopened",
+   "pipeline_runs": {
+    "started_at": "2026-10-25T09:00:07.224737+00:00"
+   }
+  },
+  {
+   "run_id": 18,
+   "item_id": "earthquake:USGS-us6000u4f5",
+   "category": "earthquake",
+   "status": "open",
+   "severity_level": 1,
+   "change": null,
+   "pipeline_runs": {
+    "started_at": "2026-10-25T15:00:07.257097+00:00"
+   }
+  },
+  {
+   "run_id": 18,
+   "item_id": "earthquake:USGS-us6000u4p1",
+   "category": "earthquake",
+   "status": "open",
+   "severity_level": 1,
+   "change": null,
+   "pipeline_runs": {
+    "started_at": "2026-10-25T15:00:07.257097+00:00"
+   }
+  },
+  {
+   "run_id": 18,
+   "item_id": "fire:gujarat",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": null,
+   "pipeline_runs": {
+    "started_at": "2026-10-25T15:00:07.257097+00:00"
+   }
+  },
+  {
+   "run_id": 18,
+   "item_id": "fire:madhya-pradesh",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": null,
+   "pipeline_runs": {
+    "started_at": "2026-10-25T15:00:07.257097+00:00"
+   }
+  },
+  {
+   "run_id": 19,
+   "item_id": "earthquake:USGS-us6000u4f5",
+   "category": "earthquake",
+   "status": "closed",
+   "severity_level": 1,
+   "change": "closed",
+   "pipeline_runs": {
+    "started_at": "2026-10-25T21:00:00.361476+00:00"
+   }
+  },
+  {
+   "run_id": 19,
+   "item_id": "earthquake:USGS-us6000u4p1",
+   "category": "earthquake",
+   "status": "open",
+   "severity_level": 1,
+   "change": null,
+   "pipeline_runs": {
+    "started_at": "2026-10-25T21:00:00.361476+00:00"
+   }
+  },
+  {
+   "run_id": 19,
+   "item_id": "fire:gujarat",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": null,
+   "pipeline_runs": {
+    "started_at": "2026-10-25T21:00:00.361476+00:00"
+   }
+  },
+  {
+   "run_id": 19,
+   "item_id": "fire:madhya-pradesh",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": null,
+   "pipeline_runs": {
+    "started_at": "2026-10-25T21:00:00.361476+00:00"
+   }
+  },
+  {
+   "run_id": 20,
+   "item_id": "earthquake:USGS-us6000u4p1",
+   "category": "earthquake",
+   "status": "open",
+   "severity_level": 1,
+   "change": null,
+   "pipeline_runs": {
+    "started_at": "2026-10-26T09:00:07.310132+00:00"
+   }
+  },
+  {
+   "run_id": 20,
+   "item_id": "fire:gujarat",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 1,
+   "change": "deescalated",
+   "pipeline_runs": {
+    "started_at": "2026-10-26T09:00:07.310132+00:00"
+   }
+  },
+  {
+   "run_id": 20,
+   "item_id": "fire:madhya-pradesh",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": null,
+   "pipeline_runs": {
+    "started_at": "2026-10-26T09:00:07.310132+00:00"
+   }
+  },
+  {
+   "run_id": 21,
+   "item_id": "earthquake:USGS-us6000u4p1",
+   "category": "earthquake",
+   "status": "open",
+   "severity_level": 1,
+   "change": null,
+   "pipeline_runs": {
+    "started_at": "2026-10-26T15:00:05.356485+00:00"
+   }
+  },
+  {
+   "run_id": 21,
+   "item_id": "fire:gujarat",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 1,
+   "change": null,
+   "pipeline_runs": {
+    "started_at": "2026-10-26T15:00:05.356485+00:00"
+   }
+  },
+  {
+   "run_id": 21,
+   "item_id": "fire:madhya-pradesh",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": null,
+   "pipeline_runs": {
+    "started_at": "2026-10-26T15:00:05.356485+00:00"
+   }
+  },
+  {
+   "run_id": 22,
+   "item_id": "earthquake:USGS-us6000u4p1",
+   "category": "earthquake",
+   "status": "closed",
+   "severity_level": 1,
+   "change": "closed",
+   "pipeline_runs": {
+    "started_at": "2026-10-26T21:00:03.740588+00:00"
+   }
+  },
+  {
+   "run_id": 22,
+   "item_id": "fire:gujarat",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 1,
+   "change": null,
+   "pipeline_runs": {
+    "started_at": "2026-10-26T21:00:03.740588+00:00"
+   }
+  },
+  {
+   "run_id": 22,
+   "item_id": "fire:madhya-pradesh",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": null,
+   "pipeline_runs": {
+    "started_at": "2026-10-26T21:00:03.740588+00:00"
+   }
+  },
+  {
+   "run_id": 23,
+   "item_id": "fire:gujarat",
+   "category": "fire",
+   "status": "closed",
+   "severity_level": 1,
+   "change": "closed",
+   "pipeline_runs": {
+    "started_at": "2026-10-27T09:00:04.315879+00:00"
+   }
+  },
+  {
+   "run_id": 23,
+   "item_id": "fire:madhya-pradesh",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": null,
+   "pipeline_runs": {
+    "started_at": "2026-10-27T09:00:04.315879+00:00"
+   }
+  },
+  {
+   "run_id": 24,
+   "item_id": "fire:madhya-pradesh",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": null,
+   "pipeline_runs": {
+    "started_at": "2026-10-27T15:00:07.232747+00:00"
+   }
+  },
+  {
+   "run_id": 25,
+   "item_id": "fire:madhya-pradesh",
+   "category": "fire",
+   "status": "open",
+   "severity_level": 2,
+   "change": null,
+   "pipeline_runs": {
+    "started_at": "2026-10-27T21:00:07.260158+00:00"
+   }
+  }
+ ]
+}

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
-import { useChangeWindow, useEdition, useLatestEditionId } from '@/hooks/useEdition'
+import { useChangeWindow, useDeskHistory, useEdition, useLatestEditionId, useWatching } from '@/hooks/useEdition'
 import { sinceLabel, sinceYesterday, type Movement } from '@/lib/desk/changes'
 import { deskEntries } from '@/lib/desk/entries'
 import { copyContext, itemCopy, pageHeadline, sinceLines } from '@/lib/desk/copy'
@@ -15,6 +15,7 @@ import DeskEntryRow from '@/components/paper/DeskEntryRow'
 import DeskHero from '@/components/paper/DeskHero'
 import NoteBox from '@/components/paper/NoteBox'
 import PhoneWire from '@/components/paper/PhoneWire'
+import QuietDesk from '@/components/paper/QuietDesk'
 import MapSlot from '@/components/paper/MapSlot'
 import SinceYesterday from '@/components/paper/SinceYesterday'
 
@@ -95,6 +96,11 @@ export default function Desk() {
     return deskEntries(data.snapshots, moves)
   }, [data, since, changeWindow.isError])
   const ctx = useMemo(() => (data ? copyContext(entries, since, data.run) : null), [data, entries, since])
+  // A quiet day: nothing open above Level 1 (DeskQuiet layout).
+  const quiet = !!data && data.snapshots.length > 0 && (entries.length === 0 || entries[0].level <= 1)
+  const isLatestEdition = !!data && data.run.id === latestId
+  const history = useDeskHistory(finished, quiet)
+  const watching = useWatching(quiet && isLatestEdition)
   const notice = data ? lateNotice(data.run, data.status) : null
 
   useEffect(() => {
@@ -143,6 +149,8 @@ export default function Desk() {
     )
   } else if (changeWindow.isPending && !changeWindow.isError && data.run.status !== 'running') {
     body = loading
+  } else if (quiet && history.isPending && !history.isError) {
+    body = loading
   } else if (data.run.status === 'running') {
     body = (
       <>
@@ -170,6 +178,23 @@ export default function Desk() {
               ? `This edition ran before the severity desk existed. The desk starts with No. ${SCALE.fromEdition}.`
               : 'No desk was recorded in this edition.'}
           </Message>
+        ) : quiet && history.data && ctx ? (
+          <>
+            {notice && (
+              <NoteBox tag="LATE" accent>
+                {notice}
+              </NoteBox>
+            )}
+            <QuietDesk
+              run={data.run}
+              entries={entries}
+              status={data.status}
+              history={history.data}
+              watching={watching.data ?? null}
+              latest={isLatestEdition}
+              ctx={ctx}
+            />
+          </>
         ) : (
           <>
             <DeskHero

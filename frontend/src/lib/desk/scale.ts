@@ -14,6 +14,8 @@ export const SCALE = {
     level4MinMagnitude: 7.0,
     indiaBufferKm: 100,
     anywhereMinMagnitude: 6.0,
+    /** Not a level rule: the USGS fetch's minimum magnitude (fetchers/usgs.py), for "none of magnitude 4 or more". */
+    fetchMinMagnitude: 4.0,
   },
   gdacs: { green: 1, greenRising: 2, orange: 3, red: 4 },
   air: {

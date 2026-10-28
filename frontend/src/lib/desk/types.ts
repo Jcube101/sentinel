@@ -168,3 +168,47 @@ export interface ChangeWindow {
   /** Full snapshots of items that closed after ref and before the edition. */
   closed: Snapshot[]
 }
+
+/** A pipeline_runs row, by number and start time. */
+export interface RunRef {
+  id: number
+  started_at: string
+  status?: string
+}
+
+/** A snapshot with its run's start time embedded (pipeline_runs(started_at)). */
+export type TimedSnapshot = Snapshot & { pipeline_runs: { started_at: string } | null }
+export type TimedTrace = SnapshotTrace & { pipeline_runs: { started_at: string } | null }
+
+/** What the quiet desk reads from the editions up to this one. */
+export interface DeskHistory {
+  /** Runs in the 14 days up to the edition. */
+  runs: RunRef[]
+  /** Open snapshots of those runs: run and level only. */
+  strip: { run_id: number; severity_level: Level }[]
+  /** The latest snapshot at Level 3 or above, up to the edition. */
+  lastLevel3: TimedSnapshot | null
+  /** The last few closing snapshots up to the edition, newest first. */
+  closed: TimedSnapshot[]
+  /** Every snapshot of those closed items up to the edition. */
+  closedHistory: TimedTrace[]
+}
+
+/** A desk_watch row: one subject's distance to its next level (current state only). */
+export interface WatchRow {
+  id: string
+  category: Category
+  title: string
+  item_id: string | null
+  level: Level
+  next_level: Level | null
+  metric: string
+  value: number | null
+  next_threshold: number | null
+  distance_to_threshold: number | null
+  trend: { at: string; value: number; threshold: number | null; next_level: number | null }[] | null
+  rising_updates: number
+  watching: boolean
+  watch_reason: string | null
+  last_run_id: number | null
+}

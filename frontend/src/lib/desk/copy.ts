@@ -10,12 +10,17 @@ import { counted, snapshotEntry, type DeskEntry } from './entries'
 import type { MoveKind, Movement, SinceYesterday } from './changes'
 import { LEVEL_NAMES } from './levels'
 import { SCALE } from './scale'
-import type { AirBand, Edition, Level } from './types'
+import type { AirBand, Category, CategoryStatus, Edition, Level, TimedSnapshot, WatchRow } from './types'
+import { CATEGORY_ORDER } from './entries'
+import { SOURCE_NAMES } from './sources'
+import { istDay } from './ist'
 import {
+  SOURCE_WORDS,
   alertRank,
   alertRankWord,
   cap,
   inYears,
+  lastKnownWords,
   listText,
   numberWord,
   partOfMonth,
@@ -664,3 +669,228 @@ export function pageHeadline(entries: DeskEntry[], ctx: CopyContext): string {
   const other = entries.find((e) => e !== lead && e.level >= 2 && (e.category !== 'fire' || ctx.fires.length === 1))
   return other ? `${head}, and ${itemClause(other)}.` : `${head}.`
 }
+
+// --- the quiet desk ------------------------------------------------------------------
+
+const ORDINALS = ['', 'first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth']
+
+function ordinal(n: number): string {
+  return n < ORDINALS.length ? ORDINALS[n] : `${n}th`
+}
+
+/** The quiet desk's headline, with how many days in a row nothing was above Level 1. */
+export function quietHeadline(streak: number): string {
+  if (streak >= 14) return 'A quiet fortnight: nothing in the report has been above minor for two weeks.'
+  if (streak >= 2) return `A quiet day, the ${ordinal(streak)} in a row: nothing in this report is above minor.`
+  return 'A quiet day: nothing in this report is above minor.'
+}
+
+function largestQuake(entries: DeskEntry[]): DeskEntry | null {
+  const quakes = entries.filter((e) => e.category === 'earthquake').flatMap((e) => (e.members.length ? e.members : [e]))
+  return quakes.sort((a, b) => b.strength - a.strength)[0] ?? null
+}
+
+function fireStates(entries: DeskEntry[]): string[] {
+  return entries.filter((e) => e.category === 'fire').flatMap((e) => (e.members.length ? e.members : [e])).map(stateName)
+}
+
+/** One or two sentences on every category, then what is worth watching (null: not known for past editions). */
+export function quietStandfirst(entries: DeskEntry[], watching: number | null): string {
+  const gdacs = entries.filter((e) => e.category === 'cyclone' || e.category === 'flood')
+  const first =
+    gdacs.length === 0 ? 'No floods or cyclones are open.' : `${cap(listText(gdacs.map(itemClause)))}.`
+  const fires = fireStates(entries)
+  const quake = largestQuake(entries)
+  const air = entries.find((e) => e.category === 'air')
+  const aw = air ? airWorst(air) : null
+  const parts = [
+    fires.length === 0
+      ? "no state's fires are well above normal"
+      : fires.length === 1
+        ? `${fires[0]}'s fires have fallen back toward normal`
+        : `fires have fallen back toward normal in ${counted_(fires.length, 'state', 'states')}`,
+    quake ? `the largest earthquake was magnitude ${(quake.figures.magnitude ?? quake.strength).toFixed(1)}` : 'no earthquakes are on the report',
+    aw ? `the worst air is ${aw.band}, in ${aw.where}` : "no city's air is poor",
+  ]
+  const sentences = [first, `${cap(listText(parts))}.`]
+  if (watching !== null) {
+    sentences.push(
+      watching === 0
+        ? 'Nothing is close to the next level.'
+        : `${cap(numberWord(watching))} ${watching === 1 ? 'thing is' : 'things are'} worth watching.`,
+    )
+  }
+  return sentences.join(' ')
+}
+
+export interface ClearRow {
+  category: Category
+  name: string
+  level: Level | null
+  line: string
+  /** Where the category's figures come from in this edition: "GDACS", "CPCB". */
+  source: string
+  lastKnown: boolean
+}
+
+const CLEAR_NAMES: Record<Category, string> = {
+  cyclone: 'Cyclones',
+  flood: 'Floods',
+  earthquake: 'Earthquakes',
+  air: 'Air',
+  fire: 'Fire',
+}
+
+/** The all-clear table: one row per category, from the edition's items and category_status. */
+export function allClearRows(entries: DeskEntry[], status: CategoryStatus[]): ClearRow[] {
+  return CATEGORY_ORDER.map((category) => {
+    const st = status.find((c) => c.category === category)
+    const rows = entries.filter((e) => e.category === category)
+    const level = rows.length > 0 ? (Math.max(...rows.map((e) => e.level)) as Level) : null
+    let line: string
+    switch (category) {
+      case 'cyclone':
+      case 'flood':
+        line = rows.length === 0 ? 'None open.' : `${cap(listText(rows.map(itemClause)))}.`
+        break
+      case 'earthquake': {
+        const q = largestQuake(rows)
+        const n = rows.flatMap((e) => (e.members.length ? e.members : [e])).length
+        line = !q
+          ? `None of magnitude ${SCALE.quake.fetchMinMagnitude} or more in or near India in the last two days.`
+          : n === 1
+            ? `${cap(quakeMemberLine(q))}.`
+            : `${cap(numberWord(n))} small earthquakes; the largest: ${quakeMemberLine(q).replace(/^Magnitude/, 'magnitude')}.`
+        break
+      }
+      case 'air': {
+        const air = rows[0]
+        const worst = air ? worstCities(air.figures) : []
+        const aw = air ? airWorst(air) : null
+        line = !aw ? 'No city is poor or worse.' : `${cap(aw.band)} in ${aw.where}, worst in ${worst[0].city} at ${worst[0].aqi ?? Math.round(worst[0].pm25_24h ?? 0)}.`
+        break
+      }
+      case 'fire': {
+        const states = fireStates(rows)
+        line =
+          states.length === 0
+            ? "No state's fires are well above normal for the time of year."
+            : `${listText(states)} ${states.length === 1 ? 'has' : 'have'} fallen back toward normal and ${states.length === 1 ? 'is' : 'are'} leaving the list.`
+        break
+      }
+    }
+    const note = st?.last_known ? st.summary.split(' · last known: ')[1] ?? null : null
+    if (st?.last_known) line += ` Not updated: ${lastKnownWords(note)}.`
+    return {
+      category,
+      name: CLEAR_NAMES[category],
+      level,
+      line,
+      source: st ? (SOURCE_NAMES[st.source] ?? st.source) : '',
+      lastKnown: !!st?.last_known,
+    }
+  })
+}
+
+/** "Last: Cyclone Arnab" for days since a Level 3+ item. */
+export function level3Title(s: TimedSnapshot, ctx: CopyContext): string {
+  return itemCopy(snapshotEntry(s), ctx).title
+}
+
+/** A closed item's name, for Recently closed: "Gujarat's fires", "Cyclone Arnab". */
+export function closedSubject(e: DeskEntry): string {
+  switch (e.category) {
+    case 'fire':
+      return `${possessive(stateName(e))} fires`
+    case 'earthquake':
+      return `Magnitude ${(e.figures.magnitude ?? e.strength).toFixed(1)} earthquake, ${quakeWhere(e)}`
+    case 'cyclone':
+      return cycloneName(e.title)
+    case 'flood':
+      return floodName(e)
+    case 'air':
+      return 'Air pollution'
+  }
+}
+
+export interface WatchCopy {
+  title: string
+  standfirst: string
+  /** The trend as evidence: "282 → 268 → 288 → 293". */
+  trend: string | null
+}
+
+const AIR_NEXT: Record<number, string> = { 2: 'very poor', 3: 'severe', 4: 'severe in three cities' }
+
+/** "27 Oct" in a metric, as a day key in the edition's year (the year before, if that would be later). */
+function metricDay(metric: string, editionAt: string): string | null {
+  const m = /on (\d{1,2}) (\w{3})/.exec(metric)
+  if (!m) return null
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  const mi = months.indexOf(m[2])
+  if (mi < 0) return null
+  const today = istDay(editionAt)
+  let year = Number(today.slice(0, 4))
+  const key = (y: number) => `${y}-${String(mi + 1).padStart(2, '0')}-${m[1].padStart(2, '0')}`
+  if (key(year) > today) year -= 1
+  return key(year)
+}
+
+/** A watching subject in words (latest edition only: desk_watch keeps current state). */
+export function watchCopy(row: WatchRow, ctx: CopyContext): WatchCopy {
+  const v = row.value
+  const t = row.next_threshold
+  const next = row.next_level
+  const rising = row.rising_updates >= 2
+  const past = (row.watch_reason ?? '').startsWith('past')
+  const trend =
+    row.trend && row.trend.length >= 2
+      ? row.trend
+          .slice(-5)
+          .map((p) => (Number.isInteger(p.value) ? String(p.value) : p.value.toFixed(1)))
+          .join(' → ')
+      : null
+  switch (row.category) {
+    case 'air': {
+      const city = /\bin ([^,;]+?)(?:, the worst city|;|,|$)/.exec(row.metric)?.[1] ?? 'the worst city'
+      const band = next ? (AIR_NEXT[next] ?? `Level ${next}`) : 'the next level'
+      const aqi = row.metric.startsWith('CPCB AQI')
+      const title = past
+        ? `${possessive(city)} air reads ${band}, not yet confirmed`
+        : rising
+          ? `${possessive(city)} air has risen for ${numberWord(row.rising_updates)} reports toward ${band}`
+          : `${possessive(city)} air is close to ${band}`
+      const standfirst = aqi
+        ? `Its air quality index is ${v}; ${band} starts above ${t}.`
+        : `Fine-particle pollution there averages ${v} µg/m³ over a day; ${band} starts above ${t}.`
+      return { title, standfirst, trend }
+    }
+    case 'fire': {
+      const day = metricDay(row.metric, ctx.editionAt)
+      const when = day ? relativeDay(day, ctx.editionAt) : 'on its latest full day'
+      const S = possessive(row.title)
+      const title = past
+        ? `${S} fires are at the Level ${next} mark`
+        : rising
+          ? `${S} fires have risen for ${numberWord(row.rising_updates)} days toward Level ${next}`
+          : `${S} fires are close to Level ${next}`
+      return { title, standfirst: `${plural(v ?? 0, 'fire', 'fires')} ${when}, against ${t} for Level ${next}.`, trend }
+    }
+    case 'earthquake':
+      return {
+        title: `A magnitude ${v} quake came close to Level ${next}`,
+        standfirst: `On the US Geological Survey's figures; Level ${next} starts at magnitude ${t}.`,
+        trend: null,
+      }
+    case 'cyclone':
+    case 'flood': {
+      const name = row.category === 'cyclone' ? cycloneName(row.title) : row.title
+      return {
+        title: rising ? `${possessive(name)} alert is rising` : `${name} is close to a higher alert`,
+        standfirst: `Its alert score from ${SOURCE_WORDS.GDACS} is ${v}; Level ${next} starts at ${t}.`,
+        trend,
+      }
+    }
+  }
+}
+
