@@ -443,11 +443,20 @@ Also:
     the plain multiple ("run at twice the usual") and the standfirst gives it against the
     average ("about double the late-October average but normal for the season"), as in
     Job's example.
-12. Map symbols per hazard, ink on paper: fire stays dots; a cyclone is a spiral sized
-    by wind speed, an earthquake concentric rings sized by magnitude, a flood a wave; the
-    rank number is a small badge on the symbol (a fire state's badge sits at the centre of
-    its fires). Red only at Level 3 and up, fire dots included (red in a state at Level 3+);
-    one slow pulse at Level 4, none with reduced motion. The map page's Layers list is the
-    key. Air goes on the map once P5 lands: cities at poor or worse as small soft squares
-    tinted by band, under the hazard symbols, the worst city labelled, its own layer toggle
-    (on).
+12. Map symbols per hazard ("A2 · Map symbols" sheet, 28 Oct): ink on paper, red only at
+    Level 3 and up. Fire stays dots, in warm ember (#B4532A, ~0.65), red in a state at
+    Level 3+; a fire state shows only its rank badge, at the centre of its fires. An
+    earthquake is ripple rings, one per level, sized by magnitude, labelled with the USGS
+    class words (light, moderate, strong, major). A flood is wave lines, one per level. A
+    cyclone is a spiral sized by wind speed, red from Level 3, with a faint halo and one
+    slow pulse at Level 4 (no pulse with reduced motion). The rank number is a small badge
+    on the symbol. The map page's Layers list is the key. Air, once P5 lands: soft
+    band-tinted squares for cities at poor or worse, under every hazard (its own pane,
+    below the fire dots), the worst city labelled, its own layer toggle (on). The squares
+    are built (`airSquareHtml`, `PaperMap`'s `air` prop) and shown only on `/dev/symbols`
+    until the pipeline's field names arrive.
+13. `/dev/symbols` draws every symbol at every level, the size ramps, selected and closed
+    markers, the air squares and a made-up busy day, so quake and flood symbols can be
+    checked without a real event. Not linked from the site, `noindex`. It is in
+    `npm run dev` and in `npm run build:preview` (VITE_DEV_PAGES=1, used for the preview
+    on the Pi); the plain `npm run build` that Render runs leaves it out of the bundle.

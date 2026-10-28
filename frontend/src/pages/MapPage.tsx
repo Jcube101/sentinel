@@ -13,7 +13,7 @@ import PaperShell from '@/components/paper/PaperShell'
 import PaperMap from '@/components/paper/PaperMap'
 import LevelSquares from '@/components/paper/LevelSquares'
 import { SourceLine } from '@/components/paper/DeskEntryRow'
-import { badgeHtml, symbolSvg } from '@/components/paper/mapSymbols'
+import { EMBER, badgeHtml, symbolSvg } from '@/components/paper/mapSymbols'
 import { sourceCredit } from '@/lib/desk/notes'
 
 const LAYERS: Category[] = ['cyclone', 'flood', 'earthquake', 'fire']
@@ -40,7 +40,7 @@ function KeySymbol({ category, level = 2 }: { category: Category; level?: Level 
     return (
       <span className="inline-flex items-center justify-center gap-[3px] w-[22px] h-[20px]" aria-hidden="true">
         {[0, 1, 2].map((i) => (
-          <span key={i} className={`w-[4px] h-[4px] rounded-full ${level >= 3 ? 'bg-accent' : 'bg-ink'} opacity-60`} />
+          <span key={i} className={`w-[4px] h-[4px] rounded-full ${level >= 3 ? 'bg-accent' : ''} opacity-70`} style={level >= 3 ? undefined : { background: EMBER }} />
         ))}
       </span>
     )
@@ -49,6 +49,17 @@ function KeySymbol({ category, level = 2 }: { category: Category; level?: Level 
 }
 
 const keyRow = 'flex items-center gap-2.5 font-mono text-[11px] leading-[1.45] text-ink-muted'
+
+/** Symbols in a row for the key: one per level, each a little larger. */
+function KeyRamp({ category }: { category: Category }) {
+  return (
+    <span className="flex items-end gap-0.5 flex-none w-[64px]" aria-hidden="true">
+      {([1, 2, 3, 4] as Level[]).map((l) => (
+        <span key={l} className="inline-block" dangerouslySetInnerHTML={{ __html: symbolSvg({ category, size: 9 + l * 2, level: l }) }} />
+      ))}
+    </span>
+  )
+}
 
 /** The map: the edition's items and the day's fires, with the list beside it. */
 export default function MapPage() {
@@ -202,24 +213,32 @@ export default function MapPage() {
             )}
             <ul aria-label="Map key" className="m-0 p-0 pt-3 list-none flex flex-col gap-2">
               <li className={keyRow}>
-                <span className="flex items-end gap-0.5 flex-none w-[46px]">
+                <span className="flex items-end gap-0.5 flex-none w-[64px]" aria-hidden="true">
                   <span className="inline-block" dangerouslySetInnerHTML={{ __html: symbolSvg({ category: 'cyclone', size: 14, level: 2 }) }} />
                   <span className="inline-block" dangerouslySetInnerHTML={{ __html: symbolSvg({ category: 'cyclone', size: 24, level: 2 }) }} />
                 </span>
-                Spirals grow with a cyclone's wind speed, rings with an earthquake's magnitude.
+                Spirals grow with a cyclone's wind speed.
               </li>
               <li className={keyRow}>
-                <span className="flex gap-1 flex-none w-[46px]">
-                  <KeySymbol category="earthquake" level={3} />
+                <KeyRamp category="earthquake" />
+                Rings: one per level, wider with magnitude (light, moderate, strong, major).
+              </li>
+              <li className={keyRow}>
+                <KeyRamp category="flood" />
+                Waves: one line per level.
+              </li>
+              <li className={keyRow}>
+                <span className="flex-none w-[64px]">
+                  <KeySymbol category="cyclone" level={4} />
                 </span>
-                Red: Level 3 or 4. A slow pulse: Level 4.
+                Red: Level 3 or 4. A faint halo and a slow pulse: Level 4.
               </li>
               <li className={keyRow}>
-                <span className="relative flex-none w-[46px] h-[16px]" dangerouslySetInnerHTML={{ __html: badgeHtml(2, 2, 'left:3px;top:0;') }} />
+                <span className="relative flex-none w-[64px] h-[16px]" dangerouslySetInnerHTML={{ __html: badgeHtml(2, 2, 'left:3px;top:0;') }} />
                 The number matches the list. A fire state's number sits at the centre of its fires.
               </li>
               <li className={keyRow}>
-                <span className="flex-none w-[46px]">
+                <span className="flex-none w-[64px]">
                   <KeySymbol category="fire" />
                 </span>
                 Each dot is a fire seen by NASA's satellites; red in a state at Level 3 or 4.
