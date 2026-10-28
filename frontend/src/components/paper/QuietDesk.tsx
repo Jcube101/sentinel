@@ -188,7 +188,7 @@ function RecentlyClosed({ history }: { history: DeskHistory }) {
               <span className="flex flex-col gap-0.5">
                 <span className="text-[15px] leading-[1.4]">{closedSubject(snapshotEntry(c.snapshot))}</span>
                 <span className="font-mono text-[11px] text-ink-muted">
-                  peaked at Level {c.peak} · {c.daysOpen === 0 ? 'under a day' : `${numberWord(c.daysOpen)} ${c.daysOpen === 1 ? 'day' : 'days'}`} on the list
+                  peaked at Level {c.peak} · open {c.daysOpen === 0 ? 'under a day' : `${numberWord(c.daysOpen)} ${c.daysOpen === 1 ? 'day' : 'days'}`}
                 </span>
               </span>
             </li>

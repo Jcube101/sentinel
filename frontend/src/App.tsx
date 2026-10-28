@@ -4,6 +4,8 @@ import About from './pages/About'
 import Item from './pages/Item'
 import MapPage from './pages/MapPage'
 import Sources from './pages/Sources'
+import Archive from './pages/Archive'
+import DatePage from './pages/DatePage'
 import Placeholder from './pages/Placeholder'
 
 // The Situation Report redesign (docs/situation-report-plan.md). The old
@@ -16,15 +18,8 @@ export default function App() {
       <Route path="/edition/:n" element={<Desk />} />
       <Route path="/item/:category/:ref" element={<Item />} />
       <Route path="/map" element={<MapPage />} />
-      <Route
-        path="/archive"
-        element={
-          <Placeholder
-            title="Archive"
-            line="Every edition by date, with each day's top item. Coming in a later step; until then, step through editions with the ‹ No. links on the desk."
-          />
-        }
-      />
+      <Route path="/archive" element={<Archive />} />
+      <Route path="/date/:day" element={<DatePage />} />
       <Route path="/sources" element={<Sources />} />
       <Route path="/about" element={<About />} />
       <Route path="/insights" element={<Navigate to="/archive" replace />} />

@@ -41,7 +41,7 @@ describe('the 14-day strip (edition 25)', () => {
 })
 
 describe('recently closed (edition 25)', () => {
-  it('when each closed, its peak, and its days on the list from its latest opening', () => {
+  it('when each closed, its peak, and how many days it was open from its latest opening', () => {
     expect(
       closedSummaries(history).map((c) => `${c.snapshot.item_id} ${c.closedOn.slice(5)} L${c.peak} ${c.daysOpen}d`),
     ).toEqual([

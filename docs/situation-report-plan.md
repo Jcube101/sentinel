@@ -1,6 +1,6 @@
 # Sentinel — "Situation Report" frontend (Phase 7): plan
 
-Status: **plan updated 28 Oct 2026 with Job's answers; steps 1 to 7 done; the copy follows `docs/style-guide.md` (2b–2d).** Branch
+Status: **plan updated 28 Oct 2026 with Job's answers; steps 1 to 8 done; the copy follows `docs/style-guide.md` (2b–2d).** Branch
 `frontend/situation-report`, worktree `../sentinel-situation-report`. Design reference:
 `docs/design/` (DeskSeverity, DeskQuiet, DeskPhone, MapView, ItemFire), read as visual and
 copy spec, not code. Data model: `docs/severity-pipeline.md` and
@@ -292,7 +292,16 @@ checked on the Pi preview against live data. Smallest shippable step first.
    only. The `sources` table isn't read, so its grants (section 7) no longer block this
    page.
 8. **Archive and Date.** `/date/YYYY-MM-DD` with the day's other editions; the Archive's
-   list of days with each day's top item; closed items.
+   list of days with each day's top item; closed items. **Done.** `/date/:day` shows the
+   Desk for the day's edition (first run from 20:30 IST, else the day's latest, said in
+   the DAY note: "no 20:30 edition yet / on this day"), the day's other editions with
+   their slot (manual runs by time) and the days either side; a day without an edition
+   says so and links to the nearest. `/archive` (`?month=YYYY-MM`) lists a month's days,
+   newest first: the day's highest level over all its editions, the chosen edition's
+   lead (ranked and worded by the Desk's own code, with the comparison built from the
+   month's slim rows: three reads a month), the edition and how many others ran; then
+   the month's closings from the closing snapshots (an item that reopened keeps its
+   closing), with peak level and days open. The edition line's date links to its day.
 9. **Switch-over prep.** Redirects for old routes (`/insights` → `/archive`, `/event/:id`,
    `/dashboard`); remove the old pages, components and unused dependencies (Recharts if
    nothing uses it); meta tags and favicon; accessibility and phone pass. Job reviews the

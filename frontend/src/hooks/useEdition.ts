@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { WINDOW_HOURS } from '@/lib/desk/changes'
 import { STRIP_DAYS } from '@/lib/desk/quiet'
+import { chooseDayEdition, dayStart, runsByDay, shiftMonth } from '@/lib/desk/archive'
 import type { FirePoint } from '@/components/paper/PaperMap'
 import { missingCategories } from '@/lib/desk/entries'
 import type {
@@ -404,5 +405,142 @@ export function useRunSources(run: Edition | null) {
     },
     staleTime: Infinity,
     enabled: !!supabase && run !== null && run.status !== 'running',
+  })
+}
+
+/** The first and the latest finished editions: the archive's span. */
+export function useArchiveSpan() {
+  return useQuery({
+    queryKey: ['archive-span'],
+    queryFn: async (): Promise<{ first: RunRef | null; latest: RunRef | null }> => {
+      if (!supabase) return { first: null, latest: null }
+      const [first, latest] = await Promise.all([
+        supabase.from('pipeline_runs').select('id,started_at,status').neq('status', 'running').order('id').limit(1),
+        supabase.from('pipeline_runs').select('id,started_at,status').neq('status', 'running').order('id', { ascending: false }).limit(1),
+      ])
+      if (first.error) throw first.error
+      if (latest.error) throw latest.error
+      return { first: (first.data?.[0] ?? null) as RunRef | null, latest: (latest.data?.[0] ?? null) as RunRef | null }
+    },
+    staleTime: 5 * 60_000,
+    enabled: !!supabase,
+  })
+}
+
+export interface ArchiveMonth {
+  /** The month's runs, plus two days before it (for "since yesterday"). */
+  runs: RunRef[]
+  /** Slim snapshots of those runs. */
+  traces: SnapshotTrace[]
+  /** Open snapshots of each day's chosen edition. */
+  open: Snapshot[]
+}
+
+/** One month of the archive in three reads: runs, slim snapshots, and the chosen editions' open snapshots. */
+export function useArchiveMonth(month: string | null) {
+  return useQuery({
+    queryKey: ['archive-month', month],
+    queryFn: async (): Promise<ArchiveMonth> => {
+      if (!supabase || !month) return { runs: [], traces: [], open: [] }
+      const start = dayStart(`${month}-01`)
+      const end = dayStart(`${shiftMonth(month, 1)}-01`)
+      const before = new Date(Date.parse(start) - 2 * 86_400_000).toISOString()
+      const runs = await supabase
+        .from('pipeline_runs')
+        .select('id,started_at,status')
+        .neq('status', 'running')
+        .gte('started_at', before)
+        .lt('started_at', end)
+        .order('id')
+      if (runs.error) throw runs.error
+      const list = (runs.data ?? []) as RunRef[]
+      if (list.length === 0) return { runs: [], traces: [], open: [] }
+      const inMonth = list.filter((r) => Date.parse(r.started_at) >= Date.parse(start))
+      const chosen = [...runsByDay(inMonth).values()].map((d) => chooseDayEdition(d)!.run.id)
+      const [traces, open] = await Promise.all([
+        supabase
+          .from('desk_item_snapshots')
+          .select(TRACE_SELECT)
+          .gte('run_id', list[0].id)
+          .lte('run_id', list[list.length - 1].id)
+          .order('run_id'),
+        chosen.length === 0
+          ? Promise.resolve({ data: [], error: null })
+          : supabase.from('desk_item_snapshots').select(SNAPSHOT_SELECT).in('run_id', chosen).eq('status', 'open'),
+      ])
+      if (traces.error) throw traces.error
+      if (open.error) throw open.error
+      return { runs: list, traces: (traces.data ?? []) as unknown as SnapshotTrace[], open: (open.data ?? []) as unknown as Snapshot[] }
+    },
+    staleTime: 5 * 60_000,
+    enabled: !!supabase && !!month,
+  })
+}
+
+/** A day's runs, and the nearest editions before and after it (for "no edition" and day-to-day links). */
+export function useDayRuns(day: string | null) {
+  return useQuery({
+    queryKey: ['day-runs', day],
+    queryFn: async (): Promise<{ runs: RunRef[]; prev: RunRef | null; next: RunRef | null }> => {
+      if (!supabase || !day) return { runs: [], prev: null, next: null }
+      const start = dayStart(day)
+      const end = new Date(Date.parse(start) + 86_400_000).toISOString()
+      const [runs, prev, next] = await Promise.all([
+        supabase.from('pipeline_runs').select('id,started_at,status').neq('status', 'running').gte('started_at', start).lt('started_at', end).order('id'),
+        supabase.from('pipeline_runs').select('id,started_at,status').neq('status', 'running').lt('started_at', start).order('id', { ascending: false }).limit(1),
+        supabase.from('pipeline_runs').select('id,started_at,status').neq('status', 'running').gte('started_at', end).order('id').limit(1),
+      ])
+      for (const r of [runs, prev, next]) if (r.error) throw r.error
+      return {
+        runs: (runs.data ?? []) as RunRef[],
+        prev: (prev.data?.[0] ?? null) as RunRef | null,
+        next: (next.data?.[0] ?? null) as RunRef | null,
+      }
+    },
+    staleTime: 5 * 60_000,
+    enabled: !!supabase && !!day,
+  })
+}
+
+/**
+ * Closings in a month, from the closing snapshots (an item that reopened
+ * later still shows its closing), with the history to find its peak and how
+ * long it was open (quiet.closedSummaries).
+ */
+export function useClosedInMonth(month: string | null) {
+  return useQuery({
+    queryKey: ['closed-month', month],
+    queryFn: async (): Promise<Pick<DeskHistory, 'closed' | 'closedHistory'>> => {
+      if (!supabase || !month) return { closed: [], closedHistory: [] }
+      const runs = await supabase
+        .from('pipeline_runs')
+        .select('id')
+        .gte('started_at', dayStart(`${month}-01`))
+        .lt('started_at', dayStart(`${shiftMonth(month, 1)}-01`))
+        .order('id')
+      if (runs.error) throw runs.error
+      const ids = ((runs.data ?? []) as { id: number }[]).map((r) => r.id)
+      if (ids.length === 0) return { closed: [], closedHistory: [] }
+      const closed = await supabase
+        .from('desk_item_snapshots')
+        .select(TIMED_SNAPSHOT_SELECT)
+        .eq('change', 'closed')
+        .gte('run_id', ids[0])
+        .lte('run_id', ids[ids.length - 1])
+        .order('run_id', { ascending: false })
+      if (closed.error) throw closed.error
+      const rows = (closed.data ?? []) as unknown as TimedSnapshot[]
+      if (rows.length === 0) return { closed: [], closedHistory: [] }
+      const history = await supabase
+        .from('desk_item_snapshots')
+        .select(TIMED_TRACE_SELECT)
+        .in('item_id', [...new Set(rows.map((r) => r.item_id))])
+        .lte('run_id', ids[ids.length - 1])
+        .order('run_id')
+      if (history.error) throw history.error
+      return { closed: rows, closedHistory: (history.data ?? []) as unknown as TimedTrace[] }
+    },
+    staleTime: 5 * 60_000,
+    enabled: !!supabase && !!month,
   })
 }

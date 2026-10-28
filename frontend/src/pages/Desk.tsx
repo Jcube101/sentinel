@@ -6,7 +6,7 @@ import { sinceLabel, sinceYesterday, type Movement } from '@/lib/desk/changes'
 import { deskEntries } from '@/lib/desk/entries'
 import { copyContext, itemCopy, pageHeadline, sinceLines } from '@/lib/desk/copy'
 import { changeCounts, levelCounts } from '@/lib/desk/headline'
-import { istDate, istShortDate, istTime } from '@/lib/desk/ist'
+import { istDate, istDay, istShortDate, istTime } from '@/lib/desk/ist'
 import { SCALE } from '@/lib/desk/scale'
 import { editionQuery } from '@/lib/desk/paths'
 import { FOOTER_NAMES, lateNotice, sourceLines } from '@/lib/desk/sources'
@@ -28,10 +28,18 @@ function EditionLine({ run, latestId }: { run: Edition; latestId: number | null 
     <div className="flex flex-wrap justify-between gap-3 py-2 sm:py-2.5 border-b border-ink font-mono text-[11px] sm:text-[12px] tracking-[0.04em] uppercase">
       <span>
         <span className="hidden sm:inline">
-          Report No. {run.id} · {istDate(run.started_at)} · {istTime(run.started_at)} IST run
+          Report No. {run.id} ·{' '}
+          <Link to={`/date/${istDay(run.started_at)}`} className="hover:text-accent">
+            {istDate(run.started_at)}
+          </Link>{' '}
+          · {istTime(run.started_at)} IST run
         </span>
         <span className="sm:hidden">
-          No. {run.id} · {istShortDate(run.started_at)} · {istTime(run.started_at)} IST
+          No. {run.id} ·{' '}
+          <Link to={`/date/${istDay(run.started_at)}`} className="hover:text-accent">
+            {istShortDate(run.started_at)}
+          </Link>{' '}
+          · {istTime(run.started_at)} IST
         </span>
         {run.status === 'failed' && <span className="text-accent font-semibold"> · Run failed</span>}
       </span>
@@ -77,10 +85,17 @@ function Message({ children }: { children: ReactNode }) {
   )
 }
 
-/** The desk for one edition: `/` shows the latest, `/edition/:n` any edition as published. */
-export default function Desk() {
+interface DeskProps {
+  /** Show this edition (the Date page); else the route's :n, else the latest. */
+  editionId?: number
+  /** Shown in place of the ARCHIVE note (the Date page's note on the day's editions). */
+  dayNote?: ReactNode
+}
+
+/** The desk for one edition: `/` shows the latest, `/edition/:n` any edition as published, `/date/:day` a day's edition. */
+export default function Desk({ editionId, dayNote }: DeskProps = {}) {
   const params = useParams()
-  const requested = params.n === undefined ? null : Number(params.n)
+  const requested = editionId ?? (params.n === undefined ? null : Number(params.n))
   const badParam = requested !== null && (!Number.isInteger(requested) || requested < 1)
 
   const latest = useLatestEditionId()
@@ -172,7 +187,8 @@ export default function Desk() {
     body = (
       <>
         <EditionLine run={data.run} latestId={latestId} />
-        {!isLatest && latestId !== null && (
+        {dayNote}
+        {!dayNote && !isLatest && latestId !== null && (
           <NoteBox tag="ARCHIVE">
             You're reading No. {data.run.id}, published {istDate(data.run.started_at)} at {istTime(data.run.started_at)} IST.{' '}
             <Link to="/" className="not-italic font-mono text-[12px] uppercase border-b border-ink hover:text-accent">

@@ -66,7 +66,7 @@ export interface ClosedSummary {
   daysOpen: number
 }
 
-/** Recently closed items, newest first: when, peak level, how long on the list. */
+/** Recently closed items, newest first: when, peak level, how long they were open. */
 export function closedSummaries(h: Pick<DeskHistory, 'closed' | 'closedHistory'>): ClosedSummary[] {
   return h.closed.map((s) => {
     const rows = h.closedHistory.filter((r) => r.item_id === s.item_id && r.run_id <= s.run_id)

@@ -248,7 +248,7 @@ When nothing is above Level 1:
 - **Watching:** "Panipat's air is close to very poor" / "Its air quality index is 293;
   very poor starts above 300." Rising: "… has risen for three reports toward very poor".
 - **Recently closed:** the item's name ("Gujarat's fires", "Magnitude 7.0 earthquake, 350
-  km outside India"), then "peaked at Level 2 · two days on the list".
+  km outside India"), then "peaked at Level 2 · open two days".
 
 ## The footer
 
