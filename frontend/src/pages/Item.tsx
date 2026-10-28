@@ -237,13 +237,11 @@ function GdacsDetail({ e }: { e: DeskEntry }) {
           ...(typeof f.severity === 'number' && f.severity_unit ? [['Severity', `${Math.round(f.severity)} ${f.severity_unit}`] as [string, string]] : []),
           ...(f.severity_text ? [['GDACS says', String(f.severity_text)] as [string, string]] : []),
           ['Alert score', `${f.alert_score ?? '—'}${typeof f.prev_episode_alert_score === 'number' ? ` (previous update ${f.prev_episode_alert_score})` : ''}`],
-          ['Mapped area', place && e.coords ? `centred ${placeText(place)} (${e.coords[0].toFixed(1)}°N, ${e.coords[1].toFixed(1)}°E)` : 'not known for this report'],
+          ['Where', place ? `${placeText(place)}, as global disaster monitors place it` : 'not known for this edition'],
           ['Source', f.gdacs_url ? <a href={String(f.gdacs_url)} target="_blank" rel="noreferrer" className="border-b border-ink hover:text-accent">GDACS report ↗</a> : 'GDACS'],
         ]}
       />
-      <p className={`${meta} m-0 text-ink-muted`}>
-        GDACS's point is the centre of the area it maps for the event, not the storm's own position. No track or landfall is forecast here.
-      </p>
+      <p className={`${meta} m-0 text-ink-muted`}>No track or landfall is forecast here.</p>
     </Section>
   )
 }
@@ -301,7 +299,9 @@ export default function Item() {
   const entry = flat.find((e) => e.key === id) ?? (shown ? snapshotEntry(shown, since?.byItem) : null)
   const closed = shown?.status === 'closed'
   const copy = entry && ctx ? (closed ? { title: closedLine(entry), standfirst: null } : itemCopy(entry, ctx)) : null
-  const index = flat.findIndex((e) => e.key === id)
+  // Numbered by desk row, as on the Desk: the fire roundup and the quake group are one item each.
+  const index = entries.findIndex((r) => r.itemIds.includes(id))
+  const rowTarget = (r: DeskEntry) => (r.members.length > 0 ? (r.members.find((m) => m.level === r.level) ?? r.members[0]).key : r.key)
   const q = (n: number) => editionQuery(n, latestId)
   const query = run ? q(run.id) : ''
 
@@ -333,8 +333,8 @@ export default function Item() {
 
   const card = entryCard(entry)
   const since_ = openSince(snaps)
-  const prev = index > 0 ? flat[index - 1] : null
-  const next = index >= 0 && index < flat.length - 1 ? flat[index + 1] : null
+  const prev = index > 0 ? entries[index - 1] : null
+  const next = index >= 0 && index < entries.length - 1 ? entries[index + 1] : null
   const others = entries.filter((e) => !e.itemIds.includes(id))
   const observed = item.data?.item?.observed_at ?? null
 
@@ -346,16 +346,16 @@ export default function Item() {
             ← No. {run.id}
           </Link>{' '}
           · {istShortDate(run.started_at)} · {istTime(run.started_at)} IST
-          {index >= 0 && ` · item ${index + 1} of ${flat.length}`}
+          {index >= 0 && ` · item ${index + 1} of ${entries.length}`}
         </span>
         <span className="flex gap-4">
           {prev && (
-            <Link to={itemPath(prev.key) + query} className="hover:text-accent">
+            <Link to={itemPath(rowTarget(prev)) + query} className="hover:text-accent">
               ‹ Item {index}
             </Link>
           )}
           {next && (
-            <Link to={itemPath(next.key) + query} className="hover:text-accent">
+            <Link to={itemPath(rowTarget(next)) + query} className="hover:text-accent">
               Item {index + 2} ›
             </Link>
           )}
@@ -415,7 +415,7 @@ export default function Item() {
               <ul className="m-0 p-0 list-none">
                 {others.map((o) => {
                   const c = ctx ? itemCopy(o, ctx) : null
-                  const to = o.members.length > 0 ? itemPath(o.members[0].key) + query : itemPath(o.key) + query
+                  const to = itemPath(rowTarget(o)) + query
                   return (
                     <li key={o.key} className="py-2.5 border-b border-rule">
                       <Link to={to} className="flex flex-col gap-0.5 hover:text-accent">

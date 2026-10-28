@@ -38,6 +38,14 @@ export function timesNormal(r: number): string {
   return `${numberWord(roundMultiple(r))} times normal`
 }
 
+/** A plain multiple for titles: "twice the usual", "six times the usual". */
+export function theUsual(r: number): string {
+  if (r < 1.25) return 'the usual'
+  if (r < 1.75) return 'one and a half times the usual'
+  if (r < 2.5) return 'twice the usual'
+  return `${numberWord(roundMultiple(r))} times the usual`
+}
+
 /** A multiple for standfirsts: "about nine times usual", "about twice the usual". */
 export function timesUsual(r: number): string {
   if (r < 1.25) return 'about usual'

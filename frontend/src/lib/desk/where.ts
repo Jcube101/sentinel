@@ -9,6 +9,9 @@ import { roundKm } from './words'
 type LatLon = [number, number]
 
 const OUTLINE = geo.outline as unknown as LatLon[][]
+
+/** India's official outline, simplified to ~5 km: [lat, lon] rings, for drawing. */
+export const INDIA_OUTLINE: LatLon[][] = OUTLINE
 const COAST = geo.coast as unknown as Record<string, LatLon[]>
 
 // Coarse sea areas, [lat, lon], kept inside the water: clear of Sri Lanka,
@@ -84,11 +87,12 @@ const ISLANDS: Record<string, string> = {
   Lakshadweep: 'Lakshadweep',
 }
 
-/** "in the Bay of Bengal, about 40 km off the Andhra Pradesh coast", "over land, about 120 km from the Odisha coast" */
+/** "near the Andhra Pradesh coast", "in the Bay of Bengal, about 160 km off the Odisha coast", "over land, about 120 km from the Odisha coast" */
 export function placeText(p: Place): string {
   const coast = ISLANDS[p.coastState] ?? `the ${p.coastState} coast`
   const dist = `about ${roundKm(p.km)} km`
-  if (p.overLand) return p.km < 30 ? `over land near ${coast}` : `over land, ${dist} from ${coast}`
-  if (!p.sea) return p.km < 30 ? `near ${coast}` : `${dist} from ${coast}`
-  return p.km < 30 ? `in ${p.sea}, just off ${coast}` : `in ${p.sea}, ${dist} off ${coast}`
+  if (p.km < 30) return `near ${coast}`
+  if (p.overLand) return `over land, ${dist} from ${coast}`
+  if (!p.sea) return `${dist} from ${coast}`
+  return `in ${p.sea}, ${dist} off ${coast}`
 }

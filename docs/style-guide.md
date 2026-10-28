@@ -34,8 +34,8 @@ nine times normal".
 ### Translate and round numbers
 | In the data | In the story |
 |---|---|
-| 9.07× the norm | about nine times usual (standfirst only) |
-| 2.1× | about twice the usual |
+| 9.07× the norm | about nine times usual (standfirst), six times the usual (title, within range) |
+| 2.1× | about twice the usual; twice the usual (title) |
 | 1.5× | one and a half times usual |
 | norm 2.98 a day | about 3 |
 | norm 68.7 a day | about 70 (nearest 5 under 100, nearest 10 above) |
@@ -50,11 +50,21 @@ nine times normal".
 - No × signs, decimals or units in titles and standfirsts, except wind speed, depth and
   distance, which readers know.
 
-### No multiples in titles
-The "times usual" figure appears at most once per story, in the standfirst, and never in
-a title, the page headline or a Since yesterday line. Titles say what happened ("spike",
-"jump above normal", "run well above normal"); the standfirst gives the multiple; the
-evidence gives the exact ratio.
+### Intensity matches the verdict; the multiple once per story
+A title must not contradict its standfirst. Intensity words follow the verdict against
+past years (the baseline's busiest day at this time of year):
+- above it: "spike to a two-year high for the season"; "far above normal" for a group
+  that includes such a state;
+- level with it: "match their busiest day for the season";
+- within the range: the plain multiple, nothing stronger: "Madhya Pradesh's fires run at
+  twice the usual", "jump to six times the usual". Never "well above normal" or "far above
+  normal" next to "within its range for the season".
+
+The multiple ("twice the usual", "about nine times usual") appears at most once per story:
+in the title when the title carries it (within the range), else in the standfirst. When
+the title has it, the standfirst gives the usual count instead: "145 fires yesterday
+across 21 districts, where late October usually sees about 70." The evidence gives the
+exact ratio. Never "×" outside the evidence.
 
 ### Words
 | Not | But |
@@ -128,7 +138,7 @@ figure behind it:
 - "had the most": the most of the states in the story. Never "of any state": an edition
   only holds the states with an item, until the pipeline stores each state's national rank
   (plan P6).
-- A neutral verb ("run well above normal") when nothing changed.
+- A neutral verb ("run at twice the usual") when nothing changed.
 
 ### Every line rebuilds for past editions
 Templates read only the edition's own data: its snapshots, its run time and the
@@ -150,7 +160,7 @@ The lead is the first item (ranked by level, then cyclone, flood, earthquake, ai
 Its verb comes from the change since a day earlier: a cyclone or flood "holds at", "rises
 to", "eases to" or "is back on" its alert colour; air "turns" or "eases to" a band; a
 quake "strikes". Several fire states are one clause: "fires spread …", "fires ease …",
-"fires run well above normal …", led by the roundup's angle when fires lead. The sea is
+"fires run above normal …" ("far above normal" only with a record), led by the roundup's angle when fires lead. The sea is
 named ("in the Bay of Bengal") only when the item's mapped area is centred 150 km or more
 out at sea. Fire regions come from where the states are: one region ("across northern
 India"); states clustered round the middle of the country ("across central India"); two
@@ -160,13 +170,14 @@ When nothing is above Level 1: "A quiet day across India, with nothing above min
 ## Where things are
 
 From the item's coordinates only: the nearest point of an Indian state's coast, India's
-outline for land, and coarse sea areas drawn well inside the water. "in the Bay of Bengal,
-about 160 km off the Odisha coast", "over land, about 120 km from the Odisha coast",
-"just off the Andhra Pradesh coast" (under 30 km). Near another country's coast no sea is
-named: "about 250 km from the West Bengal coast". GDACS's point is the centre of the area
-it maps for the event, not the storm's position, so the copy says "The area they map for it
-is centred …"; never a track, a heading or a landfall. Past editions show a location only
-when no later run moved the item (plan P1).
+outline for land, and coarse sea areas drawn well inside the water. "near the Andhra
+Pradesh coast" (under 30 km), "in the Bay of Bengal, about 160 km off the Odisha coast",
+"over land, about 120 km from the Odisha coast". Near another country's coast no sea is
+named: "about 250 km from the West Bengal coast". The position is GDACS's, so the copy
+says so: "Global disaster monitors give it their highest alert, red, with winds of up to
+222 km/h, and place it near the Andhra Pradesh coast." Never a track, a heading or a
+landfall, and no latitude or longitude in the copy or the evidence. Past editions show a
+location only when no later run moved the item (plan P1).
 
 ## Fire roundup
 
@@ -201,9 +212,9 @@ above normal they are.
 | Category | Title | Standfirst |
 |---|---|---|
 | Fire (roundup) | "Fires run above normal in five states, led by a spike in Chhattisgarh" | "Chhattisgarh, newly above normal, had 27 fires on Monday, about nine times usual for late October and more than on any day at this time of year in 2024 or 2025. Madhya Pradesh had the most, with 200, though that's within its range for the season. Telangana, Maharashtra and Uttar Pradesh are also above normal." |
-| Fire (own story) | "Telangana's fires run well above normal"; "Chhattisgarh's fires spike to a two-year high for the season" | "39 fires on Monday across 17 districts, about six times usual for late October. That's within its range for the season." |
+| Fire (own story) | "Telangana's fires run at six times the usual"; "Chhattisgarh's fires spike to a two-year high for the season" | "39 fires on Monday across 17 districts, where late October usually sees about 6. That's within its range for the season." / "27 fires on Monday across 10 districts, about nine times usual for late October. That's more than on any day at this time of year in 2024 or 2025." |
 | Air | "Air is very poor in Panipat and poor in 16 more cities"; "Air is poor in six cities, worst in Khairthal" | "Panipat, in Haryana, is worst, at 301 on India's air quality index, which the Central Pollution Control Board rates very poor. 16 more cities are poor, out of 267 reporting. These are the board's live readings, before its own checks." |
-| Cyclone | "Cyclone Arnab" | "Global disaster monitors give it their highest alert, red, with winds of up to 222 km/h. The area they map for it is centred in the Bay of Bengal, just off the Andhra Pradesh coast." |
+| Cyclone | "Cyclone Arnab" | "Global disaster monitors give it their highest alert, red, with winds of up to 222 km/h, and place it near the Andhra Pradesh coast." |
 | Flood | "Flooding in India" | "Global disaster monitors give it their second-highest alert, orange." |
 | Earthquake | "Major earthquake strikes 350 km outside India"; Level 1s grouped: "Two small earthquakes strike near India's borders" | "The magnitude 7.0 quake struck 191 km from Nagqu, China, 18 km below the surface, according to the US Geological Survey. Its alert for likely impact is orange, the second-highest of four." |
 

@@ -1,7 +1,8 @@
-import { useEffect } from 'react'
-import { CircleMarker, MapContainer, Marker, TileLayer, Tooltip, useMap } from 'react-leaflet'
+import { useEffect, useState } from 'react'
+import { CircleMarker, MapContainer, Marker, Polygon, TileLayer, Tooltip, useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import type { Level } from '@/lib/desk/types'
+import { INDIA_OUTLINE } from '@/lib/desk/where'
 
 // Esri's light grey canvas, keyless, {z}/{y}/{x} like the old dark tiles;
 // index.css warms it toward the paper palette (.paper-map).
@@ -47,6 +48,38 @@ function itemIcon(m: MapItem, selected: boolean): L.DivIcon {
   })
 }
 
+/**
+ * The day's fires as dots, sized to the zoom: at country scale a dot must
+ * stay well under the width of a border district, or fires near Pakistan,
+ * Nepal or Bangladesh look as if they were across the border.
+ */
+function FireDots({ fires, interactive }: { fires: FirePoint[]; interactive: boolean }) {
+  const map = useMap()
+  const [zoom, setZoom] = useState(map.getZoom())
+  useMapEvents({ zoomend: () => setZoom(map.getZoom()) })
+  const radius = (f: FirePoint) => (zoom <= 4 ? 1.4 : zoom === 5 ? 1.8 : zoom === 6 ? 2.6 : Math.min(7, 2 + Math.sqrt(f.hotspot_count)))
+  return (
+    <>
+      {fires.map((f, i) => (
+        <CircleMarker
+          key={i}
+          center={[f.latitude, f.longitude]}
+          radius={radius(f)}
+          pathOptions={{ color: '#A8221B', weight: 0, fillColor: '#A8221B', fillOpacity: 0.6 }}
+          interactive={interactive}
+        >
+          {interactive && (
+            <Tooltip>
+              {f.district ?? 'Fire'}
+              {f.state ? `, ${f.state}` : ''} · {f.hotspot_count} {f.hotspot_count === 1 ? 'hotspot' : 'hotspots'}
+            </Tooltip>
+          )}
+        </CircleMarker>
+      ))}
+    </>
+  )
+}
+
 /** Pans to the selected item when it changes. */
 function Focus({ at }: { at: [number, number] | null }) {
   const map = useMap()
@@ -87,22 +120,9 @@ export default function PaperMap({ items, fires, interactive = true, zoom = 5, c
     >
       <TileLayer url={BASE_URL} attribution={ATTRIBUTION} zIndex={1} />
       <TileLayer url={LABELS_URL} zIndex={2} />
-      {fires.map((f, i) => (
-        <CircleMarker
-          key={i}
-          center={[f.latitude, f.longitude]}
-          radius={Math.min(6, 1.6 + Math.sqrt(f.hotspot_count))}
-          pathOptions={{ color: '#A8221B', weight: 0, fillColor: '#A8221B', fillOpacity: 0.45 }}
-          interactive={interactive}
-        >
-          {interactive && (
-            <Tooltip>
-              {f.district ?? 'Fire'}
-              {f.state ? `, ${f.state}` : ''} · {f.hotspot_count} {f.hotspot_count === 1 ? 'hotspot' : 'hotspots'}
-            </Tooltip>
-          )}
-        </CircleMarker>
-      ))}
+      {/* India's official outline (simplified), so fires along a border read as India's. */}
+      <Polygon positions={INDIA_OUTLINE} interactive={false} pathOptions={{ color: '#17171B', weight: 0.8, opacity: 0.55, fill: false }} />
+      <FireDots fires={fires} interactive={interactive} />
       {items.map((m) => (
         <Marker
           key={m.key}

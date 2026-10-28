@@ -14,7 +14,10 @@ import type { MapItem } from '@/components/paper/PaperMap'
 export function mapItems(entries: DeskEntry[], ctx: CopyContext): MapItem[] {
   const out: MapItem[] = []
   entries.forEach((row, i) => {
-    for (const e of row.members.length > 0 ? row.members : [row]) {
+    // Only what the desk row is about gets its number: in a fire roundup at
+    // Level 2+, the states still above normal, not those back at Level 1.
+    const members = row.members.filter((m) => row.category !== 'fire' || row.level < 2 || m.level >= 2)
+    for (const e of row.members.length > 0 ? members : [row]) {
       if (!e.coords) continue
       const title = row.members.length > 0 && row.category === 'fire' ? `${e.figures.state}: ${e.figures.fire_events ?? 0} fires` : itemCopy(e, ctx).title
       out.push({ key: e.key, number: i + 1, level: e.level, lat: e.coords[0], lon: e.coords[1], title, closed: false })

@@ -63,13 +63,10 @@ describe('map markers (edition 26)', () => {
   const entries = deskEntries(ed.snapshots, since.byItem)
   const ctx = copyContext(entries, since, ed.run)
 
-  it('places items with a position as of the edition, numbered by desk row; air and a state with no fires stay off', () => {
+  it('marks only what each desk row is about, numbered by row: the fire states back at Level 1 get no "2"', () => {
     expect(mapItems(entries, ctx).map((m) => `${m.number} ${m.key} ${m.lat},${m.lon}`)).toEqual([
       '1 cyclone:GDACS-TC-1001345 16.2,81.6',
       '2 fire:madhya-pradesh 24.0578,77.788',
-      '2 fire:maharashtra 19.0576,75.5137',
-      '2 fire:uttar-pradesh 27.1675,80.9996',
-      '2 fire:telangana 16.5812,77.5137',
     ])
   })
 

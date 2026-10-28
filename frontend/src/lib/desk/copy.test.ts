@@ -87,22 +87,22 @@ describe('edition 25 (Wed 28 Oct, 02:30 IST)', () => {
 
 describe('edition 26 (Wed 28 Oct, 14:30 IST): four fire states fall back on an incomplete day', () => {
   it('headline: the news itself, no "top story"; no easing claimed on incomplete counts', () => {
-    expect(edition(26).headline).toBe("Cyclone Arnab holds at red alert as Madhya Pradesh's fires run well above normal.")
+    expect(edition(26).headline).toBe("Cyclone Arnab holds at red alert as Madhya Pradesh's fires run at twice the usual.")
   })
 
-  it('the cyclone: where the area global disaster monitors map for it is centred (not the storm itself)', () => {
+  it('the cyclone: where global disaster monitors place it, in words', () => {
     expect(item(26, 'cyclone:GDACS-TC-1001345').standfirst).toBe(
-      'Global disaster monitors give it their highest alert, red, with winds of up to 222 km/h. ' +
-        'The area they map for it is centred in the Bay of Bengal, just off the Andhra Pradesh coast.',
+      'Global disaster monitors give it their highest alert, red, with winds of up to 222 km/h, and place it near the Andhra Pradesh coast.',
     )
   })
 
   it('fires: the one state still above normal leads; the others are named; the gap in the data is said', () => {
     expect(item(26, 'fire:roundup')).toEqual({
       key: 'fire:roundup',
-      title: "Madhya Pradesh's fires run well above normal",
+      // Within its range: the title gives the plain multiple, so the story gives the usual count.
+      title: "Madhya Pradesh's fires run at twice the usual",
       standfirst:
-        "145 fires yesterday across 21 districts, about twice the usual for late October. That's within its range for the season. " +
+        "145 fires yesterday across 21 districts, where late October usually sees about 70. That's within its range for the season. " +
         'Maharashtra, Uttar Pradesh, Telangana and Chhattisgarh have dropped back on these counts. ' +
         "The counts for yesterday are incomplete: nothing had come in from NASA's fire satellites after 14:37 IST.",
     })
@@ -239,9 +239,8 @@ describe('fire roundup rules', () => {
     const fire = entries.find((e) => e.category === 'fire')!
     expect(fire.key).toBe('fire:telangana')
     expect(itemCopy(fire, ctx)).toEqual({
-      title: "Telangana's fires run well above normal",
-      standfirst:
-        "39 fires on Monday across 17 districts, about six times usual for late October. That's within its range for the season.",
+      title: "Telangana's fires run at six times the usual",
+      standfirst: "39 fires on Monday across 17 districts, where late October usually sees about 6. That's within its range for the season.",
     })
   })
 
@@ -250,15 +249,20 @@ describe('fire roundup rules', () => {
     const entries = deskEntries(l3, new Map())
     const ctx = copyContext(entries, null, ed25.run)
     expect(entries.map((e) => e.key)).toEqual(['cyclone:GDACS-TC-1001345', 'fire:telangana', 'air:IN', 'fire:roundup'])
-    expect(itemCopy(entries[1], ctx).title).toBe("Telangana's fires run far above normal")
+    expect(itemCopy(entries[1], ctx).title).toBe("Telangana's fires run at six times the usual")
     expect(itemCopy(entries[3], ctx).title).toBe('Fires also run above normal in four more states, led by a spike in Chhattisgarh')
   })
 
-  it('no title or headline carries a multiple of normal', () => {
+  it('intensity words match the verdict: no "well/far above normal" or × in titles; the multiple at most once per story', () => {
+    const multiple = /times usual|times the usual|twice the usual/g
     for (const n of [14, 17, 19, 25, 26]) {
       const { headline, items, since } = edition(n)
       for (const t of [headline, ...items.map((i) => i.title), ...since.map((l) => l.text)]) {
-        expect(t, `No. ${n}: ${t}`).not.toMatch(/times normal|twice normal|×/)
+        expect(t, `No. ${n}: ${t}`).not.toMatch(/times normal|twice normal|×|well above normal/)
+      }
+      for (const i of items) {
+        const story = `${i.title} ${i.standfirst ?? ''}`
+        expect((story.match(multiple) ?? []).length, `No. ${n}: ${story}`).toBeLessThanOrEqual(1)
       }
     }
   })

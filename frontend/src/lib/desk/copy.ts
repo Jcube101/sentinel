@@ -17,6 +17,7 @@ import { istDay, istTime } from './ist'
 import { placeOf, placeText } from './where'
 import {
   SOURCE_WORDS,
+  aboutCount,
   alertRank,
   alertRankWord,
   cap,
@@ -29,6 +30,7 @@ import {
   quakeStrength,
   relativeDay,
   roundKm,
+  theUsual,
   timesUsual,
   whereStates,
 } from './words'
@@ -176,23 +178,36 @@ function fireEasing(ctx: CopyContext): string[] | null {
   return fell.map((m) => String(m.snapshot.figures?.state ?? m.itemId))
 }
 
-/** A state's story title: what happened, never the multiple (style guide). */
+/**
+ * A state's story title: what happened, with intensity words that match the
+ * verdict against past years (style guide). A record "spikes"; within the
+ * range the title gives the plain multiple ("run at twice the usual"), and
+ * then the standfirst gives the usual count instead.
+ */
 function stateTitle(e: DeskEntry, ctx: CopyContext): string {
   const f = stateFacts(e, ctx)
   const S = possessive(f.state)
   if (f.record === 'above' && f.counted) return `${S} fires spike to a ${numberWord(baselineYears(e))}-year high for the season`
+  if (f.record === 'equal' && f.counted) return `${S} fires match their busiest day for the season`
+  const usual = f.counted && f.r !== null ? theUsual(f.r) : null
   switch (e.change) {
     case 'opened':
-      return `${S} fires jump well above normal`
+      return usual ? `${S} fires jump to ${usual}` : `${S} fires jump above normal`
     case 'reopened':
-      return `${S} fires flare up again`
+      return usual ? `${S} fires flare up again, to ${usual}` : `${S} fires flare up again`
     case 'escalated':
-      return `${S} fires climb further above normal`
+      return usual ? `${S} fires climb to ${usual}` : `${S} fires climb further above normal`
     case 'deescalated':
-      return e.level >= 2 ? `${S} fires ease but stay above normal` : `${S} fires fall back toward normal`
+      return e.level >= 2 && usual ? `${S} fires ease to ${usual}` : `${S} fires fall back toward normal`
   }
   if (e.level === 1) return `${S} fires have fallen back toward normal`
-  return `${S} fires run ${e.level >= 3 ? 'far' : 'well'} above normal`
+  return usual ? `${S} fires run at ${usual}` : `${S} fires run above normal`
+}
+
+/** The title already gives the multiple: within the range, not a record (see stateTitle). */
+function titleHasMultiple(f: StateFacts, level: number, change: string | null): boolean {
+  if (!f.counted || f.r === null || f.record === 'above' || f.record === 'equal') return false
+  return level >= 2 || (change !== null && change !== 'deescalated')
 }
 
 /** A state's own story: the title, then the count with the multiple, once. */
@@ -201,9 +216,12 @@ function fireStateCopy(e: DeskEntry, ctx: CopyContext): ItemCopy {
   const f = stateFacts(e, ctx)
   const near = (Array.isArray(ff.large_fires_near_people) ? ff.large_fires_near_people[0] : undefined) as NearFire | undefined
   const wildfire = (Array.isArray(ff.gdacs_wildfire) ? ff.gdacs_wildfire[0] : undefined) as WildfireAlert | undefined
+  const inTitle = titleHasMultiple(f, e.level, e.change)
+  const norm = typeof ff.norm_daily_events === 'number' ? ff.norm_daily_events : null
   const count =
     f.counted && f.r !== null
-      ? `${plural(f.n, 'fire', 'fires')} ${f.day} across ${counted_(f.districts, 'district', 'districts')}, ${timesUsual(f.r)} for ${f.period}.`
+      ? `${plural(f.n, 'fire', 'fires')} ${f.day} across ${counted_(f.districts, 'district', 'districts')}` +
+        (inTitle && norm !== null ? `, where ${f.period} usually sees ${aboutCount(norm)}.` : `, ${timesUsual(f.r)} for ${f.period}.`)
       : null
   const rc = recordClause(f)
   const context = rc ? ` That's ${rc}.` : f.record === 'within' ? " That's within its range for the season." : ''
@@ -559,11 +577,11 @@ function gdacsStandfirst(e: DeskEntry, cyclone: boolean): string {
     cyclone && typeof f.severity === 'number' && f.severity > 0 && f.severity_unit === 'km/h'
       ? `, with winds of up to ${Math.round(f.severity)} km/h`
       : ''
-  let s = `Global disaster monitors give it ${alertRank(now, 'their')}${wind}.`
+  // Where GDACS places the event (its point is the centre of the area it maps, not a track).
+  const where = e.coords ? `, and place it ${placeText(placeOf(e.coords[0], e.coords[1]))}` : ''
+  let s = `Global disaster monitors give it ${alertRank(now, 'their')}${wind}${where}.`
   if (f.rising) s += ' Its alert score went up in their latest update.'
   if ((COLOUR_RANK[peak] ?? 0) > (COLOUR_RANK[now] ?? 0)) s += ` It was rated ${peak} earlier.`
-  // GDACS's point is the centre of the area it maps for the event, not the storm's position.
-  if (e.coords) s += ` The area they map for it is centred ${placeText(placeOf(e.coords[0], e.coords[1]))}.`
   return s
 }
 
@@ -740,9 +758,11 @@ function itemClause(e: DeskEntry): string {
       return `${midName(name)} is on a ${colour} alert`
     }
     case 'fire':
-      return `${possessive(stateName(e))} fires are ${e.level >= 3 ? 'far' : 'well'} above normal`
+      return stateTitle(e, emptyCtx)
   }
 }
+
+const emptyCtx: CopyContext = { editionAt: new Date(0).toISOString(), since: null, fires: [], ownFires: [] }
 
 /** How the fire states moved since the edition a day earlier: more, fewer, the same, or unknown. */
 function fireTrend(ctx: CopyContext): 'more' | 'fewer' | 'same' | null {
@@ -757,13 +777,14 @@ function firesClause(ctx: CopyContext, withAngle: boolean): string {
   if (eased) return `fires ease ${whereStates(eased).inText}`
   const where = whereStates(ctx.fires.map(stateName))
   const trend = fireTrend(ctx)
-  const far = (ctx.fires[0]?.strength ?? 0) >= SCALE.fire.level3MinRatio ? 'far' : 'well'
+  // Intensity matches the verdict against past years: "far" only when a state beat its busiest day.
+  const record = ctx.fires.some((e) => stateFacts(e, ctx).record === 'above')
   const clause =
     trend === 'more'
       ? `fires spread ${where.spreadText}`
       : trend === 'fewer'
         ? `fires ease but stay above normal ${where.inText}`
-        : `fires run ${far} above normal ${where.inText}`
+        : `fires run ${record ? 'far ' : ''}above normal ${where.inText}`
   if (!withAngle) return clause
   const angle = fireAngle(ctx.fires, ctx, false)
   return angle.kind === 'spreading' ? clause : `${clause}, ${angleSuffix(angle)}`

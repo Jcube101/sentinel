@@ -321,6 +321,7 @@ export function useFirePoints(day: string | null) {
         .from('fire_events')
         .select('latitude,longitude,hotspot_count,frp_max,district,state')
         .eq('acq_date', day)
+        .not('state', 'is', null) // India only: the same fires the counts are made of
         .limit(5000)
       if (error) throw error
       return (data ?? []) as FirePoint[]

@@ -145,7 +145,7 @@ function quakeCard(f: Figures, sourceRef: string | null): Card {
   }
 }
 
-function gdacsCard(f: Figures, cyclone: boolean, coords: [number, number] | null): Card {
+function gdacsCard(f: Figures, cyclone: boolean): Card {
   const cells: Cell[] = []
   const colour = f.episode_alert_level ?? f.alert_level
   if (colour) cells.push({ value: colour, label: 'GDACS alert', short: 'Alert' })
@@ -156,8 +156,7 @@ function gdacsCard(f: Figures, cyclone: boolean, coords: [number, number] | null
       short: cyclone ? 'Max wind' : 'Severity',
     })
   }
-  const at = coords ? `Event area centred at ${coords[0].toFixed(1)}°N, ${coords[1].toFixed(1)}°E` : null
-  return { cells, detail: at, link: f.gdacs_url ? { href: f.gdacs_url, text: 'GDACS report' } : null }
+  return { cells, detail: null, link: f.gdacs_url ? { href: f.gdacs_url, text: 'GDACS report' } : null }
 }
 
 /** The roundup's state table: the states still at Level 2 or above, in desk order. Those that eased are named in the story. */
@@ -200,7 +199,7 @@ export function entryCard(e: DeskEntry): Card | null {
       return quakeCard(f, e.sourceRef)
     case 'cyclone':
     case 'flood':
-      return gdacsCard(f, e.category === 'cyclone', e.coords)
+      return gdacsCard(f, e.category === 'cyclone')
   }
 }
 
