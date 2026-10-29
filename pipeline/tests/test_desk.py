@@ -120,6 +120,16 @@ def test_level_follows_current_episode_and_notes_peak():
     assert c.level == 1 and c.reason == "GDACS Green alert (event peaked Orange)"
 
 
+def test_cyclone_reason_gives_wind_speed():
+    # ARNAB-26, No. 27: GDACS's "Tropical Storm (maximum wind speed of 222 km/h)".
+    alert = {**_alert(kind="TC", level="Orange", score=2.0), "alertlevel": "Red", "severity": 222.2208,
+             "severity_unit": "km/h", "severity_text": "Tropical Storm (maximum wind speed of 222 km/h)"}
+    (c,) = desk.gdacs_candidates([alert], {}, CFG)
+    assert c.reason == "GDACS Orange alert, 222 km/h winds (event peaked Red)"
+    flood = {**_alert(), "severity": 120.0, "severity_unit": "km/h"}   # only cyclones carry a wind speed
+    assert desk.gdacs_candidates([flood], {}, CFG)[0].reason == "GDACS Green alert"
+
+
 def test_orange_ignores_rising():
     (first,) = desk.gdacs_candidates([_alert(level="Orange", score=1.5, episode=1)], {}, CFG)
     (second,) = desk.gdacs_candidates([_alert(level="Orange", score=2.0, episode=2)], {first.id: _stored(first)}, CFG)

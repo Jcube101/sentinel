@@ -164,7 +164,14 @@ def all_clear(category: str, cfg: dict, stage: dict | None) -> str:
     if category == "fire":
         return (f"No state at {cfg['fire']['level_2_min_ratio']:g}× its seasonal fire norm"
                 + _day_text((stage or {}).get("day")))
-    return "No city Poor or worse (approx. CPCB band)"
+    # Named after the source that assessed it this run, as the item's reason is
+    # (air.py); no new assessment (last-known) names neither.
+    basis = AIR_BASIS.get((stage or {}).get("source"))
+    return "No city Poor or worse" + (f" ({basis})" if basis else "")
+
+
+# air stage summary "source" -> how the all-clear line names its basis
+AIR_BASIS = {"data.gov.in": "CPCB AQI, real-time, unvalidated", "OpenAQ": "approx. CPCB band"}
 
 
 def _source_note(category: str, results: dict, stage: dict | None) -> str | None:

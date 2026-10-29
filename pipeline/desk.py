@@ -209,6 +209,8 @@ def gdacs_candidates(alerts: list[dict], existing: dict[str, dict], cfg: dict) -
         colour = (alert["episodealertlevel"] or "Green").strip().capitalize()
         peak = (alert["alertlevel"] or "").strip().capitalize()
         reason = f"GDACS {colour} alert"
+        if alert["eventtype"] == "TC" and alert["severity"] is not None and alert["severity_unit"] == "km/h":
+            reason += f", {alert['severity']:.0f} km/h winds"   # GDACS: "maximum wind speed of 222 km/h"
         if GDACS_COLOUR_RANK.get(peak, 0) > GDACS_COLOUR_RANK.get(colour, 0):
             reason += f" (event peaked {peak})"
         if rising:

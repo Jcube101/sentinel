@@ -24,7 +24,7 @@ which no longer does).
 | GDACS: floods/cyclones query first, wildfires and earthquakes after it and unable to fail the run (*Decisions (29 Oct 2026): GDACS*) | 29 Oct | Offline tests and a dry run |
 | FIRMS fails the run only after 2 timeouts in a row | 28 Oct | Offline tests. Not yet exercised live: FIRMS hasn't timed out since edition 19 |
 | Fire levels only from complete days (night pass in), repair of editions 26-27 (*Decisions (29 Oct 2026)*) | 29 Oct | Offline tests, a dry run, and the fire desk run read-only against live data on 28 Oct 20:13 UTC: 27 Oct incomplete (one night orbit), five items restored to 26 Oct as last-known |
-| Wind speed in the cyclone reason | not built | Specified for the frontend phase (*Follow-ups*) |
+| Wind speed in the cyclone reason; the air all-clear names the source that assessed it (Part B) | 29 Oct | Offline tests and a dry run |
 | Migration 008: the per-edition archive (P1-P4) and `last_known` in `desk_last_level3` | applied 29 Oct | Job's check query; through the API the new columns and tables answer, and an anon write is refused |
 | P1: each snapshot keeps the item's `title`, `place_name`, `latitude`, `longitude` | 29 Oct | Offline tests and a dry run |
 | P2: `desk_watch_snapshots`, every watch subject per run | 29 Oct | Offline tests and a dry run |
@@ -285,7 +285,9 @@ affect current output); all thresholds in **one** config file, `pipeline/severit
    - **Category status** (`category_status`, one row per category per run; view
      `category_status_latest`): highest open level or none open, a one-line summary (the top
      item's title, or an all-clear line such as "No current GDACS flood alerts for India"),
-     source and fetch status, last-known flag, watching count.
+     source and fetch status, last-known flag, watching count. The air all-clear names the
+     source that assessed it, as the item's reason does: "No city Poor or worse (CPCB AQI,
+     real-time, unvalidated)" or "(approx. CPCB band)", and neither when last-known.
    - **14-day strip** (view `desk_daily_max`): most severe open item per IST day; 0 = runs but
      nothing open, null = no runs. **Days since last Level 3+** (view `desk_last_level3`).
      Both read `desk_item_snapshots`, so they need no pipeline code.
@@ -333,9 +335,9 @@ Open as of 28 Oct 2026 (first listed 21 Oct, when the spec was completed).
   `fire_events` (+ views) and `fire_baseline`; the About-page credits (TODO under *Build
   plan*) go in with it. Design mock-ups: `docs/design/` (added 28 Oct 2026).
   Two pipeline changes go in with it (added 28 Oct 2026):
-  - **Wind speed in the cyclone reason:** "GDACS Red alert" says nothing about strength.
-    The speed is already in the item's figures (`severity`, `severity_text`), e.g. "GDACS
-    Red alert, 222 km/h winds" for ARNAB-26 (`desk.gdacs_candidates`).
+  - ~~**Wind speed in the cyclone reason**~~: done 29 Oct 2026 (Part B), e.g. "GDACS
+    Orange alert, 222 km/h winds (event peaked Red)"; from GDACS's `severity` when its
+    unit is km/h (`desk.gdacs_candidates`).
   - ~~**`last_known` in `desk_last_level3`**~~: done 29 Oct 2026 (migration 008). The
     view picks the latest open Level 3+ snapshot, last-known ones included (ARNAB-26 in
     editions 23–24, while GDACS timed out), and now says so.

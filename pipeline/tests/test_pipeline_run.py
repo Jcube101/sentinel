@@ -251,7 +251,7 @@ def test_gdacs_extras_reach_the_desk(harness):
     assert harness.run() == 0
     (item,) = harness.db.rows("desk_items")
     assert (item["id"], item["severity_level"], item["severity_reason"]) == (
-        "cyclone:GDACS-TC-9", 4, "GDACS Red alert")
+        "cyclone:GDACS-TC-9", 4, "GDACS Red alert, 180 km/h winds")
 
 
 def test_desk_import_failure_only_fails_that_stage(harness, monkeypatch):

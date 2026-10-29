@@ -93,7 +93,8 @@ RESULTS = {name: FetchResult(name, [], True, "ok", None, 0.1) for name in ("USGS
 STAGES = {
     "desk": {"items": [], "watch": [], "sources_good": {"earthquake": True, "flood": True, "cyclone": True}},
     "fire_desk": {"items": [], "watch": [], "source_good": True, "note": None, "day": "2026-10-20"},
-    "air": {"items": [], "watch": [], "source_good": True, "note": None},
+    "air": {"items": [], "watch": [], "source_good": True, "note": None, "source": "data.gov.in",
+            "source_id": "DATAGOV", "source_status": "ok"},
 }
 
 
@@ -114,7 +115,13 @@ def test_all_clear_lines():
     assert _status("flood")["summary"] == "No current GDACS flood alerts for India"
     assert _status("cyclone")["summary"] == "No current GDACS cyclone alerts for India"
     assert _status("fire")["summary"] == "No state at 2× its seasonal fire norm on 20 Oct"
-    assert _status("air")["summary"] == "No city Poor or worse (approx. CPCB band)"
+    assert _status("air")["summary"] == "No city Poor or worse (CPCB AQI, real-time, unvalidated)"
+    fallback = {**STAGES, "air": {**STAGES["air"], "source": "OpenAQ", "source_id": "OPENAQ"}}
+    assert _status("air", stages=fallback)["summary"] == "No city Poor or worse (approx. CPCB band)"
+    # No new assessment: the line names no basis, and says why it is last-known.
+    stale = {**STAGES, "air": {**STAGES["air"], "source_good": False, "note": "OpenAQ fetch failed this run",
+                               "source": None, "source_id": "OPENAQ"}}
+    assert _status("air", stages=stale)["summary"] == "No city Poor or worse · last known: OpenAQ fetch failed this run"
     s = _status("flood")
     assert (s["level"], s["open_items"], s["last_known"], s["source"], s["source_status"]) == (
         None, 0, False, "GDACS", "ok")
