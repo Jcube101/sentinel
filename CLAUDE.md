@@ -31,14 +31,16 @@ earlier writes stand.
 1. Run record: a `pipeline_runs` row; its id is the edition number, and it keeps the
    thresholds (severity.toml) the edition runs with
 2. Fetchers: FIRMS, EONET, GDACS, USGS, OpenAQ
-3. Writes: `events`, `aqi_readings`, then each source's freshness on `sources`
+3. Writes: `events` (EONET, GDACS, USGS; FIRMS hotspots go only to the fire stages and
+   the local archive), `aqi_readings`, then each source's freshness on `sources`
 4. Fire events (`fire.py`): FIRMS hotspots clustered into `fire_events` by district
 5. Fire desk (`fire_desk.py`): one item per state, levelled on its ratio to the seasonal norm
 6. Desk (`desk.py`): quakes, floods and cyclones
 7. Air (`air.py`): the national air item; CPCB's real-time feed on data.gov.in first,
    OpenAQ as the fallback
 8. Quiet-day desk (`watch.py`): watching list and per-category status
-9. Archive old rows to local SQLite, then cleanup (only if the archive succeeded)
+9. Archive old rows and the run's FIRMS hotspots to local SQLite, then cleanup (only if
+   the archive succeeded)
 10. Staleness check, then the run record is closed as ok or failed
 
 ## Working rules

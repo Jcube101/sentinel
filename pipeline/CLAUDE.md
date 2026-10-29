@@ -1,8 +1,9 @@
 # Sentinel Pipeline
 
 Python data pipeline for the Sentinel natural disaster tracker. Five fetchers (FIRMS,
-EONET, GDACS, USGS, OpenAQ) write `events` and `aqi_readings`; the severity stages then
-build the severity desk from the same fetch results, plus CPCB's real-time AQI from
+EONET, GDACS, USGS, OpenAQ); all but FIRMS write `events` and `aqi_readings` (FIRMS
+hotspots go to the fire stages and the local archive only, since 29 Oct 2026). The
+severity stages build the severity desk from the fetch results, plus CPCB's real-time AQI from
 data.gov.in for the air item. It runs on the Raspberry Pi (jobpi) from a systemd timer at
 09:00, 15:00 and 21:00 UTC (14:30, 20:30 and 02:30 IST). Each run is an edition: a
 `pipeline_runs` row whose id is the edition number.
@@ -21,13 +22,15 @@ failed (so it alerts) while the others still run.
 1. `runs.start_run()`: the `pipeline_runs` row (edition); skipped by `--dry-run`
 2. Fetchers: FIRMS, EONET, GDACS, USGS, OpenAQ (`FETCHERS`), then the FIRMS timeout rule
    (`_tolerate_first_timeouts`, see *Key Rules*)
-3. Upserts to `events` and `aqi_readings`; `runs.record_sources()` writes freshness on `sources`
+3. Upserts to `events` (EONET, GDACS, USGS) and `aqi_readings`; `runs.record_sources()`
+   writes freshness on `sources` (FIRMS included)
 4. `fire.py`: fire events
 5. `fire_desk.py`: fire desk items, one per state
 6. `desk.py`: quake, flood and cyclone items
 7. `air.py`: the national air item (data.gov.in, OpenAQ fallback)
 8. `watch.py`: watching list and `category_status`
-9. `archive.run()`, then `_cleanup()` only if the archive succeeded
+9. `archive.run()` and `archive.store_hotspots()` (the run's FIRMS hotspots, local only),
+   then `_cleanup()` only if `archive.run()` succeeded
 10. `_check_staleness()`, then `runs.finish_run()` closes the edition as ok or failed
 
 ## How to Run
@@ -130,13 +133,11 @@ build plan: `docs/severity-pipeline.md` at the repo root.
 Run historical load (from pipeline/ directory):
 ```bash
 PYTHONPATH=. python backfill.py --source all --days 90
-PYTHONPATH=. python backfill.py --source firms --days 30
 PYTHONPATH=. python backfill.py --source usgs --days 365
 ```
 
-Note: FIRMS NRT product only covers the last ~10 days. The SP (Standard Processing)
-product lags by roughly 2-3 months, so chunks in that gap return 0 rows — this is
-expected, not a bug.
+FIRMS isn't backfilled into `events` (its hotspots don't go there since 29 Oct 2026);
+older fire data comes from the SP archive (`tools/pull_firms_archive.py`).
 
 ## Archive
 
@@ -147,6 +148,11 @@ PYTHONPATH=. python archive.py
 
 - Archives events older than 30 days
 - Archives aqi_readings older than 7 days
+- FIRMS hotspots: `pipeline.py` passes each run's fetch to `archive.store_hotspots()`,
+  which writes them to the same local `events` table straight away (Supabase no longer
+  holds them). They are the NRT side of the NRT vs SP fire-count calibration
+  (docs/severity-pipeline.md, *Live vs archive fire counts*). Tests use a temporary
+  file instead (tests/conftest.py)
 - Uses INSERT OR REPLACE, safe to run multiple times
 - Does NOT delete from Supabase (cleanup is handled by pipeline.py)
 
@@ -159,7 +165,8 @@ and the Windows scheduled task has been disabled.
 ## Cleanup (auto, runs inside pipeline.py)
 
 `_cleanup()` runs at the end of every `pipeline.run()`:
-- FIRMS / GDACS events: keep 60 days
+- FIRMS / GDACS events: keep 60 days (no FIRMS rows are written any more; the rule
+  clears any stray ones)
 - EONET / USGS events: keep 365 days
 - AQI readings: keep 7 days
 
@@ -181,7 +188,9 @@ and the Windows scheduled task has been disabled.
 - NOTIFY_WEBHOOK_URL (optional; failure and staleness alerts, see notify.py)
 
 ## Data Sources
-- FIRMS: fire hotspots (India bbox: 68.7,8.4,97.4,37.1)
+- FIRMS: fire hotspots (India bbox: 68.7,8.4,97.4,37.1); read by the fire stages from
+  the fetch, stored as `fire_events` / `fire_day_points` and in the local archive, not
+  in `events`
 - EONET: cyclones + wildfires (category filter + India bbox)
 - GDACS: three queries a run on the search API (`fetchers/gdacs.py`), filtered with
   `eventlist` (the API ignores `eventtypes`): floods and cyclones first (~11
@@ -197,7 +206,7 @@ and the Windows scheduled task has been disabled.
   read by the air stage only (not a fetcher, writes no rows of its own)
 
 ## Supabase Tables
-- events: all disaster events
+- events: disaster events from EONET, GDACS and USGS (FIRMS hotspots until 29 Oct 2026)
 - aqi_readings: air quality readings
 - pipeline_runs: one row per non-dry run; id is the edition number (runs.py);
   severity_config = severity.toml as that edition ran it, the same dict every
@@ -382,5 +391,6 @@ created_at: timestamptz
   fetch error fails the run at once; for GDACS that means only its floods and
   cyclones query (the wildfire and earthquake queries never fail the run).
 - A run that fails, or where FIRMS/USGS/OpenAQ go stale, sends an alert via
-  notify.py if NOTIFY_WEBHOOK_URL is set; EONET/GDACS are event-driven and
+  notify.py if NOTIFY_WEBHOOK_URL is set (FIRMS's age: its newest observation on its
+  `sources` row; USGS's: its newest row in `events`; OpenAQ's: `aqi_readings`); EONET/GDACS are event-driven and
   are never alerted on row age, only on the fetch itself failing

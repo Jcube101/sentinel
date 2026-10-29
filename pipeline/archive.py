@@ -7,6 +7,10 @@ Usage:
 Reads events older than 30 days and aqi_readings older than 7 days from
 Supabase, and writes them to sentinel_archive.db in the project root.
 Safe to run multiple times — uses INSERT OR REPLACE.
+
+FIRMS hotspots no longer go to Supabase (29 Oct 2026): pipeline.py hands each
+run's fetch to store_hotspots(), which writes them to the same events table
+here, for the NRT vs SP fire-count calibration (docs/severity-pipeline.md).
 """
 
 import json
@@ -105,6 +109,21 @@ def _upsert_sqlite(conn: sqlite3.Connection, table: str, rows: list[dict], json_
     conn.executemany(sql, [[r[c] for c in cols] for r in serialized])
     conn.commit()
     return len(rows)
+
+
+def store_hotspots(rows: list[dict]) -> int:
+    """A run's FIRMS hotspots, straight from the fetch, into the local events
+    table. INSERT OR REPLACE by id, so a later run's copy of a hotspot (FIRMS
+    re-sends the last two days) replaces the earlier one."""
+    if not rows:
+        return 0
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        conn.execute(_CREATE_EVENTS)
+        conn.commit()
+        return _upsert_sqlite(conn, "events", rows, _EVENTS_JSON_COLS)
+    finally:
+        conn.close()
 
 
 def run() -> int:

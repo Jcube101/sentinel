@@ -3,6 +3,7 @@
 The point: the run record and freshness stage must never stop the existing
 events / aqi_readings writes, and its failures must still fail the run.
 """
+import sqlite3
 import sys
 from datetime import datetime, timezone
 from types import SimpleNamespace
@@ -61,12 +62,12 @@ def test_happy_path_writes_data_run_record_and_freshness(harness):
     assert harness.run() == 0
     db = harness.db
     (events,) = _ops(db, "events", "upsert")
-    assert {e["id"] for e in events} == {"FIRMS-1", "GDACS-FL-1", "USGS-1"}
+    assert {e["id"] for e in events} == {"GDACS-FL-1", "USGS-1"}   # FIRMS hotspots go to fire_events only
     assert len(_ops(db, "aqi_readings", "upsert")) == 1
 
     (run,) = db.rows("pipeline_runs")
     assert run["id"] == 1 and run["status"] == "ok"
-    assert run["events_upserted"] == 3 and run["aqi_upserted"] == 1
+    assert run["events_upserted"] == 2 and run["aqi_upserted"] == 1
     assert set(run["sources"]) == {"FIRMS", "EONET", "GDACS", "USGS", "OPENAQ", "DATAGOV"}  # DATAGOV: the air feed
     assert run["sources"]["FIRMS"]["new_data"] is True
 
@@ -200,7 +201,8 @@ def test_events_write_failure_is_recorded_per_source(harness):
     harness.db.missing = {"events"}
     assert harness.run() == 1
     by_id = {r["id"]: r for r in harness.db.rows("sources")}
-    assert by_id["FIRMS"]["last_status"] == "error"
+    assert by_id["USGS"]["last_status"] == "error"
+    assert by_id["FIRMS"]["last_status"] == "ok"   # not stored in events
     assert by_id["OPENAQ"]["last_status"] == "ok"  # aqi_readings write still worked
     assert harness.db.rows("pipeline_runs")[0]["status"] == "failed"
 
@@ -209,6 +211,30 @@ def test_dry_run_writes_nothing(harness):
     assert harness.run(dry_run=True) == 0
     writes = [c for c in harness.db.calls if c[1] != "select"]
     assert writes == []
+
+
+def _archived_ids():
+    conn = sqlite3.connect(pipeline.archive.DB_PATH)   # a temporary file in tests (conftest.py)
+    try:
+        return [r[0] for r in conn.execute("select id from events order by id")]
+    finally:
+        conn.close()
+
+
+def test_firms_hotspots_go_to_the_local_archive_not_to_events(harness):
+    assert harness.run() == 0
+    (events,) = _ops(harness.db, "events", "upsert")
+    assert not any(e["id"].startswith("FIRMS-") for e in events)
+    assert _archived_ids() == ["FIRMS-1"]
+
+
+def test_failing_to_archive_hotspots_fails_the_run(harness, monkeypatch):
+    def broken(rows):
+        raise sqlite3.OperationalError("disk I/O error")
+
+    monkeypatch.setattr(pipeline.archive, "store_hotspots", broken)
+    assert harness.run() == 1
+    assert harness.db.rows("pipeline_runs")[0]["status"] == "failed"
 
 
 def _quake_row(qid="us1", mag=5.1):

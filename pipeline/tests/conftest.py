@@ -1,8 +1,15 @@
 """Test-wide guards."""
 import pytest
 
+import archive
 import config
 import datagov
+
+
+@pytest.fixture(autouse=True)
+def no_real_archive(monkeypatch, tmp_path):
+    """No test writes the Pi's sentinel_archive.db: archive.py gets a temporary file."""
+    monkeypatch.setattr(archive, "DB_PATH", str(tmp_path / "archive.db"))
 
 
 @pytest.fixture(autouse=True)

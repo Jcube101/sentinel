@@ -27,6 +27,7 @@ class _Query:
     def __init__(self, db, name):
         self.db, self.name = db, name
         self.op, self.payload, self.filters = "select", None, []
+        self.sort, self.max_rows = None, None
 
     def select(self, *_cols):
         self.op = "select"
@@ -61,6 +62,14 @@ class _Query:
         self.filters.append((col, lambda v: v in values))
         return self
 
+    def order(self, col, desc=False):
+        self.sort = (col, desc)
+        return self
+
+    def limit(self, n):
+        self.max_rows = n
+        return self
+
     def gte(self, col, value):
         self.filters.append((col, lambda v, value=value: v is not None and v >= value))
         return self
@@ -75,7 +84,11 @@ class _Query:
             raise RuntimeError(f'relation "public.{self.name}" does not exist')
         rows = db.rows(self.name)
         if self.op == "select":
-            return SimpleNamespace(data=[dict(r) for r in rows if self._matches(r)])
+            out = [dict(r) for r in rows if self._matches(r)]
+            if self.sort:
+                col, desc = self.sort
+                out.sort(key=lambda r: (r.get(col) is None, r.get(col) or ""), reverse=desc)
+            return SimpleNamespace(data=out[:self.max_rows] if self.max_rows is not None else out)
         if self.op == "insert":
             row = dict(self.payload)
             row.setdefault("id", db._next_id.setdefault(self.name, 1))

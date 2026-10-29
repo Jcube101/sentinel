@@ -3,10 +3,12 @@ One-time historical data loader for the Sentinel pipeline.
 
 Usage:
     python backfill.py --source all --days 90
-    python backfill.py --source firms --days 60
     python backfill.py --source eonet --days 365
     python backfill.py --source usgs  --days 365
     python backfill.py --source gdacs --days 180
+
+FIRMS isn't backfilled: its hotspots no longer go to `events` (29 Oct 2026). Older
+fire data comes from the SP archive (tools/pull_firms_archive.py).
 """
 
 import argparse
@@ -18,7 +20,7 @@ from datetime import datetime, timedelta, timezone
 from supabase import Client, create_client
 
 from config import SUPABASE_SERVICE_KEY, SUPABASE_URL
-from fetchers import eonet, firms, gdacs, usgs
+from fetchers import eonet, gdacs, usgs
 
 logging.basicConfig(
     level=logging.INFO,
@@ -60,14 +62,6 @@ def _upsert(supabase: Client, rows: list) -> int:
 # ---------------------------------------------------------------------------
 # Per-source backfill functions
 # ---------------------------------------------------------------------------
-
-def _backfill_firms(start: datetime, end: datetime) -> list[dict]:
-    # FIRMS API max day_range = 5 for both NRT and SP products.
-    # SP (Standard Processing) has a ~2-month lag — chunks older than that
-    # return 0 rows, which is expected. NRT covers only the last ~10 days.
-    # Chunks falling in the gap between SP cutoff and NRT window return 0 rows.
-    return firms.fetch_range(start, end, chunk_days=5)
-
 
 def _backfill_eonet(start: datetime, end: datetime) -> list[dict]:
     return eonet.fetch(
@@ -112,7 +106,6 @@ def _backfill_usgs(start: datetime, end: datetime) -> list[dict]:
 
 
 SOURCES = {
-    "firms": _backfill_firms,
     "eonet": _backfill_eonet,
     "gdacs": _backfill_gdacs,
     "usgs":  _backfill_usgs,
@@ -172,7 +165,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Sentinel historical data backfill")
     parser.add_argument(
         "--source",
-        choices=["all", "firms", "eonet", "gdacs", "usgs"],
+        choices=["all", "eonet", "gdacs", "usgs"],
         default="all",
         help="Data source to backfill (default: all)",
     )

@@ -104,7 +104,10 @@ FETCHERS = (
     ("USGS", usgs),
     ("OpenAQ", openaq),
 )
-EVENT_SOURCES = ("FIRMS", "EONET", "GDACS", "USGS")
+# Sources whose rows go to `events`. FIRMS hotspots don't (since 29 Oct 2026): the fire
+# stages read them from the fetch result and store fire_events and fire_day_points,
+# which is all the site's map uses. FIRMS's freshness comes from its sources row.
+EVENT_SOURCES = ("EONET", "GDACS", "USGS")
 
 
 def _run_fetcher(name: str, module) -> runs.FetchResult:
@@ -214,9 +217,20 @@ def _newest_age(supabase, table: str, date_col: str, **eq_filters) -> timedelta 
     return datetime.now(tz=timezone.utc) - newest
 
 
+def _newest_observation_age(supabase, source_id: str) -> timedelta | None:
+    """Age of a source's newest observation as its sources row records it
+    (runs.record_sources, earlier in the run), for sources not stored in events."""
+    resp = supabase.table(runs.SOURCES_TABLE).select("newest_observation_at").eq("id", source_id).execute()
+    newest = (resp.data or [{}])[0].get("newest_observation_at")
+    if not newest:
+        return None
+    return datetime.now(tz=timezone.utc) - dateutil_parser.parse(newest)
+
+
 def _check_staleness(supabase, fetch_results: dict) -> None:
     """Log the newest-row age per source; notify Job when a dense source has
-    gone stale, or when any source has zero rows on record.
+    gone stale, or when any source has zero rows on record. FIRMS isn't in
+    events: its age is that of its newest observation in `sources`.
 
     This is the tripwire that would have caught FIRMS silently ingesting
     nothing for 35 days — every prior run reported "success" with no signal
@@ -227,16 +241,20 @@ def _check_staleness(supabase, fetch_results: dict) -> None:
     for source in all_sources:
         fetch_ok = fetch_results.get(source)
         try:
-            age = _newest_age(supabase, EVENTS_TABLE, "started_at", source=source)
+            if source in EVENT_SOURCES:
+                age = _newest_age(supabase, EVENTS_TABLE, "started_at", source=source)
+            else:
+                age = _newest_observation_age(supabase, runs.SOURCE_IDS[source])
         except Exception as exc:
             logger.error("staleness: check failed for %s: %s", source, exc)
             continue
 
         if age is None:
-            logger.warning("staleness: %s has no rows in events table", source)
+            where = "events table has zero rows" if source in EVENT_SOURCES else "sources has no newest observation"
+            logger.warning("staleness: %s: %s", source, where)
             notify.send_alert(
                 f"Sentinel: {source} has never ingested any rows",
-                f"events table has zero rows for source={source}. Last fetch for this "
+                f"{where} for source={source}. Last fetch for this "
                 f"run: {'ok' if fetch_ok else 'FAILED'}.",
             )
             continue
@@ -387,7 +405,10 @@ def run(dry_run: bool = False):
     if dry_run:
         _log_dry_run_freshness(supabase, results)
     else:
-        written = {name: aqi_written if name == "OpenAQ" else events_written for name in results}
+        # Whether each source's rows reached Supabase. FIRMS's go through the fire stage
+        # (fire_events), whose own failure fails the run, so the events write isn't its.
+        written = {name: aqi_written if name == "OpenAQ" else events_written if name in EVENT_SOURCES else True
+                   for name in results}
         try:
             sources_summary = runs.record_sources(
                 supabase, run_id, results, written, datetime.now(tz=timezone.utc)
@@ -526,7 +547,7 @@ def run(dry_run: bool = False):
 
     print("")
     print("=== Sentinel Pipeline Run ===" + (" (DRY RUN)" if dry_run else ""))
-    print(f"  FIRMS:   {len(results['FIRMS'].rows)} events")
+    print(f"  FIRMS:   {len(results['FIRMS'].rows)} hotspots (to fire_events, not events)")
     print(f"  EONET:   {len(results['EONET'].rows)} events")
     print(f"  GDACS:   {len(results['GDACS'].rows)} events")
     print(f"  USGS:    {len(results['USGS'].rows)} earthquakes")
@@ -550,6 +571,15 @@ def run(dry_run: bool = False):
         archive_ok = False
 
     if not archive_ok:
+        any_failure = True
+
+    # FIRMS hotspots skip Supabase's events table; the local archive keeps them for
+    # the NRT vs SP calibration. Local and idempotent like archive.run(), so dry runs too.
+    try:
+        stored = archive.store_hotspots(results["FIRMS"].rows)
+        logger.info("archive: %d FIRMS hotspots stored locally", stored)
+    except Exception as exc:
+        logger.error("archive: FIRMS hotspots not stored locally — %s", exc)
         any_failure = True
 
     if dry_run:

@@ -378,7 +378,10 @@ Open as of 28 Oct 2026 (first listed 21 Oct, when the spec was completed).
      no longer reads.
   2. Check whether anything still needs FIRMS hotspots in `events`. If not, stop writing them
      there (`fire_events` and the per-day fire points cover the map) and delete the existing
-     rows.
+     rows. Done 29 Oct: the site never read them; the staleness check and the local archive
+     (the NRT side of *Live vs archive fire counts*) did. FIRMS's staleness now reads its
+     `sources` row, and `archive.store_hotspots()` writes each run's hotspots to the local
+     archive directly.
   3. Then reclaim the space: give Job the exact SQL editor command (no VACUUM FULL from the
      pipeline session). On 29 Oct `events` took 118 MB of the database's 134 MB, 98 MB of it
      heap for 37k rows (~2.6 KB a row on disk for ~0.9 KB of data, so mostly bloat).
@@ -386,7 +389,9 @@ Open as of 28 Oct 2026 (first listed 21 Oct, when the spec was completed).
   live feed is near-real-time (NRT). If NRT detects systematically more or fewer hotspots,
   every `ratio_to_norm` shifts. Only one partial day overlapped in Oct 2026 and FIRMS timed
   out on it; once SP covers Jul-Sep 2026 (about 3 months after the fact), compare it with
-  the NRT hotspots kept in `sentinel_archive.db` and scale the norm if needed.
+  the NRT hotspots kept in `sentinel_archive.db` and scale the norm if needed. The archive
+  has them from 14 Jun 2026; since 29 Oct they go there straight from each run's fetch
+  (`archive.store_hotspots()`), not through Supabase's `events`.
 
 ## Non-goals
 - No frontend changes in this task — UI redesign is separate (Situation Report direction A).
