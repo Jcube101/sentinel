@@ -199,9 +199,44 @@ def test_run_fire_skips_when_firms_failed():
 
 def test_dry_run_writes_nothing():
     db = FakeSupabase()
-    fire.run_fire(db, None, _results([_row(31.5, 74.5)]), NOW, write=False, cfg=CFG, districts=DISTRICTS,
-                  mask=fire.StaticMask(set(), 1.0, 0))
-    assert db.calls == []
+    s = fire.run_fire(db, None, _results([_row(31.5, 74.5)]), NOW, write=False, cfg=CFG, districts=DISTRICTS,
+                      mask=fire.StaticMask(set(), 1.0, 0))
+    assert db.calls == [] and s["day_points"] == {"2026-10-20": 1}
+
+
+# --- fire_day_points ---------------------------------------------------------------------------
+
+def test_each_day_in_the_window_gets_its_map_points():
+    db = FakeSupabase()
+    _run(db, [_row(29.5, 76.5, acq_time="2030", frp=12.345), _row(31.5, 74.5, acq_time="0812", frp=150.0),
+              _row(31.512, 74.5, acq_time="0905", frp=7.0),           # joins the 08:12 fire
+              _row(31.5, 74.5, acq_date="2026-10-19", acq_time="2041"),
+              _row(30.2, 74.95, acq_time="0700")])                     # outside the districts: no event
+    days = {r["acq_date"]: r for r in db.rows("fire_day_points")}
+    assert sorted(days) == ["2026-10-19", "2026-10-20"]
+    today = days["2026-10-20"]
+    assert today["fire_events"] == 2 and today["states"] == ["Haryana", "Punjab"] and today["last_run_id"] == 1
+    # earliest first: [lat, lon, hotspots, frp_max, first_seen minute UTC, state index]
+    assert today["points"] == [[31.506, 74.5, 2, 150.0, 8 * 60 + 12, 1], [29.5, 76.5, 1, 12.3, 20 * 60 + 30, 0]]
+    assert days["2026-10-19"]["points"] == [[31.5, 74.5, 1, 5.0, 20 * 60 + 41, 0]]
+
+
+def test_a_later_run_rewrites_the_days_in_its_window_and_keeps_older_days():
+    db = FakeSupabase({"fire_day_points": [{"acq_date": "2026-09-01", "fire_events": 9, "states": ["Goa"],
+                                            "points": []}]})
+    _run(db, [_row(31.5, 74.5, acq_time="0812")])
+    _run(db, [_row(31.5, 74.5, acq_time="0812"), _row(29.5, 76.5, acq_time="2030")], run_id=2)
+    days = {r["acq_date"]: r for r in db.rows("fire_day_points")}
+    assert sorted(days) == ["2026-09-01", "2026-10-20"]
+    assert days["2026-10-20"]["fire_events"] == 2 and days["2026-10-20"]["last_run_id"] == 2
+    assert days["2026-09-01"]["fire_events"] == 9
+
+
+def test_a_day_with_hotspots_but_no_events_still_gets_its_row():
+    db = FakeSupabase()
+    _run(db, [_row(30.2, 74.95)])                                       # outside the districts
+    (day,) = db.rows("fire_day_points")
+    assert (day["acq_date"], day["fire_events"], day["states"], day["points"]) == ("2026-10-20", 0, [], [])
 
 
 def test_real_district_file_places_known_fires():

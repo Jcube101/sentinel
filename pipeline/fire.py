@@ -11,16 +11,18 @@ FIRMS window (today and yesterday, UTC):
      other join one fire event
   4. district and state of each event's centroid; events outside India's
      districts, or in fire.excluded_district_ids, are dropped
-  5. replace that day's rows in fire_events
+  5. replace that day's rows in fire_events (kept 14 days), and rewrite
+     that day's compact map points in fire_day_points (kept for good)
 
-Schema: migrations/003_fire_events.sql. Thresholds: severity.toml [fire].
+Schema: migrations/003_fire_events.sql, 008 (fire_day_points).
+Thresholds: severity.toml [fire].
 """
 import json
 import logging
 import math
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from functools import lru_cache
 from pathlib import Path
 
@@ -29,6 +31,7 @@ import desk
 logger = logging.getLogger(__name__)
 
 TABLE = "fire_events"
+DAY_POINTS_TABLE = "fire_day_points"
 BATCH_SIZE = 500
 DATA_DIR = Path(__file__).resolve().parent / "data"
 DISTRICTS_PATH = DATA_DIR / "india_districts.geojson"
@@ -239,6 +242,29 @@ def store(supabase, rows: list[dict], dates: list[str], keep_from: date) -> int:
     return len(stale)
 
 
+def day_points(rows: list[dict], dates: list[str], run_id: int | None, now: datetime) -> list[dict]:
+    """One fire_day_points row per day in the window, for maps of past
+    editions after fire_events' 14 days. points: one per fire event, earliest
+    first, [latitude, longitude, hotspots, frp_max, first_seen, state], with
+    first_seen in minutes after 00:00 UTC that day (a past edition shows only
+    the events seen by its data time) and state an index into states."""
+    by_date = defaultdict(list)
+    for r in rows:
+        by_date[r["acq_date"]].append(r)
+    out = []
+    for d in dates:
+        events = sorted(by_date[d], key=lambda r: (r["first_seen"], r["id"]))
+        states = sorted({r["state"] for r in events})
+        index = {state: i for i, state in enumerate(states)}
+        midnight = datetime.combine(date.fromisoformat(d), time(0), tzinfo=timezone.utc)
+        points = [[round(r["latitude"], 4), round(r["longitude"], 4), r["hotspot_count"], round(r["frp_max"], 1),
+                   int((datetime.fromisoformat(r["first_seen"]) - midnight).total_seconds() // 60),
+                   index[r["state"]]] for r in events]
+        out.append({"acq_date": d, "fire_events": len(events), "states": states, "points": points,
+                    "last_run_id": run_id, "updated_at": now.isoformat()})
+    return out
+
+
 def run_fire(supabase, run_id: int | None, results: dict, now: datetime, *, write: bool = True,
              cfg: dict | None = None, districts: Districts | None = None,
              mask: StaticMask | None = None) -> dict:
@@ -258,9 +284,12 @@ def run_fire(supabase, run_id: int | None, results: dict, now: datetime, *, writ
     dates = sorted({s.acq_date for s in spots})
 
     superseded = 0
+    points = day_points(rows, dates, run_id, now)
     if write:
         keep_from = now.date() - timedelta(days=fire_cfg["events_retention_days"])
         superseded = store(supabase, rows, dates, keep_from)
+        if points:
+            supabase.table(DAY_POINTS_TABLE).upsert(points, on_conflict="acq_date").execute()
 
     per_district = defaultdict(int)
     for r in rows:
@@ -276,5 +305,6 @@ def run_fire(supabase, run_id: int | None, results: dict, now: datetime, *, writ
         "districts": len(per_district),
         "states": len({r["state"] for r in rows}),
         "superseded": superseded,
+        "day_points": {p["acq_date"]: p["fire_events"] for p in points},
         "top_districts": [f"{d} ({s}) {n}" for (d, s), n in top],
     }

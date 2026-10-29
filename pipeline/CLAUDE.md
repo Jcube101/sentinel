@@ -209,6 +209,8 @@ and the Windows scheduled task has been disabled.
   (last_success_at = last good fetch, newest_observation_at, last_new_data_at)
 - fire_events: FIRMS hotspots clustered per UTC day, with district/state (fire.py);
   views fire_district_daily, fire_state_daily
+- fire_day_points: the same fire events per UTC day as compact map points, kept for
+  good (fire.py, migration 008); see *Fire events*
 - fire_baseline: seasonal norm, mean daily fire events per state per week (baseline.py)
 - desk_items: severity desk, one row per item with a 1-4 level (desk.py)
 - desk_item_snapshots: one row per desk item per run, with its title, place_name,
@@ -224,7 +226,14 @@ and the Windows scheduled task has been disabled.
 hotspots, minus the static heat-source mask (data/static_heat_cells.json,
 built in step 5), are clustered per UTC day (1.5 km single linkage) and
 placed in a district (data/india_districts.geojson). Each run rebuilds
-today and yesterday in fire_events and keeps 14 days.
+today and yesterday in fire_events and keeps 14 days. It also rewrites those
+days in fire_day_points (one row per day, kept for good; a day is final once it
+leaves the FIRMS window): `points` = one array per fire event, earliest first,
+[latitude, longitude, hotspots, frp_max, first_seen, state], first_seen in
+minutes after 00:00 UTC that day (a past edition shows only the events seen by
+its `figures.data_to`), state an index into `states`. ~8 KB a day in late
+October. Fire items' `figures.large_fires_near_people[]` carry each fire's
+latitude/longitude.
 
 ## Fire baseline (one-off)
 The static mask and the seasonal norm come from the FIRMS VIIRS NOAA-20 SP

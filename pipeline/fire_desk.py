@@ -163,7 +163,8 @@ def large_fires_near_people(events: list[dict], places, cfg: dict) -> list[dict]
         if near:
             km, name, pop = min(near)
             out.append({"fire_event": e["id"], "district": e["district"], "frp_max": e["frp_max"],
-                        "place": name, "population": pop, "km": round(km, 1)})
+                        "place": name, "population": pop, "km": round(km, 1),
+                        "latitude": e["latitude"], "longitude": e["longitude"]})
     out.sort(key=lambda x: (-x["frp_max"], x["fire_event"]))
     return out
 

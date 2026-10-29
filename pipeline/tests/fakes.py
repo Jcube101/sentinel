@@ -11,7 +11,8 @@ class FakeSupabase:
         self.upsert_keys = {"desk_items": ("id",), "desk_item_snapshots": ("run_id", "item_id"),
                             "fire_events": ("id",), "desk_watch": ("id",),
                             "category_status": ("run_id", "category"),
-                            "desk_watch_snapshots": ("run_id", "subject_id")}
+                            "desk_watch_snapshots": ("run_id", "subject_id"),
+                            "fire_day_points": ("acq_date",)}
         self.calls = []              # (table, op, payload)
         self._next_id = {}
 

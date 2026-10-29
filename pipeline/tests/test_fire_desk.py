@@ -144,7 +144,8 @@ def test_large_fire_near_a_city_is_level_4_but_capped():
     c = _candidate(_events(3) + [big])
     assert c.level == 2 and c.figures["firms_level"] == 4
     assert "large fire (150 MW) 3.8 km from Amritsar" in c.reason and c.reason.endswith("(would be Level 4)")
-    assert c.figures["large_fires_near_people"][0]["place"] == "Amritsar"
+    (fire,) = c.figures["large_fires_near_people"]
+    assert (fire["place"], fire["latitude"], fire["longitude"]) == ("Amritsar", 31.60, 74.85)   # for the map
     assert _candidate([big], cfg=_cfg(calibration_cap=4)).level == 4
 
 
