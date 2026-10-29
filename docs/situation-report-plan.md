@@ -1,7 +1,7 @@
 # Sentinel — "Situation Report" frontend (Phase 7): plan
 
-Status: **steps 1 to 9 done (28 Oct 2026); P1-P4 used by the site (29 Oct, see "Used by the frontend" under section 7); ready for Job's review and the switch-over (a fast-forward merge into `main`). The copy follows `docs/style-guide.md`; caveats sit in source lines and Notes; map symbols follow `docs/design/MapSymbols.dc.html` (decisions 11–13).** Branch
-`frontend/situation-report`, worktree `../sentinel-situation-report`. Design reference:
+Status: **live since 29 Oct 2026, 22:30 IST: `main` fast-forwarded to `frontend/situation-report` (ff13f0e) and deployed on Render; checked live on every page type, with P1 and P2 on editions 29 and 30. Steps 1 to 9 done; P1-P4 used by the site (see "Used by the frontend" under section 7); P5-P7 next. The copy follows `docs/style-guide.md`; caveats sit in source lines and Notes; map symbols follow `docs/design/MapSymbols.dc.html` (decisions 11–13).** Built on branch
+`frontend/situation-report` (merged; its worktree is removed). Design reference:
 `docs/design/` (DeskSeverity, DeskQuiet, DeskPhone, MapView, ItemFire), read as visual and
 copy spec, not code. Data model: `docs/severity-pipeline.md` and
 `pipeline/migrations/001-006`. Everything below was checked against live data (editions
