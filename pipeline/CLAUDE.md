@@ -201,7 +201,10 @@ and the Windows scheduled task has been disabled.
 - aqi_readings: air quality readings
 - pipeline_runs: one row per non-dry run; id is the edition number (runs.py);
   severity_config = severity.toml as that edition ran it, the same dict every
-  severity stage got (migration 008; editions 1-28 backfilled from git history)
+  severity stage got (migration 008). Editions 1-28 are backfilled from git history
+  (`tools/backfill_severity_config.py`: the main checkout's reflog gives each run's
+  commit), marked `_backfill: {commit, certain, note}`; manual runs (1, 9, 10) are
+  not certain, only assumed to be from the main checkout
 - sources: one row per source, plus freshness columns written every run
   (last_success_at = last good fetch, newest_observation_at, last_new_data_at)
 - fire_events: FIRMS hotspots clustered per UTC day, with district/state (fire.py);
