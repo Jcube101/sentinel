@@ -254,6 +254,10 @@ fire_baseline table (migration 004). Rerun only to change years or parameters.
 100 km of India or M6+ in the box), floods and cyclones (GDACS India alerts
 from `gdacs.fetch_detailed()`) become desk items with a level, a reason and
 open / escalate / close rules; a failed source leaves its items "last-known".
+A cyclone's reason gives its wind speed ("GDACS Orange alert, 222 km/h winds"), and
+its position is the storm's: GDACS's point for a cyclone is the latest observed
+track point, at the episode's `todate` (checked on six storms, 29 Oct 2026), so the
+item moves with each episode; `figures.position` = {latitude, longitude, at}.
 India's outline is `data/india_outline.geojson` (see data/README.md).
 `air.py` adds one national air-quality item (`air:IN`). Primary source: CPCB's
 real-time AQI on data.gov.in (`datagov.py`, 4 requests): CPCB's own sub-indices,

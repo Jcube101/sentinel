@@ -242,9 +242,18 @@ def gdacs_candidates(alerts: list[dict], existing: dict[str, dict], cfg: dict) -
                 "countries": alert["countries"],
                 "gdacs_url": alert["url"],
                 "ends_at": alert["todate"],
+                **({"position": _storm_position(alert)} if alert["eventtype"] == "TC" else {}),
             },
         ))
     return out
+
+
+def _storm_position(alert: dict) -> dict:
+    """Where the storm was and when. GDACS's point for a cyclone is its latest
+    observed track point, at the episode's todate (the same point, centroid and
+    track point for all six storms checked on 29 Oct 2026), so the item moves
+    with the storm each episode."""
+    return {"latitude": alert["latitude"], "longitude": alert["longitude"], "at": alert["todate"]}
 
 
 # --- watching (step 7) -------------------------------------------------------------

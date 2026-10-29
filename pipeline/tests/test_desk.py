@@ -130,6 +130,19 @@ def test_cyclone_reason_gives_wind_speed():
     assert desk.gdacs_candidates([flood], {}, CFG)[0].reason == "GDACS Green alert"
 
 
+def test_cyclone_position_is_the_storm_at_the_episode_time():
+    # ARNAB-26 episode 10: GDACS's point is the track point at 28/10 06:00 UTC
+    first = {**_alert(kind="TC", level="Orange", episode=9), "latitude": 16.2, "longitude": 81.6,
+             "todate": "2026-10-28T00:00:00+00:00"}
+    (c,) = desk.gdacs_candidates([first], {}, CFG)
+    assert c.figures["position"] == {"latitude": 16.2, "longitude": 81.6, "at": "2026-10-28T00:00:00+00:00"}
+    moved = {**first, "episodeid": 10, "latitude": 16.4, "longitude": 81.8, "todate": "2026-10-28T06:00:00+00:00"}
+    (c,) = desk.gdacs_candidates([moved], {c.id: _stored(c)}, CFG)
+    assert (c.latitude, c.longitude) == (16.4, 81.8)
+    assert c.figures["position"] == {"latitude": 16.4, "longitude": 81.8, "at": "2026-10-28T06:00:00+00:00"}
+    assert "position" not in desk.gdacs_candidates([_alert()], {}, CFG)[0].figures   # a flood's point is its area
+
+
 def test_orange_ignores_rising():
     (first,) = desk.gdacs_candidates([_alert(level="Orange", score=1.5, episode=1)], {}, CFG)
     (second,) = desk.gdacs_candidates([_alert(level="Orange", score=2.0, episode=2)], {first.id: _stored(first)}, CFG)

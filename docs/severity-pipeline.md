@@ -25,6 +25,9 @@ which no longer does).
 | FIRMS fails the run only after 2 timeouts in a row | 28 Oct | Offline tests. Not yet exercised live: FIRMS hasn't timed out since edition 19 |
 | Fire levels only from complete days (night pass in), repair of editions 26-27 (*Decisions (29 Oct 2026)*) | 29 Oct | Offline tests, a dry run, and the fire desk run read-only against live data on 28 Oct 20:13 UTC: 27 Oct incomplete (one night orbit), five items restored to 26 Oct as last-known |
 | Wind speed in the cyclone reason; the air all-clear names the source that assessed it (Part B) | 29 Oct | Offline tests and a dry run |
+| P6: each fire state's national rank (`figures.state_rank`, `rank_shared`, `states_with_fires`) | 29 Oct | Offline tests and a dry run |
+| P5: each air city's position (`figures.cities[].latitude/longitude`) | 29 Oct | Offline tests, and the air stage run read-only on live data (29 Oct): OpenAQ 12 cities and data.gov.in 19 cities, all placed |
+| P7: a cyclone's position is the storm's, with its time (`figures.position`); no new request, see *Severity desk* in pipeline/CLAUDE.md | 29 Oct | Offline tests; six storms checked against GDACS's tracks |
 | Migration 008: the per-edition archive (P1-P4) and `last_known` in `desk_last_level3` | applied 29 Oct | Job's check query; through the API the new columns and tables answer, and an anon write is refused |
 | P1: each snapshot keeps the item's `title`, `place_name`, `latitude`, `longitude` | 29 Oct | Offline tests and a dry run |
 | P2: `desk_watch_snapshots`, every watch subject per run | 29 Oct | Offline tests and a dry run |
