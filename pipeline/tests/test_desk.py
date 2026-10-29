@@ -146,6 +146,19 @@ def _stored_item(**overrides):
     return row
 
 
+def test_snapshots_keep_title_place_and_position_as_of_the_run():
+    (row,), (snap,) = _reconcile({}, [_cand(level=2)])
+    assert (snap["title"], snap["place_name"], snap["latitude"], snap["longitude"]) == (
+        "M4.6 earthquake", None, 28.6, 77.2)
+    moved = {**row, "title": "M4.6 earthquake, revised", "place_name": "Uttarakhand", "latitude": 30.1,
+             "longitude": 79.0}
+    _, (kept,) = _reconcile({row["id"]: moved}, [], source_good=False)   # last-known: the stored values
+    assert (kept["title"], kept["place_name"], kept["latitude"], kept["longitude"]) == (
+        "M4.6 earthquake, revised", "Uttarakhand", 30.1, 79.0)
+    _, (closed,) = _reconcile({row["id"]: moved}, [])                       # closes: its last place
+    assert closed["change"] == "closed" and (closed["latitude"], closed["longitude"]) == (30.1, 79.0)
+
+
 def test_new_candidate_opens():
     (row,), (snap,) = _reconcile({}, [_cand(level=2)])
     assert row["status"] == "open" and row["opened_at"] == NOW.isoformat()

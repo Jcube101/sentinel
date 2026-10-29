@@ -287,11 +287,17 @@ def _row(base: dict) -> dict:
 
 
 def _snapshot(row: dict, run_id: int, now: datetime, change: str | None, new_data: bool) -> dict:
+    # title, place and position as of this run (migration 008): fire and air
+    # titles change, fire centroids move daily, a cyclone moves with its storm.
     return {
         "run_id": run_id,
         "item_id": row["id"],
         "taken_at": now.isoformat(),
         "category": row["category"],
+        "title": row.get("title"),
+        "place_name": row.get("place_name"),
+        "latitude": row.get("latitude"),
+        "longitude": row.get("longitude"),
         "status": row["status"],
         "severity_level": row["severity_level"],
         "severity_reason": row["severity_reason"],

@@ -206,8 +206,9 @@ and the Windows scheduled task has been disabled.
   views fire_district_daily, fire_state_daily
 - fire_baseline: seasonal norm, mean daily fire events per state per week (baseline.py)
 - desk_items: severity desk, one row per item with a 1-4 level (desk.py)
-- desk_item_snapshots: one row per desk item per run; views desk_daily_max
-  (most severe open item per IST day) and desk_last_level3
+- desk_item_snapshots: one row per desk item per run, with its title, place_name,
+  latitude and longitude as of that run (migration 008; null before it); views
+  desk_daily_max (most severe open item per IST day) and desk_last_level3
 - desk_watch: watching list, distance to the next level and trend per subject (watch.py)
 - category_status: one row per category per run; view category_status_latest
 
