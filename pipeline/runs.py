@@ -169,10 +169,13 @@ def source_updates(
     return updates, summary
 
 
-def start_run(supabase, started_at: datetime) -> int:
-    resp = supabase.table(RUNS_TABLE).insert(
-        {"started_at": started_at.isoformat(), "status": "running"}
-    ).execute()
+def start_run(supabase, started_at: datetime, severity_config: dict | None = None) -> int:
+    """Open the run record. severity_config: severity.toml as this edition runs
+    it (migration 008), or None when it failed to load."""
+    row = {"started_at": started_at.isoformat(), "status": "running"}
+    if severity_config is not None:
+        row["severity_config"] = severity_config
+    resp = supabase.table(RUNS_TABLE).insert(row).execute()
     return resp.data[0]["id"]
 
 

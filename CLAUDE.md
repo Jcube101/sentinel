@@ -26,7 +26,8 @@ shows the desk is next; the live site doesn't read the desk tables yet.
 One run of `pipeline/pipeline.py`, in this order. Each severity stage (4-8) is isolated:
 if one fails, the run is marked failed and alerts, but the other stages still run and
 earlier writes stand.
-1. Run record: a `pipeline_runs` row; its id is the edition number
+1. Run record: a `pipeline_runs` row; its id is the edition number, and it keeps the
+   thresholds (severity.toml) the edition runs with
 2. Fetchers: FIRMS, EONET, GDACS, USGS, OpenAQ
 3. Writes: `events`, `aqi_readings`, then each source's freshness on `sources`
 4. Fire events (`fire.py`): FIRMS hotspots clustered into `fire_events` by district

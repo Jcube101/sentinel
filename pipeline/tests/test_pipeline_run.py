@@ -83,6 +83,38 @@ def test_second_run_with_same_data_is_not_new_data(harness):
     assert not any(s["new_data"] for s in second["sources"].values())
 
 
+def test_each_edition_stores_the_thresholds_its_stages_ran_with(harness, monkeypatch):
+    import watch
+
+    seen, real = [], watch.run_quiet
+
+    def spy(*args, cfg=None, **kwargs):
+        seen.append(cfg)
+        return real(*args, cfg=cfg, **kwargs)
+
+    monkeypatch.setattr(watch, "run_quiet", spy)
+    assert harness.run() == 0
+    (run,) = harness.db.rows("pipeline_runs")
+    assert run["severity_config"] == pipeline.severity_config.load()
+    assert seen == [run["severity_config"]]          # the very dict the stages used
+
+
+def test_unloadable_thresholds_still_open_the_run_record_and_fail_the_run(harness, monkeypatch):
+    def broken(*a, **k):
+        raise pipeline.severity_config.ConfigError("severity.toml: missing fire.level_2_min_ratio")
+
+    monkeypatch.setattr(pipeline.severity_config, "load", broken)
+    assert harness.run() == 1
+    (run,) = harness.db.rows("pipeline_runs")
+    assert run["status"] == "failed" and "severity_config" not in run
+    assert len(_ops(harness.db, "events", "upsert")) == 1      # the raw writes still happen
+
+
+def test_dry_run_stores_no_thresholds(harness):
+    harness.run(dry_run=True)
+    assert harness.db.rows("pipeline_runs") == []
+
+
 def test_missing_tables_still_write_events_and_aqi_but_fail_the_run(harness):
     # Migration 001 not applied: pipeline_runs missing, sources lacks the columns.
     harness.db.missing = {"pipeline_runs", "sources"}
@@ -234,7 +266,7 @@ def test_openaq_extras_reach_the_air_stage(harness, monkeypatch):
     import air
     seen = {}
 
-    def fake_run_air(supabase, run_id, results, now, write=True):
+    def fake_run_air(supabase, run_id, results, now, write=True, cfg=None):
         seen["locations"] = results["OpenAQ"].extras["locations"]
         return {"items": [], "watch": [], "level": None, "reason": None, "source_good": True, "note": None,
                 "source": "OpenAQ", "source_id": "OPENAQ", "source_status": "ok", "fallback_reason": None,
@@ -276,7 +308,7 @@ def test_fire_stage_rows_reach_the_fire_desk(harness, monkeypatch):
         "rows": ["fire event"], "dates": [], "hotspots": 0, "masked": 0, "mask_cells": 0, "fire_events": 0,
         "districts": 0, "states": 0, "superseded": 0, "top_districts": []})
 
-    def fake_run_fire_desk(supabase, run_id, results, now, rows=None, write=True):
+    def fake_run_fire_desk(supabase, run_id, results, now, rows=None, write=True, cfg=None):
         seen["rows"], seen["run_id"] = rows, run_id
         return {"day": "2026-10-20", "source_good": True, "note": None, "assessed": 0, "open": [],
                 "max_level": None, "changes": {}, "top_ratios": [], "unmatched_alerts": 0}

@@ -13,6 +13,7 @@ from supabase import Client, create_client
 import archive
 import notify
 import runs
+import severity_config
 from config import LONG_RETENTION_DAYS, SHORT_RETENTION_DAYS, SUPABASE_SERVICE_KEY, SUPABASE_URL
 from fetchers import eonet, firms, gdacs, openaq, usgs
 
@@ -314,13 +315,22 @@ def run(dry_run: bool = False):
     # so it alerts, but never stops the events / aqi_readings writes.
     runs_ok = True
 
+    # The thresholds this edition runs with: stored on its run record and
+    # handed to every severity stage, so the record is exactly what they used.
+    # If severity.toml doesn't load, each stage fails on it as before.
+    try:
+        edition_cfg = severity_config.load()
+    except Exception as exc:
+        logger.error("severity.toml did not load, the severity stages will fail — %s", exc)
+        edition_cfg = None
+
     # --- Run record: id is the edition number ---
     run_id = None
     if dry_run:
         logger.info("dry-run: skipping run record")
     else:
         try:
-            run_id = runs.start_run(supabase, started_at)
+            run_id = runs.start_run(supabase, started_at, severity_config=edition_cfg)
             logger.info("runs: started edition %d", run_id)
         except Exception as exc:
             logger.error("runs: could not create run record — %s", exc)
@@ -390,7 +400,8 @@ def run(dry_run: bool = False):
         try:
             import fire  # needs shapely; a broken import fails only this stage
 
-            summary = fire.run_fire(supabase, run_id, results, datetime.now(tz=timezone.utc), write=not dry_run)
+            summary = fire.run_fire(supabase, run_id, results, datetime.now(tz=timezone.utc), write=not dry_run,
+                                   cfg=edition_cfg)
             fire_rows = summary.get("rows")
             if "skipped" in summary:
                 logger.warning("fire: skipped — %s", summary["skipped"])
@@ -417,7 +428,8 @@ def run(dry_run: bool = False):
             import fire_desk
 
             summary = fire_desk.run_fire_desk(
-                supabase, run_id, results, datetime.now(tz=timezone.utc), rows=fire_rows, write=not dry_run)
+                supabase, run_id, results, datetime.now(tz=timezone.utc), rows=fire_rows, write=not dry_run,
+                cfg=edition_cfg)
             stages["fire_desk"] = summary
             prefix = "dry-run: " if dry_run else ""
             if summary.get("restored"):
@@ -445,7 +457,8 @@ def run(dry_run: bool = False):
             # fail this stage, never the events / aqi_readings writes above.
             import desk
 
-            summary = desk.run_desk(supabase, run_id, results, datetime.now(tz=timezone.utc), write=not dry_run)
+            summary = desk.run_desk(supabase, run_id, results, datetime.now(tz=timezone.utc), write=not dry_run,
+                                   cfg=edition_cfg)
             stages["desk"] = summary
             logger.info(
                 "%sdesk: %d open (max level %s, %d last-known), changes: %s",
@@ -463,7 +476,8 @@ def run(dry_run: bool = False):
         try:
             import air
 
-            summary = air.run_air(supabase, run_id, results, datetime.now(tz=timezone.utc), write=not dry_run)
+            summary = air.run_air(supabase, run_id, results, datetime.now(tz=timezone.utc), write=not dry_run,
+                                 cfg=edition_cfg)
             stages["air"] = summary
             if summary.get("datagov") and sources_summary is not None:
                 sources_summary["DATAGOV"] = summary["datagov"]  # into pipeline_runs.sources
@@ -491,7 +505,7 @@ def run(dry_run: bool = False):
             import watch
 
             summary = watch.run_quiet(supabase, run_id, results, datetime.now(tz=timezone.utc), stages,
-                                      write=not dry_run)
+                                      write=not dry_run, cfg=edition_cfg)
             logger.info(
                 "%squiet: status %s; watching %d of %d: %s",
                 "dry-run: " if dry_run else "",

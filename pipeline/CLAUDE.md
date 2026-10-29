@@ -199,7 +199,9 @@ and the Windows scheduled task has been disabled.
 ## Supabase Tables
 - events: all disaster events
 - aqi_readings: air quality readings
-- pipeline_runs: one row per non-dry run; id is the edition number (runs.py)
+- pipeline_runs: one row per non-dry run; id is the edition number (runs.py);
+  severity_config = severity.toml as that edition ran it, the same dict every
+  severity stage got (migration 008; editions 1-28 backfilled from git history)
 - sources: one row per source, plus freshness columns written every run
   (last_success_at = last good fetch, newest_observation_at, last_new_data_at)
 - fire_events: FIRMS hotspots clustered per UTC day, with district/state (fire.py);
