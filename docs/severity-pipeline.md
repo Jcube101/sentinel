@@ -1,17 +1,17 @@
 # Sentinel — Severity & Fire-Event Pipeline (brief for Claude Code)
 
-Status: **complete, 21 Oct 2026; last updated 28 Oct 2026.** Build steps 0-7 are merged and
-run on the Pi three times a day; migrations 001-006 are applied (checked 28 Oct: every table
+Status: **complete, 21 Oct 2026; last updated 29 Oct 2026.** Build steps 0-7 are merged and
+run on the Pi three times a day; migrations 001-008 are applied (checked 29 Oct: every table
 and view they create answers through the Data API). *Where things stand* lists the changes
 since and how far each has been verified. What is left is under *Follow-ups*; the UI that
 reads the new tables is the next, separate frontend task (*Non-goals*).
 Written 20 Oct 2026 after the Sentinel redesign session.
 Design reference: "Sentinel — Design Directions" canvas, artboards **A2 · Desk ranked by severity** and **A2 · Quiet-day desk**.
 
-## Where things stand (28 Oct 2026)
+## Where things stand (29 Oct 2026)
 
 Every run is an edition (`pipeline_runs.id`). Edition 1 ran on 20 Oct; the latest checked,
-edition 25 (28 Oct, 02:30 IST), was ok: 662 s, every source ok. Of editions 1-25, two
+edition 29 (29 Oct, 14:30 IST), was ok: 233 s, every source ok. Of editions 1-29, two
 failed: 10 (a GDACS HTTP error, which still fails a run) and 19 (a single FIRMS timeout,
 which no longer does).
 
@@ -21,18 +21,18 @@ which no longer does).
 | data.gov.in as the primary air source (`datagov.py`, migration 006) | 23 Oct | Live since edition 9. The feed returned HTTP 500 in editions 21-22 and recovered by itself; it set the air level in editions 23-25 |
 | Air fallback never replaces a level with older data, plus the no-mean guard (decision 6 under *air source*) | 28 Oct | Offline tests and dry runs. Not yet exercised live: the feed has answered in every run since |
 | GDACS: 90 s read timeout, each page's time logged | 28 Oct | Live since edition 25; 90 s kept (*Decisions (29 Oct 2026): GDACS*) |
-| GDACS: floods/cyclones query first, wildfires and earthquakes after it and unable to fail the run (*Decisions (29 Oct 2026): GDACS*) | 29 Oct | Offline tests and a dry run |
+| GDACS: floods/cyclones query first, wildfires and earthquakes after it and unable to fail the run (*Decisions (29 Oct 2026): GDACS*) | 29 Oct | Live since edition 29: floods/cyclones 13 features in 7.8 s, wildfires 180, earthquakes 338, all ok (`pipeline_runs.sources.GDACS.parts`) |
 | FIRMS fails the run only after 2 timeouts in a row | 28 Oct | Offline tests. Not yet exercised live: FIRMS hasn't timed out since edition 19 |
-| Fire levels only from complete days (night pass in), repair of editions 26-27 (*Decisions (29 Oct 2026)*) | 29 Oct | Offline tests, a dry run, and the fire desk run read-only against live data on 28 Oct 20:13 UTC: 27 Oct incomplete (one night orbit), five items restored to 26 Oct as last-known |
+| Fire levels only from complete days (night pass in), repair of editions 26-27 (*Decisions (29 Oct 2026)*) | 29 Oct | Live: edition 28 kept the five items at their 26 Oct levels as last-known (27 Oct never completed) and closed nothing; edition 29 levelled 28 Oct, complete (Arunachal Pradesh opened, five de-escalated) |
 | Wind speed in the cyclone reason; the air all-clear names the source that assessed it (Part B) | 29 Oct | Offline tests and a dry run |
 | P6: each fire state's national rank (`figures.state_rank`, `rank_shared`, `states_with_fires`) | 29 Oct | Offline tests and a dry run |
 | P5: each air city's position (`figures.cities[].latitude/longitude`) | 29 Oct | Offline tests, and the air stage run read-only on live data (29 Oct): OpenAQ 12 cities and data.gov.in 19 cities, all placed |
 | P7: a cyclone's position is the storm's, with its time (`figures.position`); no new request, see *Severity desk* in pipeline/CLAUDE.md | 29 Oct | Offline tests; six storms checked against GDACS's tracks |
 | Migration 008: the per-edition archive (P1-P4) and `last_known` in `desk_last_level3` | applied 29 Oct | Job's check query; through the API the new columns and tables answer, and an anon write is refused |
-| P1: each snapshot keeps the item's `title`, `place_name`, `latitude`, `longitude` | 29 Oct | Offline tests and a dry run |
-| P2: `desk_watch_snapshots`, every watch subject per run | 29 Oct | Offline tests and a dry run |
-| P3: `pipeline_runs.severity_config` per edition; editions 1-28 backfilled from git history (`tools/backfill_severity_config.py`) | 29 Oct | Offline tests; backfill run 29 Oct |
-| P4: `fire_day_points`, fire map points per day kept for good; fire positions in `large_fires_near_people` | 29 Oct | Offline tests, and fire.py read-only on live FIRMS: 28 Oct = 265 events, 7.9 KB |
+| P1: each snapshot keeps the item's `title`, `place_name`, `latitude`, `longitude` | 29 Oct | Live since edition 29: 8 snapshots, all titled and placed (no position for air and for fire states with no fires) |
+| P2: `desk_watch_snapshots`, every watch subject per run | 29 Oct | Live since edition 29: 41 rows, 2 watching |
+| P3: `pipeline_runs.severity_config` per edition; editions 1-28 backfilled from git history (`tools/backfill_severity_config.py`) | 29 Oct | Live since edition 29. Backfill run 29 Oct: editions 1-28 stored, 1, 9 and 10 marked not certain (manual runs) |
+| P4: `fire_day_points`, fire map points per day kept for good; fire positions in `large_fires_near_people` | 29 Oct | Live since edition 29 (28 Oct: 265 events). 19-27 Oct copied from `fire_events` on 29 Oct, every count and point checked; nothing earlier was stored |
 
 ## The problem
 
