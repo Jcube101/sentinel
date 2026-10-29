@@ -19,9 +19,9 @@ CFG["air"]["min_fresh_cities"] = 2
 CFG["air"]["severe_confirm_runs"] = 2
 
 
-def _station(name, city, subs, state="Delhi", updated=SNAPSHOT):
+def _station(name, city, subs, state="Delhi", updated=SNAPSHOT, lat="28.6", lon="77.2"):
     return [{"country": "India", "state": state, "city": city, "station": name, "last_update": updated,
-             "latitude": "28.6", "longitude": "77.2", "pollutant_id": p, "min_value": "1", "max_value": "500",
+             "latitude": lat, "longitude": lon, "pollutant_id": p, "min_value": "1", "max_value": "500",
              "avg_value": str(v)} for p, v in subs.items()]
 
 
@@ -75,6 +75,21 @@ def test_city_aqi_is_the_mean_of_station_aqis():
     assert f["source"] == "datagov" and f["approximate"] is False and f["unvalidated"] is True
     assert f["snapshot_at"] == "2026-10-21T19:00:00+05:30" and f["snapshot_age_hours"] == 0.5
     assert [c["city"] for c in f["worst_cities"]] == ["Delhi", "Noida", "Chennai", "Pune"]
+
+
+def test_city_position_is_the_mean_of_its_counted_stations():
+    records = (_station("A, Delhi - DPCC", "Delhi", {"PM2.5": 320, "NO2": 30, "CO": 10}, lat="28.60", lon="77.20")
+               + _station("B, Delhi - DPCC", "Delhi", {"PM2.5": 300, "NO2": 30, "CO": 10}, lat="28.70", lon="77.30")
+               # no AQI (two pollutants): not counted, so not in the position either
+               + _station("C, Delhi - DPCC", "Delhi", {"PM2.5": 400, "NO2": 30}, lat="29.90", lon="78.90")
+               # coordinates outside India (a swapped pair): counted for the AQI, not the position
+               + _station("D, Delhi - DPCC", "Delhi", {"PM2.5": 310, "NO2": 30, "CO": 10}, lat="77.25", lon="28.65")
+               + _station("E, Agra - UPPCB", "Agra", {"PM2.5": 250, "NO2": 30, "CO": 10}, lat="NA", lon="")
+               + _feed(*CLEAN))
+    f = air.assess_feed(records, CFG, NOW, 4)
+    by_city = {c["city"]: c for c in f["cities"]}
+    assert (by_city["Delhi"]["latitude"], by_city["Delhi"]["longitude"], by_city["Delhi"]["stations"]) == (28.65, 77.25, 3)
+    assert (by_city["Agra"]["latitude"], by_city["Agra"]["longitude"]) == (None, None)
 
 
 @pytest.mark.parametrize("aqi, band", [(200, None), (201, "poor"), (300, "poor"), (301, "very_poor"),

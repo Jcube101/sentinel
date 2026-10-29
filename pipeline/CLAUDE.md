@@ -269,7 +269,10 @@ current level don't count (`air.level_data_from`), so the fallback never replace
 level with older data; and if no station near Poor yields a 24 h mean, the item stays
 last-known rather than closing. Either way a city counts as Severe only after
 `air.severe_confirm_runs` assessments in a row. With neither source usable the
-item stays last-known and the reason says why. Each feed attempt updates the
+item stays last-known and the reason says why. Each city in `figures.cities` (Poor or
+worse, either source) has `latitude`/`longitude` for the map: the mean of the stations
+counted for it, skipping coordinates outside India's bounding box; null if none has
+any. Each feed attempt updates the
 DATAGOV sources row (migration 006) and pipeline_runs.sources. Tests never reach
 data.gov.in (tests/conftest.py drops the key and blocks requests).
 

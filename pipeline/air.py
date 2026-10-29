@@ -98,10 +98,31 @@ def reference_stations(locations: list[dict], cfg: dict) -> list[dict]:
             if param in PARAMETER_IDS:
                 sensors.setdefault(param, []).append(s["id"])
         city = station_city(loc.get("name"), provider, aliases)
+        coords = loc.get("coordinates") or {}
         if sensors and city:
             out.append({"location_id": loc["id"], "name": loc.get("name"), "provider": provider,
-                        "city": city, "sensors": sensors})
+                        "city": city, "sensors": sensors,
+                        "latitude": _coord(coords.get("latitude")), "longitude": _coord(coords.get("longitude"))})
     return out
+
+
+def _coord(value) -> float | None:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def city_position(points) -> dict:
+    """A city's place on the map: the mean of its counted stations' (lat, lon),
+    skipping any outside India's bounding box; None when no station has one."""
+    b = config.INDIA_BBOX
+    good = [(lat, lon) for lat, lon in points if lat is not None and lon is not None
+            and b["south"] <= lat <= b["north"] and b["west"] <= lon <= b["east"]]
+    if not good:
+        return {"latitude": None, "longitude": None}
+    return {"latitude": round(sum(p[0] for p in good) / len(good), 4),
+            "longitude": round(sum(p[1] for p in good) / len(good), 4)}
 
 
 # --- bands and level -----------------------------------------------------------------
@@ -304,6 +325,7 @@ def assess(stations: list[dict], client: OpenAQ, cfg: dict, now: datetime,
 
     means = defaultdict(list)  # (city, pollutant) -> [fresh 24 h means]
     city_until = defaultdict(list)
+    city_stations = defaultdict(set)  # city -> location ids whose fresh means count
     stale_count = defaultdict(int)
     station_means = []
     for fresh, _, city, pollutant, loc, sid, until in jobs:
@@ -320,6 +342,7 @@ def assess(stations: list[dict], client: OpenAQ, cfg: dict, now: datetime,
         if fresh:
             means[(city, pollutant)].append(m)
             city_until[city].append(until)
+            city_stations[city].add(loc)
         else:
             stale_count[city] += 1
 
@@ -338,6 +361,8 @@ def assess(stations: list[dict], client: OpenAQ, cfg: dict, now: datetime,
                 "stations": max(len(means[(city, p)]) for p in PARAMETER_IDS),
                 "stale_stations": stale_count[city],
                 "data_to": max(city_until[city]).isoformat(),
+                **city_position((by_id[loc].get("latitude"), by_id[loc].get("longitude"))
+                                for loc in sorted(city_stations[city])),
             })
     cities.sort(key=lambda c: (BANDS.index(c["band"]), -max(
         (c["pm25_24h"] or 0) / cfg["air"]["pm25"]["poor_above"],
@@ -382,13 +407,13 @@ def assess_feed(records: list[dict], cfg: dict, now: datetime, requests_made: in
     air, feed = cfg["air"], cfg["air"]["datagov"]
     aliases = air.get("city_aliases", {})
     listed = datagov.stations(records)
-    by_city = defaultdict(list)  # city -> [(station AQI, prominent pollutants, state)]
+    by_city = defaultdict(list)  # city -> [(station AQI, prominent pollutants, state, lat, lon)]
     for name, st in listed.items():
         aqi, top = datagov.station_aqi(st["sub_indices"], feed["min_pollutants"])
         city = st["city"] or station_city(name, "CPCB", aliases)
         city = aliases.get(city, city)
         if aqi is not None and city:
-            by_city[city].append((aqi, top, st["state"]))
+            by_city[city].append((aqi, top, st["state"], st["latitude"], st["longitude"]))
     snapshot = max((st["updated"] for st in listed.values() if st["updated"]), default=None)
 
     cities, measured = [], []
@@ -398,7 +423,8 @@ def assess_feed(records: list[dict], cfg: dict, now: datetime, requests_made: in
         b = aqi_band(value, cfg)
         if b:
             cities.append({"city": city, "band": b, "aqi": value, "stations": len(rows), "state": rows[0][2],
-                           "prominent": datagov.prominent([r[1] for r in rows])})
+                           "prominent": datagov.prominent([r[1] for r in rows]),
+                           **city_position((r[3], r[4]) for r in rows)})
     cities.sort(key=lambda c: (BANDS.index(c["band"]), -c["aqi"], c["city"]))
     measured.sort(key=lambda c: (-c["aqi"], c["city"]))
     return {

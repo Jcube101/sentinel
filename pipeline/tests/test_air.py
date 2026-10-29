@@ -34,21 +34,25 @@ def test_station_city(name, provider, city):
     assert air.station_city(name, provider, ALIASES) == city
 
 
-def _location(lid, name, provider="CPCB", pm25=(), pm10=(), other=()):
+def _location(lid, name, provider="CPCB", pm25=(), pm10=(), other=(), coordinates=None):
     sensors = ([{"id": s, "parameter": {"name": "pm25"}} for s in pm25]
                + [{"id": s, "parameter": {"name": "pm10"}} for s in pm10]
                + [{"id": s, "parameter": {"name": "no2"}} for s in other])
-    return {"id": lid, "name": name, "provider": {"name": provider}, "sensors": sensors}
+    return {"id": lid, "name": name, "provider": {"name": provider}, "sensors": sensors, "coordinates": coordinates}
 
 
 def test_reference_stations_filters_providers_and_pm_sensors():
     locations = [
-        _location(1, "R K Puram, Delhi - DPCC", pm25=[11], pm10=[12], other=[13]),
+        _location(1, "R K Puram, Delhi - DPCC", pm25=[11], pm10=[12], other=[13],
+                  coordinates={"latitude": 28.5633, "longitude": 77.1869}),
         _location(2, "Koramangala", provider="AirGradient", pm25=[21]),
         _location(3, "NO2 only, Pune - MPCB", other=[31]),
+        _location(4, "No position, Agra - UPPCB", pm25=[41]),
     ]
-    (st,) = air.reference_stations(locations, CFG)
+    st, agra = air.reference_stations(locations, CFG)
     assert st["city"] == "Delhi" and st["sensors"] == {"pm25": [11], "pm10": [12]}
+    assert (st["latitude"], st["longitude"]) == (28.5633, 77.1869)
+    assert (agra["latitude"], agra["longitude"]) == (None, None)
 
 
 # --- bands and level ------------------------------------------------------------------
@@ -127,6 +131,23 @@ def test_assess_bands_cities_on_24h_means():
     assert 41 not in client.history_calls
     assert figures["approximate"] is True and figures["data_as_of"] == (NOW - timedelta(hours=2)).isoformat()
     assert figures["stations_reporting"] == 4 and figures["cities_assessed"] == 2
+    assert all(c["latitude"] is None and c["longitude"] is None for c in figures["cities"])  # no coordinates
+
+
+def test_city_position_is_the_mean_of_stations_whose_fresh_means_count():
+    stations = [
+        {**STATIONS[0], "latitude": 28.60, "longitude": 77.20},
+        {**STATIONS[1], "latitude": 28.70, "longitude": 77.30},
+        {**STATIONS[2], "latitude": 26.85, "longitude": 80.95},
+        {"location_id": 5, "name": "E, Delhi - DPCC", "provider": "CPCB", "city": "Delhi", "sensors": {"pm25": [51]},
+         "latitude": 29.90, "longitude": 78.90},
+    ]
+    latest = {11: (200, 2), 21: (180, 2), 31: (100, 3), 51: (190, 2)}
+    hours = {11: [300] * 24, 21: [280] * 20, 31: [150] * 18, 51: [290] * 5}  # 51: too few hours, no mean
+    figures, _ = _assess(latest, hours, stations=stations)
+    by_city = {c["city"]: c for c in figures["cities"]}
+    assert (by_city["Delhi"]["latitude"], by_city["Delhi"]["longitude"]) == (28.65, 77.25)
+    assert (by_city["Lucknow"]["latitude"], by_city["Lucknow"]["longitude"]) == (26.85, 80.95)
 
 
 def test_latest_hour_is_not_the_band():
