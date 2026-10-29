@@ -1,10 +1,13 @@
 // An edition's items as map markers, and the day its fire layer shows.
 
+import { worstCities } from './cards'
 import { itemCopy, closedLine, type CopyContext } from './copy'
-import { snapshotEntry, type DeskEntry } from './entries'
+import { counted, snapshotEntry, type DeskEntry } from './entries'
 import type { Edition, Snapshot } from './types'
 import { dayBefore } from './ist'
 import type { FirePoint, MapItem } from '@/components/paper/PaperMap'
+import type { AirPoint } from '@/components/paper/mapSymbols'
+import type { AirCity } from './types'
 
 /** What sizes an item's map symbol: a cyclone's wind in km/h (quakes and floods are sized by level). */
 function symbolStrength(e: DeskEntry): number | null {
@@ -60,6 +63,30 @@ export function mapItems(entries: DeskEntry[], ctx: CopyContext): MapItem[] {
     }
   })
   return out
+}
+
+/** A city's reading for its map label: "286" (CPCB AQI), else "PM2.5 182 µg/m³" (the OpenAQ fallback's 24 h mean). */
+function airReading(c: AirCity): string {
+  if (typeof c.aqi === 'number') return String(c.aqi)
+  if (typeof c.pm25_24h === 'number') return `PM2.5 ${Math.round(c.pm25_24h)} µg/m³`
+  if (typeof c.pm10_24h === 'number') return `PM10 ${Math.round(c.pm10_24h)} µg/m³`
+  return ''
+}
+
+/**
+ * The air layer: the edition's cities at poor or worse that have a position
+ * (plan P5, from edition 30), worst first, so the first is the one labelled.
+ * Each takes the band it counts in (an unconfirmed Severe shows as Very poor,
+ * as the reason does). Empty for older editions: their figures have no positions.
+ */
+export function airPoints(entries: DeskEntry[]): AirPoint[] {
+  const air = entries.find((e) => e.category === 'air')
+  if (!air) return []
+  return worstCities(air.figures).flatMap((c) =>
+    typeof c.latitude === 'number' && typeof c.longitude === 'number'
+      ? [{ city: c.city, lat: c.latitude, lon: c.longitude, band: counted(c), reading: airReading(c) }]
+      : [],
+  )
 }
 
 /** Closed items as hollow markers, from their closing snapshots. */

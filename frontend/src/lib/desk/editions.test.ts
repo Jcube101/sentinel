@@ -2,12 +2,13 @@
 import { describe, expect, it } from 'vitest'
 import { copyContext, itemCopy } from './copy'
 import { deskEntries, snapshotEntry } from './entries'
-import { dayPoints, fireLayerOf, mapItems, type DayPointsRow } from './mapdata'
+import { airPoints, dayPoints, fireLayerOf, mapItems, type DayPointsRow } from './mapdata'
 import { deskNotes } from './notes'
 import { SCALE, minFireEvents, scaleFrom, scaleRows } from './scale'
 import { watchRows, type WatchSnapshot } from './watch'
 import type { EditionData, Snapshot } from './types'
 import configs from './__fixtures__/severity-configs.json'
+import e25 from './__fixtures__/edition-25.json'
 import e26 from './__fixtures__/edition-26.json'
 
 const ed = e26 as unknown as EditionData
@@ -185,5 +186,89 @@ describe('the watching list as each edition kept it (P2)', () => {
     const [r] = watchRows([row(31, 'fire:punjab', 20, 'D99')], earlier)
     expect(r.trend!.length).toBe(10)
     expect(r.trend!.at(-1)!.value).toBe(20)
+  })
+})
+
+/** Edition 26's snapshots with one item's figures patched, as desk entries and their copy context. */
+function patched(base: EditionData, key: string, patch: Record<string, unknown>) {
+  const snaps = base.snapshots.map((x) => (x.item_id === key ? { ...x, figures: { ...x.figures, ...patch } } : x))
+  const entries = deskEntries(snaps, new Map())
+  return { entries, ctx: copyContext(entries, null, base.run) }
+}
+
+describe('air on the map (P5)', () => {
+  const at = (lat: number, lon: number) => ({ latitude: lat, longitude: lon })
+  const cities = [
+    { aqi: 293, band: 'poor', city: 'Panipat', counted_as: 'poor', ...at(29.39, 76.97) },
+    { aqi: 412, band: 'severe', city: 'Delhi', counted_as: 'very_poor', ...at(28.63, 77.16) },
+    { aqi: 305, band: 'very_poor', city: 'Bhiwadi', ...at(28.2, 76.85) },
+    { aqi: 250, band: 'poor', city: 'Agra', latitude: null, longitude: null },
+    { pm25_24h: 101.6, band: 'poor', city: 'Patna', ...at(25.6, 85.1) },
+  ]
+
+  it('cities with a position, worst first, in the band they count in, with their reading', () => {
+    const { entries } = patched(ed, 'air:IN', { cities })
+    expect(airPoints(entries)).toEqual([
+      { city: 'Delhi', lat: 28.63, lon: 77.16, band: 'very_poor', reading: '412' },
+      { city: 'Bhiwadi', lat: 28.2, lon: 76.85, band: 'very_poor', reading: '305' },
+      { city: 'Panipat', lat: 29.39, lon: 76.97, band: 'poor', reading: '293' },
+      { city: 'Patna', lat: 25.6, lon: 85.1, band: 'poor', reading: 'PM2.5 102 µg/m³' },
+    ])
+  })
+
+  it('editions before 30 have no positions: no squares', () => {
+    expect(airPoints(deskEntries(ed.snapshots, new Map()))).toEqual([])
+  })
+})
+
+describe('national fire rank in the copy (P6)', () => {
+  const mp = 'fire:madhya-pradesh'
+  const standfirst = (patch: Record<string, unknown>) => {
+    // Madhya Pradesh is the one state above normal: the roundup reads as its own story.
+    const { entries, ctx } = patched(ed, mp, patch)
+    return itemCopy(entries.find((e) => e.itemIds.includes(mp))!, ctx).standfirst
+  }
+  const told =
+    'Madhya Pradesh logged 145 fires yesterday across 21 districts, about double the late-October average but normal for the season.'
+
+  it('first of every state: said after the state’s sentence', () => {
+    expect(standfirst({ state_rank: 1, rank_shared: false, states_with_fires: 15 })).toBe(`${told} That was the most of any state.`)
+  })
+
+  it('a shared first place is a tie', () => {
+    expect(standfirst({ state_rank: 1, rank_shared: true })).toBe(`${told} That tied for the most of any state.`)
+  })
+
+  it('below first, or before the rank was stored: nothing added', () => {
+    expect(standfirst({ state_rank: 3, rank_shared: false })).toBe(told)
+    expect(standfirst({})).toBe(told)
+  })
+
+  it('the roundup’s biggest count says "of any state" only when it led every state', () => {
+    const roundup = (rank: Record<string, unknown>) => {
+      const { entries, ctx } = patched(e25 as unknown as EditionData, mp, rank)
+      return itemCopy(entries.find((e) => e.key === 'fire:roundup')!, ctx).standfirst!
+    }
+    expect(roundup({ state_rank: 1, rank_shared: false })).toContain('Madhya Pradesh had the most fires of any state, 200, about three times')
+    expect(roundup({ state_rank: 1, rank_shared: true })).toContain('Madhya Pradesh tied for the most fires of any state, 200,')
+    expect(roundup({ state_rank: 2, rank_shared: false })).toContain('Madhya Pradesh had the most fires of the states above normal, 200,')
+    expect(roundup({})).toContain('Madhya Pradesh had the most fires, 200,')
+  })
+})
+
+describe('a cyclone where the storm was (P7)', () => {
+  const tc = 'cyclone:GDACS-TC-1001345'
+
+  it('the marker and the copy use figures.position over the stored point', () => {
+    const { entries, ctx } = patched(ed, tc, { position: { latitude: 17.9, longitude: 84.2, at: '2026-10-28T06:00:00Z' } })
+    const e = entries.find((x) => x.key === tc)!
+    expect(e.coords).toEqual([17.9, 84.2])
+    expect(mapItems(entries, ctx).find((m) => m.key === tc)).toMatchObject({ lat: 17.9, lon: 84.2 })
+  })
+
+  it('no position (editions before 30): the stored point, as before', () => {
+    const e = deskEntries(ed.snapshots, new Map()).find((x) => x.key === tc)!
+    const s = ed.snapshots.find((x) => x.item_id === tc)!
+    expect(e.coords).toEqual([Number(s.desk_items!.latitude), Number(s.desk_items!.longitude)])
   })
 })

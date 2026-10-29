@@ -1,6 +1,6 @@
 # Sentinel — "Situation Report" frontend (Phase 7): plan
 
-Status: **live since 29 Oct 2026, 22:30 IST: `main` fast-forwarded to `frontend/situation-report` (ff13f0e) and deployed on Render; checked live on every page type, with P1 and P2 on editions 29 and 30. Steps 1 to 9 done; P1-P4 used by the site (see "Used by the frontend" under section 7); P5-P7 next. The copy follows `docs/style-guide.md`; caveats sit in source lines and Notes; map symbols follow `docs/design/MapSymbols.dc.html` (decisions 11–13).** Built on branch
+Status: **live since 29 Oct 2026, 22:30 IST: `main` fast-forwarded to `frontend/situation-report` (ff13f0e) and deployed on Render; checked live on every page type, with P1 and P2 on editions 29 and 30. Steps 1 to 9 done; P1-P7 used by the site (see "Used by the frontend" under section 7; P5-P7 and the map page's collapsed key from 30 Oct). The copy follows `docs/style-guide.md`; caveats sit in source lines and Notes; map symbols follow `docs/design/MapSymbols.dc.html` (decisions 11–13).** Built on branch
 `frontend/situation-report` (merged; its worktree is removed). Design reference:
 `docs/design/` (DeskSeverity, DeskQuiet, DeskPhone, MapView, ItemFire), read as visual and
 copy spec, not code. Data model: `docs/severity-pipeline.md` and
@@ -509,6 +509,17 @@ writes the field; older rows have it null or missing, so keep the fallbacks for 
 - **P4:** `useFirePoints(fireLayerOf(...))` reads `fire_day_points` and keeps points
   with `first_seen` up to `figures.data_to`; a Level 4 state's large fires are ringed by
   their stored `latitude`/`longitude`.
+- **P5** (30 Oct): `airPoints()` (`mapdata.ts`) turns the air item's
+  `figures.cities[].latitude`/`longitude` into squares, worst first, in the band each
+  counts in; the map page has an Air layer row (on), and the air item's page shows them
+  on its small map. Editions before 30 have no positions and say so. The Desk's small map
+  has no air squares.
+- **P6** (30 Oct): `figures.state_rank` and `rank_shared` let the fire copy say "the
+  most of any state" (rank 1) or "tied for the most" (shared); see the style guide.
+- **P7** (30 Oct): a cyclone's `figures.position` sets its entry's position (marker and
+  "They place it …"), ahead of the snapshot's point.
+- **Map page** (30 Oct, Job): the Layers rows, with their small symbols, are the key; the
+  full explanation is a collapsed "How to read the map" under the map.
 
 ## Decisions (Job, 28 Oct 2026)
 
@@ -554,8 +565,8 @@ writes the field; older rows have it null or missing, so keep the fallbacks for 
     sized and tinted by band in slate blue (Job kept these over the sheet's ochre), red
     for Severe, under every hazard (its own pane below the fire dots); only the worst
     city is named, left of its square, else on the first side clear of every marker, else
-    not at all. Built (`airSquareHtml`, `placeLabel`, `PaperMap`'s `air` prop) and shown
-    only on `/dev/symbols` until the pipeline's field names arrive.
+    not at all. On the map from edition 30 (P5), with its own Layers row; see "Used by
+    the frontend".
 13. `/dev/symbols` draws every symbol at every level, the size ramps, selected and closed
     markers, the air squares and a made-up busy day, so quake and flood symbols can be
     checked without a real event. Not linked from the site, `noindex`. It is in

@@ -6,17 +6,18 @@ import { itemCopy } from '@/lib/desk/copy'
 import type { DeskEntry } from '@/lib/desk/entries'
 import { istShortDate, istTime } from '@/lib/desk/ist'
 import { CATEGORY_NAMES, LEVEL_NAMES } from '@/lib/desk/levels'
-import { closedMapItems, fireLayerOf, mapItems } from '@/lib/desk/mapdata'
+import { airPoints, closedMapItems, fireLayerOf, mapItems } from '@/lib/desk/mapdata'
 import { editionQuery, itemPath } from '@/lib/desk/paths'
-import type { Category, Level } from '@/lib/desk/types'
+import type { Scale } from '@/lib/desk/scale'
+import type { AirBand, Category, Level } from '@/lib/desk/types'
 import PaperShell from '@/components/paper/PaperShell'
 import PaperMap from '@/components/paper/PaperMap'
 import LevelSquares from '@/components/paper/LevelSquares'
 import { SourceLine } from '@/components/paper/DeskEntryRow'
-import { EMBER, badgeHtml, symbolSize, symbolSvg } from '@/components/paper/mapSymbols'
+import { AIR_TINT, EMBER, badgeHtml, symbolSize, symbolSvg } from '@/components/paper/mapSymbols'
 import { sourceCredit } from '@/lib/desk/notes'
 
-const LAYERS: Category[] = ['cyclone', 'flood', 'earthquake', 'fire']
+const LAYERS: Category[] = ['cyclone', 'flood', 'earthquake', 'fire', 'air']
 const LAYER_NAMES: Record<Category, string> = { cyclone: 'Cyclones', flood: 'Floods', earthquake: 'Earthquakes', fire: 'Fire activity', air: 'Air' }
 
 function Toggle({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
@@ -36,6 +37,7 @@ const DAY = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', t
 
 /** A layer's symbol in the key, drawn by the same code as the map's markers. */
 function KeySymbol({ category, level = 2 }: { category: Category; level?: Level }) {
+  if (category === 'air') return <AirSquares bands={['poor', 'very_poor']} />
   if (category === 'fire') {
     return (
       <span className="inline-flex items-center justify-center gap-[3px] w-[22px] h-[20px]" aria-hidden="true">
@@ -46,6 +48,21 @@ function KeySymbol({ category, level = 2 }: { category: Category; level?: Level 
     )
   }
   return <span className="inline-block w-[22px]" aria-hidden="true" dangerouslySetInnerHTML={{ __html: symbolSvg({ category, size: 20, level }) }} />
+}
+
+/** Air squares as on the map, in a row. */
+function AirSquares({ bands }: { bands: AirBand[] }) {
+  return (
+    <span className="inline-flex items-center justify-center gap-[3px] w-[22px] h-[20px]" aria-hidden="true">
+      {bands.map((b) => (
+        <span
+          key={b}
+          className="inline-block rounded-[2px]"
+          style={{ width: AIR_TINT[b].size * 0.8, height: AIR_TINT[b].size * 0.8, background: AIR_TINT[b].color, opacity: AIR_TINT[b].opacity }}
+        />
+      ))}
+    </span>
+  )
 }
 
 const keyRow = 'flex items-center gap-2.5 font-mono text-[11px] leading-[1.45] text-ink-muted'
@@ -62,6 +79,66 @@ function KeyRamp({ category }: { category: Category }) {
         />
       ))}
     </span>
+  )
+}
+
+/** What each symbol means, collapsed below the map: the Layers rows are the short key. */
+function HowToRead({ scale }: { scale: Scale | undefined }) {
+  const aqi = scale?.air.aqi ?? null
+  return (
+    <details className="group border-t border-ink">
+      <summary className="flex justify-between items-center gap-3 py-3 cursor-pointer list-none [&::-webkit-details-marker]:hidden font-mono text-[11px] sm:text-[12px] uppercase tracking-[0.08em]">
+        <span>How to read the map</span>
+        <span className="text-ink-muted tracking-[0.04em]">
+          <span className="group-open:hidden">Show</span>
+          <span className="hidden group-open:inline">Hide</span> <span className="inline-block transition-transform group-open:rotate-90">›</span>
+        </span>
+      </summary>
+      <ul aria-label="Map key" className="m-0 p-0 pb-4 list-none grid md:grid-cols-2 gap-x-8 gap-y-2.5">
+        <li className={keyRow}>
+          <span className="flex items-end gap-0.5 flex-none w-[64px]" aria-hidden="true">
+            <span className="inline-block" dangerouslySetInnerHTML={{ __html: symbolSvg({ category: 'cyclone', size: 14, level: 2 }) }} />
+            <span className="inline-block" dangerouslySetInnerHTML={{ __html: symbolSvg({ category: 'cyclone', size: 24, level: 2 }) }} />
+          </span>
+          Spirals grow with a cyclone's wind speed.
+        </li>
+        <li className={keyRow}>
+          <KeyRamp category="earthquake" />
+          Earthquakes: one ring more per level as magnitude rises (light, moderate, strong, major).
+        </li>
+        <li className={keyRow}>
+          <KeyRamp category="flood" />
+          Floods: one wave line per level, blue until Level 3.
+        </li>
+        <li className={keyRow}>
+          <span className="flex-none w-[64px]">
+            <KeySymbol category="cyclone" level={4} />
+          </span>
+          Red: Level 3 or 4. A faint halo and a slow pulse: Level 4.
+        </li>
+        <li className={keyRow}>
+          <span className="relative flex-none w-[64px] h-[16px]" dangerouslySetInnerHTML={{ __html: badgeHtml(2, 2, 'left:3px;top:0;') }} />
+          The number matches the list. A fire state's number sits at the centre of its fires; a group of small earthquakes has one
+          number, on the largest.
+        </li>
+        <li className={keyRow}>
+          <span className="flex-none w-[64px]">
+            <KeySymbol category="fire" />
+          </span>
+          Each dot is a fire seen by NASA's satellites, stronger in a state above normal and red at Level 3 or 4. A ring marks a large
+          fire near a town.
+        </li>
+        <li className={keyRow}>
+          <span className="flex-none w-[64px]">
+            <AirSquares bands={['poor', 'very_poor', 'severe']} />
+          </span>
+          {aqi
+            ? `Each square is a city with poor air or worse: pale for poor (index ${aqi.poorAbove + 1}–${aqi.veryPoorAbove}), dark for very poor (${aqi.veryPoorAbove + 1}–${aqi.severeAbove}), red for severe (${aqi.severeAbove + 1} and over).`
+            : 'Each square is a city with poor air or worse: pale for poor, dark for very poor, red for severe.'}{' '}
+          Squares sit under everything else; only the worst city is named.
+        </li>
+      </ul>
+    </details>
   )
 }
 
@@ -93,6 +170,9 @@ export default function MapPage() {
   const closed = useRecentClosed(run, withClosed)
 
   const items = useMemo(() => (ctx ? mapItems(entries, ctx) : []), [entries, ctx])
+  const airEntry = entries.find((e) => e.category === 'air') ?? null
+  const air = useMemo(() => airPoints(entries), [entries])
+  const airShown = layers.has('air') && airEntry !== null && airEntry.level >= minLevel ? air : []
   const shown = items
     .filter((m) => m.level >= minLevel)
     .filter((m) => layers.has(entries.find((e) => e.itemIds.includes(m.key))?.category ?? 'air'))
@@ -160,8 +240,9 @@ export default function MapPage() {
                 const copy = itemCopy(row, ctx)
                 const key = keyOf(row)
                 const isSel = selected !== null && (row.itemIds.includes(selected) || row.key === selected)
-                // A fire row is on the map as its dots, even with no badge (Level 1).
-                const placed = row.category === 'fire' || items.some((m) => row.itemIds.includes(m.key))
+                // A fire row is on the map as its dots, even with no badge (Level 1); air as its squares.
+                const placed =
+                  row.category === 'fire' || (row.category === 'air' && air.length > 0) || items.some((m) => row.itemIds.includes(m.key))
                 return (
                   <li key={row.key} className={`border-b border-rule ${isSel ? 'bg-panel' : ''}`}>
                     <button type="button" onClick={() => select(key)} className="w-full text-left flex gap-3 py-3 px-1">
@@ -193,7 +274,6 @@ export default function MapPage() {
                 )
               })}
             </ul>
-            <p className="m-0 pt-2 font-mono text-[11px] text-ink-muted">Air has no place on the map yet: its figures carry no city positions.</p>
           </section>
 
           <section aria-label="Layers">
@@ -211,7 +291,9 @@ export default function MapPage() {
                       ? fireDay
                         ? `${fireCount} fires · ${DAY.format(new Date(`${fireDay}T00:00:00Z`))}`
                         : ''
-                      : items.filter((m) => entries.find((e) => e.itemIds.includes(m.key))?.category === c).length}
+                      : c === 'air'
+                        ? `${air.length} ${air.length === 1 ? 'city' : 'cities'}`
+                        : items.filter((m) => entries.find((e) => e.itemIds.includes(m.key))?.category === c).length}
                   </span>
                 </li>
               ))}
@@ -219,41 +301,9 @@ export default function MapPage() {
             {fireDay && firesKept && fireCount === 0 && (
               <p className="m-0 pt-2 font-mono text-[11px] text-ink-muted">No fire points are stored for this day.</p>
             )}
-            <ul aria-label="Map key" className="m-0 p-0 pt-3 list-none flex flex-col gap-2">
-              <li className={keyRow}>
-                <span className="flex items-end gap-0.5 flex-none w-[64px]" aria-hidden="true">
-                  <span className="inline-block" dangerouslySetInnerHTML={{ __html: symbolSvg({ category: 'cyclone', size: 14, level: 2 }) }} />
-                  <span className="inline-block" dangerouslySetInnerHTML={{ __html: symbolSvg({ category: 'cyclone', size: 24, level: 2 }) }} />
-                </span>
-                Spirals grow with a cyclone's wind speed.
-              </li>
-              <li className={keyRow}>
-                <KeyRamp category="earthquake" />
-                Earthquakes: one ring more per level as magnitude rises (light, moderate, strong, major).
-              </li>
-              <li className={keyRow}>
-                <KeyRamp category="flood" />
-                Floods: one wave line per level, blue until Level 3.
-              </li>
-              <li className={keyRow}>
-                <span className="flex-none w-[64px]">
-                  <KeySymbol category="cyclone" level={4} />
-                </span>
-                Red: Level 3 or 4. A faint halo and a slow pulse: Level 4.
-              </li>
-              <li className={keyRow}>
-                <span className="relative flex-none w-[64px] h-[16px]" dangerouslySetInnerHTML={{ __html: badgeHtml(2, 2, 'left:3px;top:0;') }} />
-                The number matches the list. A fire state's number sits at the centre of its fires; a group of small earthquakes has one
-                number, on the largest.
-              </li>
-              <li className={keyRow}>
-                <span className="flex-none w-[64px]">
-                  <KeySymbol category="fire" />
-                </span>
-                Each dot is a fire seen by NASA's satellites, stronger in a state above normal and red at Level 3 or 4. A ring marks a large
-                fire near a town.
-              </li>
-            </ul>
+            {airEntry && air.length === 0 && Array.isArray(airEntry.figures.cities) && airEntry.figures.cities.length > 0 && (
+              <p className="m-0 pt-2 font-mono text-[11px] text-ink-muted">This edition's air figures carry no city positions.</p>
+            )}
           </section>
         </aside>
 
@@ -262,6 +312,8 @@ export default function MapPage() {
             <PaperMap
               items={[...closedItems, ...shown]}
               fires={layers.has('fire') ? (fires.data ?? []) : []}
+              air={airShown}
+              airKey={airEntry?.key ?? null}
               selected={selected}
               onSelect={select}
               className="h-full w-full"
@@ -290,6 +342,7 @@ export default function MapPage() {
               </div>
             </div>
           )}
+          <HowToRead scale={scale} />
         </section>
       </div>
     </PaperShell>

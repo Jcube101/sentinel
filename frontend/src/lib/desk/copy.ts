@@ -103,6 +103,10 @@ interface StateFacts {
   record: 'above' | 'equal' | 'within' | null
   /** How many years the baseline covers: 2 for 2024–2025. */
   span: number
+  /** The state's national rank by fires that day (plan P6, from edition 30); null before, or with no fires. */
+  rank: number | null
+  /** Another state had the same count. */
+  rankShared: boolean
 }
 
 /** How many years the fire baseline covers: 2 for "2024-2025". */
@@ -128,6 +132,8 @@ function stateFacts(e: DeskEntry, ctx: CopyContext): StateFacts {
     counted: r !== null && n >= minFireEvents(f, ctx.scale),
     record: max === null ? null : n > max ? 'above' : n === max ? 'equal' : 'within',
     span: baselineYears(e),
+    rank: typeof f.state_rank === 'number' && n > 0 ? f.state_rank : null,
+    rankShared: f.rank_shared === true,
   }
 }
 
@@ -154,10 +160,40 @@ function stateSentence(f: StateFacts, verdict = true): string {
   return `${f.state} logged ${plural(f.n, 'fire', 'fires')} ${f.day}${across}${vs}.`
 }
 
-/** The roundup's biggest count, when another state leads: "Madhya Pradesh had the most fires, 200, …". */
+/**
+ * The state's count against every state's that day (plan P6), its own
+ * sentence after the state's: "That was the most of any state." A count
+ * another state matched "tied for" it. Nothing below first place, and
+ * nothing for editions before the rank was stored.
+ */
+function rankSentence(f: StateFacts): string {
+  if (f.rank !== 1) return ''
+  return f.rankShared ? ' That tied for the most of any state.' : ' That was the most of any state.'
+}
+
+/** A state's sentence, then its national rank when it led every state. */
+function stateSentences(f: StateFacts, verdict = true): string {
+  return stateSentence(f, verdict) + rankSentence(f)
+}
+
+/**
+ * The roundup's biggest count, when another state leads: "Madhya Pradesh had
+ * the most fires of any state, 200, …". With the national rank stored (from
+ * edition 30), "of any state" only for first place ("tied for" when shared),
+ * else "of the states above normal"; before it, "had the most fires", which
+ * meant the most of the states in the story.
+ */
 function mostSentence(f: StateFacts): string {
   const vs = f.counted && f.r !== null ? `, ${timesAverage(f.r, f.period)}${verdictClause(f)}` : ''
-  return `${f.state} had the most fires, ${f.n}${vs}.`
+  const most =
+    f.rank === 1
+      ? f.rankShared
+        ? 'tied for the most fires of any state'
+        : 'had the most fires of any state'
+      : f.rank !== null
+        ? 'had the most fires of the states above normal'
+        : 'had the most fires'
+  return `${f.state} ${most}, ${f.n}${vs}.`
 }
 
 /** Fire states that fell a level since yesterday, and how many rose. */
@@ -220,21 +256,21 @@ function fireStateCopy(e: DeskEntry, ctx: CopyContext): ItemCopy {
       title: `A large fire burns ${Math.max(1, Math.round(near.km ?? 0))} km from ${near.place}`,
       standfirst:
         `NASA's fire satellites picked up a large fire${where}, close to a town of ${ctx.scale.fire.level4MinPopulation.toLocaleString('en-IN')} people or more. ` +
-        stateSentence(f),
+        stateSentences(f),
     }
   }
   if (wildfire && (!f.counted || (ff.gdacs_level ?? 0) > (ff.ratio_level ?? 0))) {
     const colour = (wildfire.alert_level ?? '').toLowerCase()
     return {
       title: `Global monitors put a forest fire in ${f.state} on alert`,
-      standfirst: `Global disaster monitors have a ${colour ? `${colour} ` : ''}forest-fire alert in ${f.state}. ${stateSentence(f)}`,
+      standfirst: `Global disaster monitors have a ${colour ? `${colour} ` : ''}forest-fire alert in ${f.state}. ${stateSentences(f)}`,
     }
   }
   if (f.n === 0) return { title: `Satellites see no fires in ${f.state}`, standfirst: stateSentence(f) }
-  if (!f.counted) return { title: `${f.state} is down to ${plural(f.n, 'fire', 'fires')}`, standfirst: stateSentence(f) }
+  if (!f.counted) return { title: `${f.state} is down to ${plural(f.n, 'fire', 'fires')}`, standfirst: stateSentences(f) }
   // A record title already gives the verdict; the standfirst doesn't repeat it.
   const recordTitle = f.record === 'above' || f.record === 'equal'
-  return { title: stateTitle(e, ctx), standfirst: stateSentence(f, !recordTitle) }
+  return { title: stateTitle(e, ctx), standfirst: stateSentences(f, !recordTitle) }
 }
 
 type AngleKind = 'record' | 'new' | 'spreading' | 'largest' | 'multiple'
@@ -314,6 +350,7 @@ function roundupCopy(e: DeskEntry, ctx: CopyContext): ItemCopy {
     const aboveNames = above.map(stateName)
     const title = `Fires ease ${whereStates(eased).inText}` + (aboveNames.length > 0 ? `, with ${listText(aboveNames)} still above normal` : '')
     const sentences = [`${listText(eased)} fell back toward normal since yesterday.`]
+    // Easing is the story: no rank sentence, so the standfirst stays at three sentences.
     if (above.length > 0) sentences.push(stateSentence(stateFacts(above[0], ctx)))
     const others = above.slice(1).map(stateName)
     if (others.length > 0) sentences.push(`${listText(others)} ${others.length === 1 ? 'is' : 'are'} also still above normal.`)
@@ -338,7 +375,7 @@ function roundupCopy(e: DeskEntry, ctx: CopyContext): ItemCopy {
 
   // The standout: the state the angle names, else the furthest above normal.
   const standout = angle.kind === 'record' || angle.kind === 'new' ? angle.states[0] : above[0]
-  const sentences = [stateSentence(stateFacts(standout, ctx))]
+  const sentences = [stateSentences(stateFacts(standout, ctx))]
   const byCount = [...above].sort((a, b) => stateFacts(b, ctx).n - stateFacts(a, ctx).n)
   const biggest = byCount[0] !== standout && stateFacts(byCount[0], ctx).n > stateFacts(byCount[1], ctx).n ? byCount[0] : null
   if (biggest) sentences.push(mostSentence(stateFacts(biggest, ctx)))

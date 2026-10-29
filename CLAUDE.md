@@ -122,8 +122,9 @@ symbol (not linked, noindex).
   `src/lib/desk/scale.ts` is the current rules, for fixtures and as the fallback.
 - **Map** (`components/paper/PaperMap.tsx`, `mapSymbols.ts`): Esri World Light Gray tiles
   (keyless), warmed by a `.paper-map` filter in `index.css`; hazard symbols per
-  docs/design/MapSymbols.dc.html; India's outline from `src/lib/desk/geo/india-coast.json`.
-  Leaflet loads lazily, after the page's text.
+  docs/design/MapSymbols.dc.html; air squares per city from the air figures (P5, edition 30
+  on); India's outline from `src/lib/desk/geo/india-coast.json`. Leaflet loads lazily,
+  after the page's text.
 - **Design tokens:** the paper palette in `src/index.css` `:root` (`--paper`, `--ink`,
   `--ink-muted`, `--rule`, `--fill`, `--fill-strong`, `--panel`, `--note`, `--accent`),
   aliased in `tailwind.config.js`.

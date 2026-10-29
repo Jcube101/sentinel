@@ -46,8 +46,9 @@ export interface DeskEntry {
   /** Its stage failed in this run: figures from this earlier edition. */
   carriedFrom: number | null
   /**
-   * [lat, lon] as of this edition, or null: the snapshot's own from edition
-   * 29 (P1); before that desk_items' latest, only if no later run moved it.
+   * [lat, lon] as of this edition, or null: a cyclone's figures.position
+   * from edition 30 (P7); the snapshot's own from edition 29 (P1); before
+   * that desk_items' latest, only if no later run moved it.
    */
   coords: [number, number] | null
 }
@@ -114,6 +115,9 @@ function placeOf(s: Snapshot): string | null {
  * past edition gets it only if no later run moved it.
  */
 function coordsOf(s: Snapshot): [number, number] | null {
+  // A cyclone's own position, where the storm was (plan P7, from edition 30).
+  const p = s.category === 'cyclone' ? s.figures?.position : null
+  if (p && typeof p.latitude === 'number' && typeof p.longitude === 'number') return [p.latitude, p.longitude]
   if (ownPlace(s)) return s.latitude != null && s.longitude != null ? [Number(s.latitude), Number(s.longitude)] : null
   const d = s.desk_items
   return d?.latitude != null && d?.longitude != null && d.last_run_id === s.run_id ? [Number(d.latitude), Number(d.longitude)] : null

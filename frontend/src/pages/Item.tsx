@@ -15,7 +15,7 @@ import { placeOf, placeText } from '@/lib/desk/where'
 import PaperShell from '@/components/paper/PaperShell'
 import LevelSquares from '@/components/paper/LevelSquares'
 import MiniMap from '@/components/paper/MiniMap'
-import { fireLayerOf, mapItems } from '@/lib/desk/mapdata'
+import { airPoints, fireLayerOf, mapItems } from '@/lib/desk/mapdata'
 import { Chips, Kicker, SourceLine, Strip } from '@/components/paper/DeskEntryRow'
 import PageNotes from '@/components/paper/PageNotes'
 import { asOfKicker, deskNotes, sourceCredit } from '@/lib/desk/notes'
@@ -340,6 +340,7 @@ export default function Item() {
   const others = entries.filter((e) => !e.itemIds.includes(id))
   const observed = item.data?.item?.observed_at ?? null
   const notes = deskNotes([entry], ctx?.scale)
+  const air = entry.category === 'air' ? airPoints([entry]) : []
 
   return (
     <PaperShell footer={<span>{`Item ${id}`}</span>} notes={notes.length > 0 ? <PageNotes notes={notes} /> : null} scale={ctx?.scale}>
@@ -405,8 +406,17 @@ export default function Item() {
             items={ctx ? mapItems(entries, ctx) : []}
             fires={firePoints.data ?? []}
             selected={id}
+            air={air}
             to={`/map?item=${encodeURIComponent(id)}${query ? `&${query.slice(1)}` : ''}`}
-            note={entry.coords ? null : entry.category === 'air' ? 'Air has no place on the map yet.' : 'No position for this item in this edition.'}
+            note={
+              entry.category === 'air'
+                ? air.length === 0 && Array.isArray(entry.figures.cities) && entry.figures.cities.length > 0
+                  ? "This edition's air figures carry no city positions."
+                  : null
+                : entry.coords
+                  ? null
+                  : 'No position for this item in this edition.'
+            }
           />
           <Section title={`Elsewhere in No. ${run.id}`}>
             {others.length === 0 ? (

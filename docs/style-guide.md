@@ -165,9 +165,13 @@ figure behind it:
   18:00 UTC only) is incomplete: the source line says so, and the story claims no easing.
 - "spike", "a two-year high for the season", "busiest in 2 years": the state's fires beat
   the baseline's busiest day at this time of year (2024–25).
-- "had the most fires": the most of the states in the story. Never "of any state": an
-  edition only holds the states with an item, until the pipeline stores each state's
-  national rank (plan P6).
+- "the most of any state": the state's national rank by fires that day is 1, of every
+  state with fires (plan P6, from edition 30). Said in its own sentence after the
+  state's ("That was the most of any state."), or in the roundup's biggest-count sentence
+  ("Madhya Pradesh had the most fires of any state, 200, …"). When another state had the
+  same count, "tied for the most". Ranked lower, the roundup's biggest count "had the most
+  fires of the states above normal". Editions before 30 have no rank: there "had the most
+  fires" means the most of the states in the story, never "of any state".
 - "the worst air in the country": the worst of the cities reporting to the board's
   national feed.
 - A neutral verb ("run at twice the usual") when nothing changed.
@@ -234,10 +238,11 @@ above normal they are.
   4. the largest count: "the most in Madhya Pradesh"
   5. the multiple of normal: "led by Chhattisgarh" (the multiple itself stays out)
 - **Standfirst,** two or three sentences, only about the states still above normal: the
-  standout (the state the angle names, else the furthest above normal) in one sentence;
-  the biggest count, if that is another state ("Madhya Pradesh had the most fires, 200,
-  about three times the late-October average but normal for the season."); the others by
-  name. States that fell back are in Since yesterday, not here.
+  standout (the state the angle names, else the furthest above normal) in one sentence,
+  and "That was the most of any state." if it led every state; the biggest count, if that
+  is another state ("Madhya Pradesh had the most fires of any state, 200, about three
+  times the late-October average but normal for the season."); the others by name. States
+  that fell back are in Since yesterday, not here. When easing leads, no rank sentence.
 - **One state above normal:** the roundup reads as that state's own story ("Madhya
   Pradesh's fires run at twice the usual").
 - **State table** under it, as evidence: only the states still at Level 2 or above, each

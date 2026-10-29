@@ -166,8 +166,10 @@ interface Props {
   selected?: string | null
   onSelect?: (key: string) => void
   className?: string
-  /** Cities at poor or worse, worst first; the first is labelled. Empty until the air figures carry positions (P5). */
+  /** Cities at poor or worse, worst first; the first is labelled (air figures carry positions from edition 30, P5). */
   air?: AirPoint[]
+  /** The air item's key: selecting it pans to the worst city. */
+  airKey?: string | null
 }
 
 /**
@@ -184,8 +186,10 @@ export default function PaperMap({
   onSelect,
   className = '',
   air = [],
+  airKey = null,
 }: Props) {
-  const focus = items.find((m) => m.key === selected)
+  const marker = items.find((m) => m.key === selected)
+  const focus = marker ?? (selected !== null && selected === airKey && air[0] ? air[0] : null)
   // Each fire state's level, for its dots; and the large fires to ring.
   const levels = new Map<string, Level>()
   for (const m of items) {

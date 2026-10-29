@@ -49,6 +49,8 @@ export interface Figures {
   episode_id?: number | null
   episode_alert_level?: string | null
   gdacs_url?: string | null
+  /** A cyclone's position and when it was there (plan P7, from edition 30). Floods have none. */
+  position?: { latitude: number; longitude: number; at?: string | null } | null
   // fire (fire_desk.state_candidate)
   state?: string
   day?: string
@@ -62,6 +64,11 @@ export interface Figures {
   norm_years?: string
   ratio_level?: number
   gdacs_level?: number | null
+  /** The state's national rank by fires that day (1 = most, of every state with fires; plan P6, from edition 30); null with no fires. */
+  state_rank?: number | null
+  /** Another state had the same count. */
+  rank_shared?: boolean
+  states_with_fires?: number
   /** A Level 4 state's large fires near towns; with latitude and longitude from edition 29. */
   large_fires_near_people?: unknown[]
   capped?: boolean
@@ -101,6 +108,9 @@ export interface AirCity {
   pm10_24h?: number | null
   state?: string
   prominent?: string[]
+  /** The mean of the city's counted stations (plan P5, from edition 30); null if none had coordinates. */
+  latitude?: number | null
+  longitude?: number | null
 }
 
 /** The desk_items fields embedded in a snapshot (current values, not as of the run). Editions from 29 on carry their own (Snapshot.title etc., plan P1). */
