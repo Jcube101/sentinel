@@ -9,13 +9,13 @@ import { fireDays, itemHistory, levelBars, openSince, type DayCount } from '@/li
 import { istDate, istShortDate, istTime } from '@/lib/desk/ist'
 import { CATEGORY_NAMES, LEVEL_NAMES } from '@/lib/desk/levels'
 import { editionQuery, itemPath } from '@/lib/desk/paths'
-import { SCALE } from '@/lib/desk/scale'
+import { SCALE, type Scale } from '@/lib/desk/scale'
 import type { Change, Figures, TimedSnapshot } from '@/lib/desk/types'
 import { placeOf, placeText } from '@/lib/desk/where'
 import PaperShell from '@/components/paper/PaperShell'
 import LevelSquares from '@/components/paper/LevelSquares'
 import MiniMap from '@/components/paper/MiniMap'
-import { fireDayOf, mapItems } from '@/lib/desk/mapdata'
+import { fireLayerOf, mapItems } from '@/lib/desk/mapdata'
 import { Chips, Kicker, SourceLine, Strip } from '@/components/paper/DeskEntryRow'
 import PageNotes from '@/components/paper/PageNotes'
 import { asOfKicker, deskNotes, sourceCredit } from '@/lib/desk/notes'
@@ -39,12 +39,13 @@ const DAY = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', t
 const dayText = (d: string) => DAY.format(new Date(`${d}T00:00:00Z`))
 
 /** Fires per day as bars, with the usual rate and the Level 2 and 3 lines. */
-function FireChart({ days, norm }: { days: DayCount[]; norm: number | null }) {
+function FireChart({ days, norm, scale }: { days: DayCount[]; norm: number | null; scale: Scale }) {
+  const { level2MinRatio: l2, level3MinRatio: l3 } = scale.fire
   const lines = norm
     ? [
         { at: norm, label: `usual ${normText(norm)}`, strong: false },
-        { at: norm * SCALE.fire.level2MinRatio, label: `Level 2 · ${SCALE.fire.level2MinRatio}× usual`, strong: true },
-        { at: norm * SCALE.fire.level3MinRatio, label: `Level 3 · ${SCALE.fire.level3MinRatio}× usual`, strong: true },
+        { at: norm * l2, label: `Level 2 · ${l2}× usual`, strong: true },
+        { at: norm * l3, label: `Level 3 · ${l3}× usual`, strong: true },
       ]
     : []
   const top = Math.max(...days.map((d) => d.fires), ...lines.map((l) => l.at)) * 1.08 || 1
@@ -57,7 +58,7 @@ function FireChart({ days, norm }: { days: DayCount[]; norm: number | null }) {
             <span
               key={d.day}
               title={`${dayText(d.day)}: ${d.fires} fires`}
-              className={`flex-1 ${i === days.length - 1 ? 'bg-accent' : norm && d.fires >= norm * SCALE.fire.level2MinRatio ? 'bg-ink' : 'bg-fill-strong'}`}
+              className={`flex-1 ${i === days.length - 1 ? 'bg-accent' : norm && d.fires >= norm * l2 ? 'bg-ink' : 'bg-fill-strong'}`}
               style={{ height: pct(d.fires) }}
             />
           ))}
@@ -159,7 +160,7 @@ function History({ snaps }: { snaps: TimedSnapshot[] }) {
   )
 }
 
-function FireDetail({ shown, snaps }: { shown: TimedSnapshot; snaps: TimedSnapshot[] }) {
+function FireDetail({ shown, snaps, scale }: { shown: TimedSnapshot; snaps: TimedSnapshot[]; scale: Scale }) {
   const f = shown.figures
   const daily = useFireDaily(typeof f.state === 'string' ? f.state : null)
   const days = fireDays(shown, daily.data ?? [], snaps)
@@ -167,10 +168,10 @@ function FireDetail({ shown, snaps }: { shown: TimedSnapshot; snaps: TimedSnapsh
   return (
     <>
       <Section title="Fires per day against the usual" right={`last ${days.length} days`}>
-        {days.length > 0 && <FireChart days={days} norm={typeof f.norm_daily_events === 'number' ? f.norm_daily_events : null} />}
+        {days.length > 0 && <FireChart days={days} norm={typeof f.norm_daily_events === 'number' ? f.norm_daily_events : null} scale={scale} />}
         <p className={`${meta} m-0 text-ink-muted`}>
           Full days in UTC, from NASA's fire satellites. The usual line is the average for this time of year in{' '}
-          {String(f.norm_years ?? SCALE.fire.baselineYears).replace('-', '–')}.
+          {String(f.norm_years ?? scale.fire.baselineYears).replace('-', '–')}.
         </p>
       </Section>
       {districts.length > 0 && (
@@ -306,7 +307,7 @@ export default function Item() {
   const q = (n: number) => editionQuery(n, latestId)
   const query = run ? q(run.id) : ''
 
-  const firePoints = useFirePoints(edition.data && run ? fireDayOf(edition.data.snapshots, run) : null)
+  const firePoints = useFirePoints(edition.data && run ? fireLayerOf(edition.data.snapshots, run) : null)
   const pageTitle = copy?.title ?? null
   useEffect(() => {
     document.title = pageTitle ? `Sentinel · ${pageTitle}` : 'Sentinel · Item'
@@ -338,10 +339,10 @@ export default function Item() {
   const next = index >= 0 && index < entries.length - 1 ? entries[index + 1] : null
   const others = entries.filter((e) => !e.itemIds.includes(id))
   const observed = item.data?.item?.observed_at ?? null
-  const notes = deskNotes([entry])
+  const notes = deskNotes([entry], ctx?.scale)
 
   return (
-    <PaperShell footer={<span>{`Item ${id}`}</span>} notes={notes.length > 0 ? <PageNotes notes={notes} /> : null}>
+    <PaperShell footer={<span>{`Item ${id}`}</span>} notes={notes.length > 0 ? <PageNotes notes={notes} /> : null} scale={ctx?.scale}>
       <div className="flex flex-wrap justify-between gap-3 py-2 sm:py-2.5 border-b border-ink font-mono text-[11px] sm:text-[12px] tracking-[0.04em] uppercase">
         <span>
           <Link to={run.id === latestId ? '/' : `/edition/${run.id}`} className="hover:text-accent">
@@ -392,7 +393,7 @@ export default function Item() {
 
       <div className="flex flex-wrap gap-x-12 gap-y-8 pt-6 sm:pt-8">
         <main className="flex-[999_1_560px] min-w-0 flex flex-col gap-8">
-          {entry.category === 'fire' && <FireDetail shown={shown} snaps={snaps} />}
+          {entry.category === 'fire' && <FireDetail shown={shown} snaps={snaps} scale={ctx?.scale ?? SCALE} />}
           {entry.category === 'air' && <AirDetail f={entry.figures} />}
           {entry.category === 'earthquake' && <QuakeDetail e={entry} observed={observed} />}
           {(entry.category === 'cyclone' || entry.category === 'flood') && <GdacsDetail e={entry} />}

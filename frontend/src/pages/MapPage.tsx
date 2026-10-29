@@ -6,7 +6,7 @@ import { itemCopy } from '@/lib/desk/copy'
 import type { DeskEntry } from '@/lib/desk/entries'
 import { istShortDate, istTime } from '@/lib/desk/ist'
 import { CATEGORY_NAMES, LEVEL_NAMES } from '@/lib/desk/levels'
-import { closedMapItems, fireDayOf, mapItems } from '@/lib/desk/mapdata'
+import { closedMapItems, fireLayerOf, mapItems } from '@/lib/desk/mapdata'
 import { editionQuery, itemPath } from '@/lib/desk/paths'
 import type { Category, Level } from '@/lib/desk/types'
 import PaperShell from '@/components/paper/PaperShell'
@@ -72,6 +72,7 @@ export default function MapPage() {
   const editionParam = asked && /^\d+$/.test(asked) ? Number(asked) : null
   const selected = search.get('item')
   const { latestId, data, entries, ctx, pending, error } = useEditionDesk(editionParam)
+  const scale = ctx?.scale
   const run = data?.run ?? null
 
   const [minLevel, setMinLevel] = useState<Level>(1)
@@ -85,8 +86,9 @@ export default function MapPage() {
       return next
     })
 
-  const fireDay = data && run ? fireDayOf(data.snapshots, run) : null
-  const fires = useFirePoints(fireDay)
+  const fireLayer = useMemo(() => (data && run ? fireLayerOf(data.snapshots, run) : null), [data, run])
+  const fireDay = fireLayer?.day ?? null
+  const fires = useFirePoints(fireLayer)
   const strip = useEditionStrip(run)
   const closed = useRecentClosed(run, withClosed)
 
@@ -113,14 +115,14 @@ export default function MapPage() {
   if (error) return <PaperShell><p className="py-10 text-[18px]">Couldn't load the map: {(error as Error).message}</p></PaperShell>
   if (pending || !data || !run || !ctx) {
     return (
-      <PaperShell>
+      <PaperShell scale={scale}>
         <p className="py-10 font-mono text-[13px] uppercase tracking-[0.06em] text-ink-muted">Loading the map…</p>
       </PaperShell>
     )
   }
 
   return (
-    <PaperShell>
+    <PaperShell scale={scale}>
       <h1 className="sr-only">The map, No. {run.id}</h1>
       <div className="flex flex-wrap justify-between items-center gap-3 py-2 sm:py-2.5 border-b border-ink font-mono text-[11px] sm:text-[12px] tracking-[0.04em] uppercase">
         <span>
@@ -215,7 +217,7 @@ export default function MapPage() {
               ))}
             </ul>
             {fireDay && firesKept && fireCount === 0 && (
-              <p className="m-0 pt-2 font-mono text-[11px] text-ink-muted">Fire points are kept for 14 days; none are left for this day.</p>
+              <p className="m-0 pt-2 font-mono text-[11px] text-ink-muted">No fire points are stored for this day.</p>
             )}
             <ul aria-label="Map key" className="m-0 p-0 pt-3 list-none flex flex-col gap-2">
               <li className={keyRow}>

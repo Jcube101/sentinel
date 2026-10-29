@@ -74,7 +74,9 @@ src/
 │   ├── notes.ts         —   source lines, the "As of" kicker, the page's Notes
 │   ├── cards.ts         —   the evidence under each story
 │   ├── where.ts, geo/   —   places in plain words (coasts, seas, India's outline)
-│   ├── archive.ts, quiet.ts, item.ts, mapdata.ts, sources.ts, scale.ts, …
+│   ├── scale.ts         —   each edition's level rules (pipeline_runs.severity_config)
+│   ├── watch.ts         —   an edition's watching list (desk_watch_snapshots)
+│   ├── archive.ts, quiet.ts, item.ts, mapdata.ts, sources.ts, …
 │   └── __fixtures__/    —   real editions, for the tests
 ├── pages/               — Desk, Item, MapPage, Archive, DatePage, Sources, About,
 │                          EventRedirect, Placeholder (not found), dev/Symbols

@@ -1,13 +1,10 @@
 import { useEffect, type ReactNode } from 'react'
 import { SCALE, mag } from '@/lib/desk/scale'
+import { useLatestScale } from '@/hooks/useEdition'
 import { numberWord } from '@/lib/desk/words'
 import PaperShell from '@/components/paper/PaperShell'
 import ScaleTable from '@/components/paper/ScaleTable'
 import LevelSquares from '@/components/paper/LevelSquares'
-
-const q = SCALE.quake
-const a = SCALE.air
-const f = SCALE.fire
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -42,15 +39,18 @@ function Source({ name, href, children }: { name: string; href: string; children
   )
 }
 
-const pop = f.level4MinPopulation.toLocaleString('en-IN')
-
 /** About: how levels are set, source lines and marks, when reports come out, sources and credits. */
 export default function About() {
   useEffect(() => {
     document.title = 'Sentinel · About'
   }, [])
+  // The rules the latest edition ran with (P3); the current copy until that loads.
+  const scale = useLatestScale().data ?? SCALE
+  const { quake: q, air: a, fire: f } = scale
+  const aqi = a.aqi ?? SCALE.air.aqi
+  const pop = f.level4MinPopulation.toLocaleString('en-IN')
   return (
-    <PaperShell>
+    <PaperShell scale={scale}>
       <main className="max-w-[820px] pb-4">
         <section className="py-8 sm:py-11 border-b border-ink flex flex-col gap-4">
           <h1 className="m-0 font-cond font-semibold text-[32px] sm:text-[50px] leading-[1.04] tracking-[-0.01em]">About Sentinel</h1>
@@ -66,15 +66,16 @@ export default function About() {
             Every item gets a level from 1 to 4: minor, elevated, high or severe. The report ranks items by level, so a severe item always
             sits above a long list of minor ones. At the same level, cyclones come first, then floods, earthquakes, air and fires.
           </P>
-          <ScaleTable names />
+          <ScaleTable names scale={scale} />
           <dl className="m-0">
             <Term term="Fires">
               NASA's fire satellites spot the heat of fires as they pass over India. Sentinel groups nearby detections into fires and counts
-              them per state for each full day, then compares the count with the same time of year in {f.baselineYears}. Twice the usual count
-              is Level 2, {numberWord(f.level3MinRatio)} times is Level 3, and so is a forest-fire alert from the global disaster monitors. A
+              them per state for each full day, then compares the count with the same time of year in {f.baselineYears}.{' '}
+              {f.level2MinRatio === 2 ? 'Twice' : `${f.level2MinRatio} times`} the usual count is Level 2,{' '}
+              {numberWord(f.level3MinRatio)} times is Level 3, and so is a forest-fire alert from the global disaster monitors. A
               large fire within {f.level4NearKm} km of a town of {pop} people or more is Level 4. Fewer than {f.minFireEvents} fires in a day
               are too few to compare.
-              {f.calibrationCap < 4 && (
+              {f.calibrationCap !== null && f.calibrationCap < 4 && (
                 <>
                   {' '}
                   For now, levels from satellite counts stop at Level {f.calibrationCap}, until we've checked live counts against past years; a
@@ -84,10 +85,10 @@ export default function About() {
               )}
             </Term>
             <Term term="Air">
-              India's air quality index, from the Central Pollution Control Board's live feed. A city is poor from {a.aqi.poorAbove + 1} (Level
-              1) and very poor from {a.aqi.veryPoorAbove + 1} (Level 2). One city in the severe band, from {a.aqi.severeAbove + 1}, is Level 3;{' '}
+              India's air quality index, from the Central Pollution Control Board's live feed. A city is poor from {aqi.poorAbove + 1} (Level
+              1) and very poor from {aqi.veryPoorAbove + 1} (Level 2). One city in the severe band, from {aqi.severeAbove + 1}, is Level 3;{' '}
               {numberWord(a.level4MinSevereCities)} or more is Level 4. Because the readings are provisional, a city counts as
-              severe only after {numberWord(a.severeConfirmRuns)} reports in a row. When the board's feed is down, Sentinel estimates the bands
+              severe only after {numberWord(a.severeConfirmRuns ?? SCALE.air.severeConfirmRuns)} reports in a row. When the board's feed is down, Sentinel estimates the bands
               from public monitors on OpenAQ instead.
             </Term>
             <Term term="Earthquakes">

@@ -1,0 +1,311 @@
+{
+ "2": {
+  "air": {
+   "pm10": {
+    "poor_above": 250,
+    "severe_above": 430,
+    "very_poor_above": 350
+   },
+   "pm25": {
+    "poor_above": 90,
+    "severe_above": 250,
+    "very_poor_above": 120
+   },
+   "lifecycle": {
+    "open_min_level": 1
+   },
+   "providers": [
+    "CPCB",
+    "AirNow"
+   ],
+   "city_aliases": {
+    "New Delhi": "Delhi"
+   },
+   "min_fresh_cities": 10,
+   "fresh_within_hours": 72,
+   "max_data_age_hours": 96,
+   "min_hours_for_mean": 16,
+   "prefilter_fraction": 0.5,
+   "max_history_requests": 150,
+   "max_stations_per_city": 8,
+   "level_3_min_severe_cities": 1,
+   "level_4_min_severe_cities": 3
+  },
+  "fire": {
+   "lifecycle": {
+    "open_min_level": 2,
+    "close_after_hours": 48
+   },
+   "cluster_km": 1.5,
+   "confidence": [
+    "n",
+    "h"
+   ],
+   "static_mask": {
+    "neighbour_cells": 1
+   },
+   "level_4_near_km": 10,
+   "min_fire_events": 10,
+   "level_2_min_ratio": 1.25,
+   "level_3_min_ratio": 2.0,
+   "level_4_min_frp_mw": 100,
+   "gdacs_wildfire_level": 3,
+   "events_retention_days": 14,
+   "excluded_district_ids": [
+    "76128533B2782141712775"
+   ],
+   "level_4_min_population": 100000
+  },
+  "gdacs": {
+   "red": 4,
+   "green": 1,
+   "orange": 3,
+   "lifecycle": {
+    "open_min_level": 1
+   },
+   "green_rising": 2
+  },
+  "quake": {
+   "lifecycle": {
+    "open_min_level": 1,
+    "close_after_hours": 48
+   },
+   "india_buffer_km": 100,
+   "level_2_min_magnitude": 5.0,
+   "level_3_min_magnitude": 6.0,
+   "level_4_min_magnitude": 7.0,
+   "anywhere_min_magnitude": 6.0
+  },
+  "watching": {
+   "margin": 0.05,
+   "rising_updates": 3
+  },
+  "_backfill": {
+   "note": null,
+   "commit": "41af73832684a7f6ea45f2f4fd2907f8cd0fd0d7",
+   "certain": true
+  }
+ },
+ "5": {
+  "air": {
+   "pm10": {
+    "poor_above": 250,
+    "severe_above": 430,
+    "very_poor_above": 350
+   },
+   "pm25": {
+    "poor_above": 90,
+    "severe_above": 250,
+    "very_poor_above": 120
+   },
+   "lifecycle": {
+    "open_min_level": 1
+   },
+   "providers": [
+    "CPCB",
+    "AirNow"
+   ],
+   "city_aliases": {
+    "New Delhi": "Delhi"
+   },
+   "min_fresh_cities": 10,
+   "fresh_within_hours": 72,
+   "max_data_age_hours": 96,
+   "min_hours_for_mean": 16,
+   "prefilter_fraction": 0.5,
+   "max_history_requests": 150,
+   "max_stations_per_city": 8,
+   "level_3_min_severe_cities": 1,
+   "level_4_min_severe_cities": 3
+  },
+  "fire": {
+   "baseline": {
+    "years": [
+     2024,
+     2025
+    ],
+    "smooth_weeks": 1
+   },
+   "lifecycle": {
+    "open_min_level": 2,
+    "close_after_hours": 48
+   },
+   "cluster_km": 1.5,
+   "confidence": [
+    "n",
+    "h"
+   ],
+   "static_mask": {
+    "cell_deg": 0.004,
+    "mask_types": [
+     1,
+     2,
+     3
+    ],
+    "min_detections": 2,
+    "neighbour_cells": 1
+   },
+   "calibration_cap": 2,
+   "level_4_near_km": 10,
+   "min_fire_events": 25,
+   "level_2_min_ratio": 2.0,
+   "level_3_min_ratio": 4.0,
+   "level_4_min_frp_mw": 100,
+   "gdacs_wildfire_level": 3,
+   "events_retention_days": 14,
+   "excluded_district_ids": [
+    "76128533B2782141712775"
+   ],
+   "level_4_min_population": 100000
+  },
+  "gdacs": {
+   "red": 4,
+   "green": 1,
+   "orange": 3,
+   "lifecycle": {
+    "open_min_level": 1
+   },
+   "green_rising": 2
+  },
+  "quake": {
+   "lifecycle": {
+    "open_min_level": 1,
+    "close_after_hours": 48
+   },
+   "india_buffer_km": 100,
+   "level_2_min_magnitude": 5.0,
+   "level_3_min_magnitude": 6.0,
+   "level_4_min_magnitude": 7.0,
+   "anywhere_min_magnitude": 6.0
+  },
+  "watching": {
+   "margin": 0.05,
+   "keep_days": 14,
+   "rising_updates": 3,
+   "rising_min_progress": 0.5
+  },
+  "_backfill": {
+   "note": null,
+   "commit": "35e8b58266ef91ab423a233a89f2275ffc4c1856",
+   "certain": true
+  }
+ },
+ "28": {
+  "air": {
+   "aqi": {
+    "poor_above": 200,
+    "severe_above": 400,
+    "very_poor_above": 300
+   },
+   "pm10": {
+    "poor_above": 250,
+    "severe_above": 430,
+    "very_poor_above": 350
+   },
+   "pm25": {
+    "poor_above": 90,
+    "severe_above": 250,
+    "very_poor_above": 120
+   },
+   "datagov": {
+    "min_pollutants": 3,
+    "max_snapshot_age_hours": 6
+   },
+   "lifecycle": {
+    "open_min_level": 1
+   },
+   "providers": [
+    "CPCB",
+    "AirNow"
+   ],
+   "city_aliases": {
+    "New Delhi": "Delhi"
+   },
+   "min_fresh_cities": 10,
+   "fresh_within_hours": 72,
+   "max_data_age_hours": 96,
+   "min_hours_for_mean": 16,
+   "prefilter_fraction": 0.5,
+   "severe_confirm_runs": 2,
+   "max_history_requests": 150,
+   "max_stations_per_city": 8,
+   "level_3_min_severe_cities": 1,
+   "level_4_min_severe_cities": 3
+  },
+  "fire": {
+   "baseline": {
+    "years": [
+     2024,
+     2025
+    ],
+    "smooth_weeks": 1
+   },
+   "lifecycle": {
+    "open_min_level": 2,
+    "close_after_hours": 48
+   },
+   "cluster_km": 1.5,
+   "confidence": [
+    "n",
+    "h"
+   ],
+   "static_mask": {
+    "cell_deg": 0.004,
+    "mask_types": [
+     1,
+     2,
+     3
+    ],
+    "min_detections": 2,
+    "neighbour_cells": 1
+   },
+   "complete_day": {
+    "min_night_span_minutes": 60,
+    "night_pass_from_hour_utc": 14
+   },
+   "calibration_cap": 2,
+   "level_4_near_km": 10,
+   "min_fire_events": 25,
+   "level_2_min_ratio": 2.0,
+   "level_3_min_ratio": 4.0,
+   "level_4_min_frp_mw": 100,
+   "gdacs_wildfire_level": 3,
+   "events_retention_days": 14,
+   "excluded_district_ids": [
+    "76128533B2782141712775"
+   ],
+   "level_4_min_population": 100000
+  },
+  "gdacs": {
+   "red": 4,
+   "green": 1,
+   "orange": 3,
+   "lifecycle": {
+    "open_min_level": 1
+   },
+   "green_rising": 2
+  },
+  "quake": {
+   "lifecycle": {
+    "open_min_level": 1,
+    "close_after_hours": 48
+   },
+   "india_buffer_km": 100,
+   "level_2_min_magnitude": 5.0,
+   "level_3_min_magnitude": 6.0,
+   "level_4_min_magnitude": 7.0,
+   "anywhere_min_magnitude": 6.0
+  },
+  "watching": {
+   "margin": 0.05,
+   "keep_days": 14,
+   "rising_updates": 3,
+   "rising_min_progress": 0.5
+  },
+  "_backfill": {
+   "note": null,
+   "commit": "8a0dc50e6eae7fc0fd82a733dea35f62e4be7607",
+   "certain": true
+  }
+ }
+}

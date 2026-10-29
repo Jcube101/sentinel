@@ -5,6 +5,9 @@ import { STRIP_DAYS } from '@/lib/desk/quiet'
 import { chooseDayEdition, dayStart, runsByDay, shiftMonth } from '@/lib/desk/archive'
 import type { FirePoint } from '@/components/paper/PaperMap'
 import { missingCategories } from '@/lib/desk/entries'
+import { dayPoints, type DayPointsRow, type FireLayer } from '@/lib/desk/mapdata'
+import { scaleFrom, type Scale } from '@/lib/desk/scale'
+import { watchRows, type WatchSnapshot } from '@/lib/desk/watch'
 import type {
   Category,
   CategoryStatus,
@@ -22,8 +25,12 @@ import type {
 
 // Selects shared with the test fixtures (src/lib/desk/__fixtures__).
 export const RUN_SELECT = 'id,started_at,finished_at,status,duration_s,sources'
+/** An edition's run with the level rules it ran with (P3). */
+const EDITION_SELECT = `${RUN_SELECT},severity_config`
+/** Title, place and position as of the run from edition 29 (P1); desk_items' current ones for older editions. */
 export const SNAPSHOT_SELECT =
   'run_id,item_id,taken_at,category,status,severity_level,severity_reason,last_known,new_data,change,figures,' +
+  'title,place_name,latitude,longitude,' +
   'desk_items(title,place_name,latitude,longitude,source,source_ref,last_run_id)'
 export const TRACE_SELECT = 'run_id,item_id,category,status,severity_level,change'
 
@@ -83,7 +90,7 @@ export function useEdition(id: number | null) {
     queryFn: async (): Promise<EditionData | null> => {
       if (!supabase || id === null) return null
       const [run, snapshots, status] = await Promise.all([
-        supabase.from('pipeline_runs').select(RUN_SELECT).eq('id', id).maybeSingle(),
+        supabase.from('pipeline_runs').select(EDITION_SELECT).eq('id', id).maybeSingle(),
         supabase.from('desk_item_snapshots').select(SNAPSHOT_SELECT).eq('run_id', id).order('item_id'),
         supabase.from('category_status').select('*').eq('run_id', id).order('category'),
       ])
@@ -226,22 +233,82 @@ export function useDeskHistory(run: Edition | null, enabled: boolean) {
   })
 }
 
-/** The watching list: desk_watch rows marked watching. Current state only, so the latest edition only (until P2). */
-export function useWatching(enabled: boolean) {
+/** The level rules of the newest finished edition (P3): for pages with no edition of their own (About, the Archive's legend). */
+export function useLatestScale(enabled = true) {
   return useQuery({
-    queryKey: ['watching'],
-    queryFn: async (): Promise<WatchRow[]> => {
-      if (!supabase) return []
+    queryKey: ['latest-scale'],
+    queryFn: async (): Promise<Scale> => {
+      if (!supabase) return scaleFrom(null)
       const { data, error } = await supabase
-        .from('desk_watch')
-        .select('id,category,title,item_id,level,next_level,metric,value,next_threshold,distance_to_threshold,trend,rising_updates,watching,watch_reason,last_run_id')
-        .eq('watching', true)
-        .order('distance_to_threshold')
+        .from('pipeline_runs')
+        .select('id,severity_config')
+        .neq('status', 'running')
+        .order('id', { ascending: false })
+        .limit(1)
       if (error) throw error
-      return (data ?? []) as unknown as WatchRow[]
+      return scaleFrom(data?.[0]?.severity_config ?? null)
     },
     staleTime: 5 * 60_000,
     enabled: !!supabase && enabled,
+  })
+}
+
+const WATCH_SNAPSHOT_SELECT =
+  'run_id,subject_id,category,title,item_id,level,next_level,metric,value,next_threshold,distance_to_threshold,' +
+  'rising_updates,watching,watch_reason,source_updated_at'
+
+/** How far back a watching subject's trend reaches: 10 days of editions (3 a day). */
+const TREND_RUNS = 30
+
+export interface Watching {
+  /** The edition's watching list, closest first; null when it wasn't kept. */
+  rows: WatchRow[] | null
+  /** The first edition that kept its list (P2), when this one didn't. */
+  keptFrom: number | null
+}
+
+/**
+ * An edition's watching list. From edition 29 each edition keeps its own
+ * (desk_watch_snapshots, P2), with each subject's values in the editions
+ * before it as the trend. Older editions have none; the latest falls back to
+ * desk_watch, which holds the current state.
+ */
+export function useWatching(run: Edition | null, latest: boolean, enabled: boolean) {
+  return useQuery({
+    queryKey: ['watching', run?.id, latest],
+    queryFn: async (): Promise<Watching> => {
+      if (!supabase || !run) return { rows: null, keptFrom: null }
+      const own = await supabase.from('desk_watch_snapshots').select(WATCH_SNAPSHOT_SELECT).eq('run_id', run.id)
+      if (own.error) throw own.error
+      const rows = (own.data ?? []) as unknown as WatchSnapshot[]
+      if (rows.length > 0) {
+        const ids = rows.filter((r) => r.watching).map((r) => r.subject_id)
+        if (ids.length === 0) return { rows: [], keptFrom: null }
+        const earlier = await supabase
+          .from('desk_watch_snapshots')
+          .select('run_id,subject_id,value,next_threshold,next_level,source_updated_at')
+          .in('subject_id', ids)
+          .gt('run_id', run.id - TREND_RUNS)
+          .lt('run_id', run.id)
+          .order('run_id')
+        if (earlier.error) throw earlier.error
+        return { rows: watchRows(rows, (earlier.data ?? []) as unknown as WatchSnapshot[]), keptFrom: null }
+      }
+      if (latest) {
+        const { data, error } = await supabase
+          .from('desk_watch')
+          .select('id,category,title,item_id,level,next_level,metric,value,next_threshold,distance_to_threshold,trend,rising_updates,watching,watch_reason,last_run_id')
+          .eq('watching', true)
+          .order('distance_to_threshold')
+        if (error) throw error
+        return { rows: (data ?? []) as unknown as WatchRow[], keptFrom: null }
+      }
+      const first = await supabase.from('desk_watch_snapshots').select('run_id').order('run_id').limit(1)
+      if (first.error) throw first.error
+      return { rows: null, keptFrom: (first.data?.[0]?.run_id as number | undefined) ?? null }
+    },
+    staleTime: latest ? 5 * 60_000 : Infinity,
+    enabled: !!supabase && run !== null && run.status !== 'running' && enabled,
   })
 }
 
@@ -310,25 +377,30 @@ export function useFireDaily(state: string | null) {
 }
 
 /**
- * Fire events for one UTC day (fire_events keeps 14 days, and rebuilds today
- * and yesterday each run): the map's fire layer.
+ * An edition's fire layer: its fire day's points from fire_day_points (P4,
+ * kept for good, from 19 Oct 2026), keeping the fires first seen by the
+ * edition's FIRMS data time, so a past edition shows the fires it knew of.
+ * A day not in fire_day_points falls back to fire_events (kept 14 days).
  */
-export function useFirePoints(day: string | null) {
+export function useFirePoints(layer: FireLayer | null) {
   return useQuery({
-    queryKey: ['fire-points', day],
+    queryKey: ['fire-points', layer?.day, layer?.to],
     queryFn: async (): Promise<FirePoint[]> => {
-      if (!supabase || !day) return []
+      if (!supabase || !layer) return []
+      const kept = await supabase.from('fire_day_points').select('acq_date,states,points').eq('acq_date', layer.day).maybeSingle()
+      if (kept.error) throw kept.error
+      if (kept.data) return dayPoints(kept.data as unknown as DayPointsRow, layer.to)
       const { data, error } = await supabase
         .from('fire_events')
         .select('id,latitude,longitude,hotspot_count,frp_max,district,state')
-        .eq('acq_date', day)
+        .eq('acq_date', layer.day)
         .not('state', 'is', null) // India only: the same fires the counts are made of
         .limit(5000)
       if (error) throw error
       return (data ?? []) as FirePoint[]
     },
     staleTime: 10 * 60_000,
-    enabled: !!supabase && !!day,
+    enabled: !!supabase && !!layer,
   })
 }
 

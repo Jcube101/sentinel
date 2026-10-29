@@ -20,7 +20,7 @@ import PhoneWire from '@/components/paper/PhoneWire'
 import QuietDesk from '@/components/paper/QuietDesk'
 import MiniMap from '@/components/paper/MiniMap'
 import PageNotes from '@/components/paper/PageNotes'
-import { fireDayOf, mapItems } from '@/lib/desk/mapdata'
+import { fireLayerOf, mapItems } from '@/lib/desk/mapdata'
 import SinceYesterday from '@/components/paper/SinceYesterday'
 
 function EditionLine({ run, latestId }: { run: Edition; latestId: number | null }) {
@@ -120,8 +120,8 @@ export default function Desk({ editionId, dayNote }: DeskProps = {}) {
   const quiet = !!data && data.snapshots.length > 0 && (entries.length === 0 || entries[0].level <= 1)
   const isLatestEdition = !!data && data.run.id === latestId
   const history = useDeskHistory(finished, quiet)
-  const watching = useWatching(quiet && isLatestEdition)
-  const firePoints = useFirePoints(data ? fireDayOf(data.snapshots, data.run) : null)
+  const watching = useWatching(finished, isLatestEdition, quiet)
+  const firePoints = useFirePoints(data ? fireLayerOf(data.snapshots, data.run) : null)
   const miniMap =
     data && ctx ? (
       <MiniMap items={mapItems(entries, ctx)} fires={firePoints.data ?? []} to={`/map${editionQuery(data.run.id, latestId)}`} />
@@ -273,11 +273,12 @@ export default function Desk({ editionId, dayNote }: DeskProps = {}) {
     )
   }
 
-  const notes = data && data.run.status !== 'running' ? deskNotes(entries) : []
+  const notes = data && data.run.status !== 'running' ? deskNotes(entries, ctx?.scale) : []
   return (
     <PaperShell
       footer={data && data.run.status !== 'running' ? <SourceFooter run={data.run} /> : null}
       notes={notes.length > 0 ? <PageNotes notes={notes} /> : null}
+      scale={ctx?.scale}
     >
       {body}
     </PaperShell>

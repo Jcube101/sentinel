@@ -9,7 +9,7 @@ import { worstCities } from './cards'
 import { counted, snapshotEntry, type DeskEntry } from './entries'
 import type { MoveKind, Movement, SinceYesterday } from './changes'
 import { LEVEL_NAMES } from './levels'
-import { SCALE } from './scale'
+import { SCALE, minFireEvents, scaleFrom, type Scale } from './scale'
 import type { AirBand, AirCity, Category, CategoryStatus, Edition, Level, TimedSnapshot, WatchRow } from './types'
 import { CATEGORY_ORDER } from './entries'
 import { SOURCE_NAMES } from './sources'
@@ -47,6 +47,8 @@ export interface CopyContext {
   fires: DeskEntry[]
   /** Fire states with their own story (Level 3+, or the only fire state). */
   ownFires: DeskEntry[]
+  /** The level rules the edition ran with (plan P3). */
+  scale: Scale
 }
 
 const BAND_WORDS: Record<AirBand, string> = { poor: 'poor', very_poor: 'very poor', severe: 'severe' }
@@ -61,7 +63,7 @@ function counted_(n: number, one: string, many: string): string {
   return `${numberWord(n)} ${n === 1 ? one : many}`
 }
 
-export function copyContext(entries: DeskEntry[], since: SinceYesterday | null, run: Pick<Edition, 'started_at'>): CopyContext {
+export function copyContext(entries: DeskEntry[], since: SinceYesterday | null, run: Pick<Edition, 'started_at' | 'severity_config'>): CopyContext {
   const fireRows = entries.filter((e) => e.category === 'fire')
   const states = fireRows.flatMap((e) => (e.members.length > 0 ? e.members : [e]))
   return {
@@ -69,6 +71,7 @@ export function copyContext(entries: DeskEntry[], since: SinceYesterday | null, 
     since,
     fires: states.filter((e) => e.level >= 2).sort((a, b) => b.strength - a.strength),
     ownFires: fireRows.filter((e) => e.members.length === 0),
+    scale: scaleFrom(run.severity_config),
   }
 }
 
@@ -122,7 +125,7 @@ function stateFacts(e: DeskEntry, ctx: CopyContext): StateFacts {
     day: f.day ? relativeDay(f.day, ctx.editionAt) : '',
     period: f.day ? partOfMonth(f.day) : 'this time of year',
     r,
-    counted: r !== null && n >= SCALE.fire.minFireEvents,
+    counted: r !== null && n >= minFireEvents(f, ctx.scale),
     record: max === null ? null : n > max ? 'above' : n === max ? 'equal' : 'within',
     span: baselineYears(e),
   }
@@ -216,7 +219,7 @@ function fireStateCopy(e: DeskEntry, ctx: CopyContext): ItemCopy {
     return {
       title: `A large fire burns ${Math.max(1, Math.round(near.km ?? 0))} km from ${near.place}`,
       standfirst:
-        `NASA's fire satellites picked up a large fire${where}, close to a town of ${SCALE.fire.level4MinPopulation.toLocaleString('en-IN')} people or more. ` +
+        `NASA's fire satellites picked up a large fire${where}, close to a town of ${ctx.scale.fire.level4MinPopulation.toLocaleString('en-IN')} people or more. ` +
         stateSentence(f),
     }
   }
@@ -365,9 +368,12 @@ function fireMoveText(m: Movement, e: DeskEntry): string {
 
 type AirMetric = 'aqi' | 'pm25' | 'pm10'
 
-const NEXT_BAND: Partial<Record<AirBand, { band: AirBand; above: (m: AirMetric) => number }>> = {
-  poor: { band: 'very_poor', above: (m) => SCALE.air[m].veryPoorAbove },
-  very_poor: { band: 'severe', above: (m) => SCALE.air[m].severeAbove },
+/** A metric's bands under a scale (an AQI reading always has AQI bands: the CPCB feed came with them). */
+const bandsOf = (s: Scale, m: AirMetric) => (m === 'aqi' ? (s.air.aqi ?? SCALE.air.aqi) : s.air[m])
+
+const NEXT_BAND: Partial<Record<AirBand, { band: AirBand; above: (s: Scale, m: AirMetric) => number }>> = {
+  poor: { band: 'very_poor', above: (s, m) => bandsOf(s, m).veryPoorAbove },
+  very_poor: { band: 'severe', above: (s, m) => bandsOf(s, m).severeAbove },
 }
 
 /**
@@ -375,15 +381,15 @@ const NEXT_BAND: Partial<Record<AirBand, { band: AirBand; above: (m: AirMetric) 
  * short of 'very poor'" (within 5% of it), or, for a Severe reading not yet
  * confirmed, "past the 'severe' line in the latest report".
  */
-function bandPhrase(v: number, city: AirCity, metric: AirMetric): string {
+function bandPhrase(v: number, city: AirCity, metric: AirMetric, scale: Scale): string {
   const band = counted(city)
   const next = NEXT_BAND[band]
-  if (next && v > next.above(metric)) return `past the '${BAND_WORDS[next.band]}' line in the latest report`
-  if (next && v >= next.above(metric) * 0.95) return `just short of '${BAND_WORDS[next.band]}'`
+  if (next && v > next.above(scale, metric)) return `past the '${BAND_WORDS[next.band]}' line in the latest report`
+  if (next && v >= next.above(scale, metric) * 0.95) return `just short of '${BAND_WORDS[next.band]}'`
   return `rated '${BAND_WORDS[band]}'`
 }
 
-function airCopy(e: DeskEntry): ItemCopy {
+function airCopy(e: DeskEntry, scale: Scale): ItemCopy {
   const f = e.figures
   const worst = worstCities(f)
   if (worst.length === 0) return { title: e.title, standfirst: null }
@@ -407,12 +413,12 @@ function airCopy(e: DeskEntry): ItemCopy {
   const w = worst[0]
   const sentences: string[] = []
   if (typeof w.aqi === 'number') {
-    sentences.push(`${w.city} had the worst air in the country, with an index of ${w.aqi}, ${bandPhrase(w.aqi, w, 'aqi')}.`)
+    sentences.push(`${w.city} had the worst air in the country, with an index of ${w.aqi}, ${bandPhrase(w.aqi, w, 'aqi', scale)}.`)
   } else {
     const pm25 = typeof w.pm25_24h === 'number'
     const v = Math.round((pm25 ? w.pm25_24h : w.pm10_24h) ?? 0)
     const what = pm25 ? 'fine particles (PM2.5)' : 'coarse dust (PM10)'
-    sentences.push(`${w.city} had the worst air in the country, with ${what} averaging ${v} µg/m³ over a day, ${bandPhrase(v, w, pm25 ? 'pm25' : 'pm10')}.`)
+    sentences.push(`${w.city} had the worst air in the country, with ${what} averaging ${v} µg/m³ over a day, ${bandPhrase(v, w, pm25 ? 'pm25' : 'pm10', scale)}.`)
   }
   const alsoTop = inTop.slice(1)
   if (alsoTop.length > 0 && alsoTop.length <= 2) {
@@ -544,7 +550,7 @@ export function itemCopy(e: DeskEntry, ctx: CopyContext): ItemCopy {
     case 'fire':
       return fireStateCopy(e, ctx)
     case 'air':
-      return airCopy(e)
+      return airCopy(e, ctx.scale)
     case 'earthquake':
       return quakeCopy(e)
     case 'cyclone':
@@ -707,7 +713,7 @@ function itemClause(e: DeskEntry): string {
   }
 }
 
-const emptyCtx: CopyContext = { editionAt: new Date(0).toISOString(), since: null, fires: [], ownFires: [] }
+const emptyCtx: CopyContext = { editionAt: new Date(0).toISOString(), since: null, fires: [], ownFires: [], scale: SCALE }
 
 /** How the fire states moved since the edition a day earlier: more, fewer, the same, or unknown. */
 function fireTrend(ctx: CopyContext): 'more' | 'fewer' | 'same' | null {

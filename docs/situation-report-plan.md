@@ -1,6 +1,6 @@
 # Sentinel — "Situation Report" frontend (Phase 7): plan
 
-Status: **steps 1 to 9 done (28 Oct 2026); ready for Job's review and the switch-over (a fast-forward merge into `main`). The copy follows `docs/style-guide.md`; caveats sit in source lines and Notes; map symbols follow `docs/design/MapSymbols.dc.html` (decisions 11–13).** Branch
+Status: **steps 1 to 9 done (28 Oct 2026); P1-P4 used by the site (29 Oct, see "Used by the frontend" under section 7); ready for Job's review and the switch-over (a fast-forward merge into `main`). The copy follows `docs/style-guide.md`; caveats sit in source lines and Notes; map symbols follow `docs/design/MapSymbols.dc.html` (decisions 11–13).** Branch
 `frontend/situation-report`, worktree `../sentinel-situation-report`. Design reference:
 `docs/design/` (DeskSeverity, DeskQuiet, DeskPhone, MapView, ItemFire), read as visual and
 copy spec, not code. Data model: `docs/severity-pipeline.md` and
@@ -103,20 +103,20 @@ How the pages work:
 |---|---|---|
 | Masthead: number, date, run time, run status | `pipeline_runs` row n | Yes |
 | Items: level, reason, labels (last-known, air, cap), figures | Snapshots of run n | Yes |
-| Item titles | `desk_items` (current). Fire and air titles change between runs; rebuilt from snapshot figures (fire `district_count`, air bands and cities, quake magnitude) | Close. Exact needs P1 |
-| Item place and lat/lon (map markers) | `desk_items` (current). Fire centroids move every day; air has none | No. Needs P1 |
+| Item titles | Snapshot `title` from edition 29 (P1). Before: `desk_items` (current); fire and air titles change between runs, so they are rebuilt from snapshot figures (fire `district_count`, air bands and cities, quake magnitude) | Yes from 29; close before |
+| Item place and lat/lon (map markers) | Snapshot `place_name`, `latitude`, `longitude` from edition 29 (P1). Before: `desk_items` (current), only when no later run moved the item; air has none | Yes from 29; partly before |
 | New / escalated / closed tags and counts, Since yesterday | Snapshots of the runs in the 24 h up to n | Yes |
 | On the desk since, peak level | Snapshots up to n (latest `opened`/`reopened`, highest level since) | Yes |
 | Headline and summaries | Templates over the rows above | As exact as their inputs |
 | Level counts | Snapshots of run n | Yes |
-| How levels are set | Static copy until P3. The level thresholds haven't changed since the desk started: quake, GDACS and air rules since edition 2, fire since edition 3 (fire items started then, with the current 25 / 2× / 4× and cap 2, merged 21 Oct 12:19 IST) | Yes for editions 2-25, while `severity.toml`'s level rules stay as they are. A change before P3 lands adds a version to the copy, keyed by its first edition |
+| How levels are set | `pipeline_runs.severity_config` of run n (P3; 1-28 backfilled). Fire rules were 1.25× / 2×, 10 fires, no cap in editions 1-2 (no fire items yet); air had no AQI bands and no two-reports rule for severe before edition 9 | Yes |
 | Edition banner (late sources) and footer freshness | `pipeline_runs.sources` and `category_status` of run n (not the `sources` table, which is current only) | Yes |
 | All-clear table | `category_status` of run n | Yes |
-| Watching list | `desk_watch` holds current state only, and rows not updated for 14 days are deleted. Its `trend` keeps the last 10 source updates, but not whether a subject was watching, or why, at each run | No. Needs P2 |
+| Watching list | `desk_watch_snapshots` of run n from edition 29 (P2); the trend is the subject's values in the runs before. Editions 1-28: `desk_watch` (current state) for the latest edition only | Yes from 29; none before |
 | 14-day strip | Snapshots of runs up to n over the 14 IST days before n (not `desk_daily_max`, which counts later runs on n's day) | Yes |
 | Days since Level 3+ | Snapshots up to n with level ≥ 3 (not `desk_last_level3`, which is "now") | Yes |
 | Recently closed | Snapshots up to n with `change = closed` | Yes (titles as above) |
-| Mini map: fire activity | `fire_events`, kept 14 days; today's and yesterday's rows are rebuilt by later runs | No for editions older than 14 days. Needs P4. The fire items' district lists survive in snapshot figures |
+| Mini map: fire activity | `fire_day_points` (P4, from 19 Oct): the fire items' `figures.day`, points first seen by `figures.data_to`. A day not there falls back to `fire_events` (14 days) | Yes (district names aren't in the points, so dot tooltips name the state only) |
 | Phone wire: fires by district, worst air, earthquakes, source desk | Snapshot figures and `pipeline_runs.sources` of run n | Yes |
 
 ### Retention check
@@ -470,6 +470,21 @@ writes the field; older rows have it null or missing, so keep the fallbacks for 
   edition's map has its points (edition 2, the first fire stage run, fetched 19 and 20
   Oct; nothing earlier was stored). Also: each fire item's
   `figures.large_fires_near_people[]` now has `latitude` and `longitude`.
+
+### Used by the frontend (29 Oct 2026)
+
+- **P1:** `SNAPSHOT_SELECT` reads the snapshot's `title`, `place_name`, `latitude`,
+  `longitude`; when `title` is set they win over `desk_items` (`entries.ts`, `ownPlace`).
+- **P2:** `useWatching(run, latest)` reads `desk_watch_snapshots` of the edition and
+  builds each watching subject's trend from its rows in the 30 runs before
+  (`lib/desk/watch.ts`). No rows: the latest edition falls back to `desk_watch`; a past
+  edition says from which edition lists are kept.
+- **P3:** `useEdition` reads `severity_config`; `scaleFrom()` turns it into the scale
+  the copy context, Notes, the levels table, the item's fire chart and About use. A rule
+  the stored config lacks is one the edition ran without (null), not today's value.
+- **P4:** `useFirePoints(fireLayerOf(...))` reads `fire_day_points` and keeps points
+  with `first_seen` up to `figures.data_to`; a Level 4 state's large fires are ringed by
+  their stored `latitude`/`longitude`.
 
 ## Decisions (Job, 28 Oct 2026)
 

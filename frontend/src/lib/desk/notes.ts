@@ -5,7 +5,7 @@
 
 import type { DeskEntry } from './entries'
 import { istDay, istTime } from './ist'
-import { SCALE } from './scale'
+import { SCALE, type Scale } from './scale'
 import type { Level } from './types'
 import { listText, numberWord, relativeDay } from './words'
 
@@ -94,9 +94,10 @@ function stateName(e: DeskEntry): string {
 
 /**
  * The page's Notes: each caveat said once, for the items it applies to.
- * Held fire levels (the dashed square) and Severe cities not yet confirmed.
+ * Held fire levels (the dashed square) and Severe cities not yet confirmed,
+ * under the edition's rules.
  */
-export function deskNotes(entries: DeskEntry[]): DeskNote[] {
+export function deskNotes(entries: DeskEntry[], scale: Scale = SCALE): DeskNote[] {
   const all = entries.flatMap((e) => (e.members.length > 0 ? e.members : [e]))
   const notes: DeskNote[] = []
 
@@ -123,7 +124,7 @@ export function deskNotes(entries: DeskEntry[]): DeskNote[] {
       key: `severe:${x.key}`,
       text:
         `${listText(cities)} read severe in the latest report. A city counts as severe only after ` +
-        `${numberWord(SCALE.air.severeConfirmRuns)} reports in a row.`,
+        `${numberWord(scale.air.severeConfirmRuns ?? SCALE.air.severeConfirmRuns)} reports in a row.`,
     })
   }
   return notes

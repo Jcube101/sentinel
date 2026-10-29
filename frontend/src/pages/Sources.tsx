@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useMemo, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useEdition, useLatestEditionId, useRunSources } from '@/hooks/useEdition'
 import { istDate, istShortDate, istTime } from '@/lib/desk/ist'
@@ -14,6 +14,7 @@ import {
   sourceLines,
   type CellState,
 } from '@/lib/desk/sources'
+import { scaleFrom } from '@/lib/desk/scale'
 import type { Edition } from '@/lib/desk/types'
 import { lastKnownWords } from '@/lib/desk/words'
 import PaperShell from '@/components/paper/PaperShell'
@@ -155,13 +156,14 @@ export default function Sources() {
   const edition = useEdition(editionParam ?? latestId)
   const run = edition.data?.run ?? null
   const runs = useRunSources(run)
+  const scale = useMemo(() => (run ? scaleFrom(run.severity_config) : undefined), [run])
 
   useEffect(() => {
     document.title = 'Sentinel · Sources'
   }, [])
 
   return (
-    <PaperShell>
+    <PaperShell scale={scale}>
       <section className="py-8 sm:py-11 border-b border-ink flex flex-col gap-4 max-w-[860px]">
         <h1 className="m-0 font-cond font-semibold text-[32px] sm:text-[50px] leading-[1.04] tracking-[-0.01em]">Sources</h1>
         <p className="m-0 text-[17px] sm:text-[19px] leading-[1.55]">

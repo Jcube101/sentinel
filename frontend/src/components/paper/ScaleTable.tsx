@@ -1,12 +1,12 @@
 import { Fragment } from 'react'
 import { LEVEL_NAMES } from '@/lib/desk/levels'
-import { SCALE_ROWS } from '@/lib/desk/scale'
+import { SCALE, scaleRows, type Scale } from '@/lib/desk/scale'
 import type { Level } from '@/lib/desk/types'
 
 const LEVELS: Level[] = [1, 2, 3, 4]
 
-/** What each level means per category (the footer legend and About). Built from the scale copy. */
-export default function ScaleTable({ names = false }: { names?: boolean }) {
+/** What each level means per category (the footer legend and About), under an edition's rules (else the current ones). */
+export default function ScaleTable({ names = false, scale = SCALE }: { names?: boolean; scale?: Scale }) {
   return (
     <div className="grid grid-cols-[64px_repeat(4,minmax(0,1fr))] font-mono text-[11px] leading-[1.4]" role="table" aria-label="How levels are set">
       <div role="row" className="contents">
@@ -20,7 +20,7 @@ export default function ScaleTable({ names = false }: { names?: boolean }) {
           </span>
         ))}
       </div>
-      {SCALE_ROWS.map((r) => (
+      {scaleRows(scale).map((r) => (
         <div role="row" className="contents" key={r.name}>
           <span role="rowheader" className="py-2 border-b border-rule text-ink-muted uppercase">
             {r.name.split(' ').map((w, i) => (

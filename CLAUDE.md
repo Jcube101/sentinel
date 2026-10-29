@@ -97,9 +97,15 @@ item whose `source_ref` is that event (else a short note). `/dev/symbols` draws 
 symbol (not linked, noindex).
 
 ### Key Patterns
-- **Reads only the desk tables:** `pipeline_runs`, `desk_item_snapshots` (with
-  `desk_items` embedded), `category_status`, `desk_watch`, `fire_events`,
+- **Reads only the desk tables:** `pipeline_runs` (with `severity_config`),
+  `desk_item_snapshots` (with `desk_items` embedded), `category_status`,
+  `desk_watch_snapshots`, `desk_watch`, `fire_day_points`, `fire_events`,
   `fire_state_daily`. Hooks in `src/hooks/useEdition.ts`.
+- **Each edition as published (plan P1-P4):** from edition 29 a snapshot carries its own
+  title, place and position, and each edition keeps its watching list; editions 1-28 fall
+  back to `desk_items` and (latest edition only) `desk_watch`. Every edition's level rules
+  come from `pipeline_runs.severity_config` (`scale.ts`, `scaleFrom`); its fire map from
+  `fire_day_points`, cut at the fire items' `data_to`.
 - **Every line rebuilds for past editions:** templates in `src/lib/desk/` (copy, notes,
   words) read only the edition's own snapshots, its run time and the comparison with the
   edition about a day earlier (`changes.ts`), so `/edition/:n` prints the same words it
@@ -110,8 +116,8 @@ symbol (not linked, noindex).
 - **Ranking** (`entries.ts`): level, then cyclone, flood, earthquake, air, fire, then
   strength. Level 1 quakes are one row; fire states are one roundup unless Level 3+ or
   alone.
-- **The level scale** is a copy of `pipeline/severity.toml` in `src/lib/desk/scale.ts`
-  until the pipeline stores it per edition (plan P3).
+- **The level scale** for an edition is read from its `severity_config`; `SCALE` in
+  `src/lib/desk/scale.ts` is the current rules, for fixtures and as the fallback.
 - **Map** (`components/paper/PaperMap.tsx`, `mapSymbols.ts`): Esri World Light Gray tiles
   (keyless), warmed by a `.paper-map` filter in `index.css`; hazard symbols per
   docs/design/MapSymbols.dc.html; India's outline from `src/lib/desk/geo/india-coast.json`.

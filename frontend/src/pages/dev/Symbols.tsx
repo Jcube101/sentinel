@@ -196,7 +196,7 @@ function seeded(seed: number): () => number {
 }
 
 // The large fire near Ludhiana that makes Punjab Level 4: ringed on the map.
-const RINGED_ID = 1
+const RINGED: [number, number] = [30.93, 75.95]
 
 function fakeFires(): FirePoint[] {
   const rand = seeded(26)
@@ -209,7 +209,7 @@ function fakeFires(): FirePoint[] {
     ['Uttar Pradesh', 26.8, 80.6, 1.4, 70],
     ['Odisha', 20.6, 84.4, 0.8, 25],
   ]
-  const out: FirePoint[] = [{ id: RINGED_ID, latitude: 30.93, longitude: 75.95, hotspot_count: 9, frp_max: 140, district: 'Ludhiana', state: 'Punjab' }]
+  const out: FirePoint[] = [{ id: 1, latitude: RINGED[0], longitude: RINGED[1], hotspot_count: 9, frp_max: 140, district: 'Ludhiana', state: 'Punjab' }]
   for (const [state, lat, lon, spread, n] of clusters) {
     for (let i = 0; i < n; i++) {
       // Roughly normal spread: the mean of three uniform draws.
@@ -245,7 +245,7 @@ function item(
 const FAKE_ITEMS: MapItem[] = [
   item('c4', 'cyclone', 4, 1, 17.2, 87.5, 'Cyclone (fake) · red · 222 km/h', { strength: 222 }),
   item('q4', 'earthquake', 4, 2, 28.3, 84.4, 'Major earthquake (fake) · M7.3'),
-  item('fire-pb', 'fire', 4, 3, 30.8, 75.4, 'Punjab (fake): 140 fires, a large fire near Ludhiana', { state: 'Punjab', ringed: [RINGED_ID] }),
+  item('fire-pb', 'fire', 4, 3, 30.8, 75.4, 'Punjab (fake): 140 fires, a large fire near Ludhiana', { state: 'Punjab', ringed: [RINGED] }),
   item('c3', 'cyclone', 3, 4, 16.5, 68.0, 'Cyclone (fake) · orange · 150 km/h', { strength: 150 }),
   item('f3', 'flood', 3, 5, 26.3, 92.4, 'Flooding in Assam (fake) · orange'),
   item('q3', 'earthquake', 3, 6, 12.8, 93.6, 'Strong earthquake (fake) · M6.4'),

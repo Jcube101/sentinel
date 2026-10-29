@@ -22,6 +22,8 @@ export interface Edition {
   status: 'running' | 'ok' | 'failed'
   duration_s: number | null
   sources: Record<string, RunSourceResult | undefined>
+  /** severity.toml as the edition ran it (plan P3; editions 1-28 backfilled). Read with scaleFrom(). */
+  severity_config?: unknown
 }
 
 /** Key figures stored with each item. Which keys exist depends on the category. */
@@ -60,10 +62,14 @@ export interface Figures {
   norm_years?: string
   ratio_level?: number
   gdacs_level?: number | null
+  /** A Level 4 state's large fires near towns; with latitude and longitude from edition 29. */
   large_fires_near_people?: unknown[]
   capped?: boolean
   firms_level?: number
   calibration_cap?: number
+  min_fire_events?: number
+  /** The newest FIRMS observation the fire stage had: the fire map keeps points first seen by then. */
+  data_to?: string
   gdacs_wildfire?: unknown[]
   // air (air.py)
   source?: 'datagov' | 'openaq'
@@ -97,7 +103,7 @@ export interface AirCity {
   prominent?: string[]
 }
 
-/** The desk_items fields embedded in a snapshot (current values, not as of the run). */
+/** The desk_items fields embedded in a snapshot (current values, not as of the run). Editions from 29 on carry their own (Snapshot.title etc., plan P1). */
 export interface SnapshotItem {
   title: string
   place_name: string | null
@@ -122,6 +128,15 @@ export interface Snapshot {
   new_data: boolean
   change: Change | null
   figures: Figures
+  /**
+   * The item's title, place and position as of this run (plan P1). From
+   * edition 29 on; null (or absent, in older fixtures) before it, where
+   * desk_items stands in.
+   */
+  title?: string | null
+  place_name?: string | null
+  latitude?: number | null
+  longitude?: number | null
   desk_items: SnapshotItem | null
   /**
    * Set by the site, not stored: the item's stage failed in this run, so this

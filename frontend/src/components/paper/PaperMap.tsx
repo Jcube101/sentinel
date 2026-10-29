@@ -39,17 +39,18 @@ export interface MapItem {
   lon: number
   title: string
   closed: boolean
-  /** A Level 4 fire state's large fires near towns (fire_events ids): ringed on the map. */
-  ringed?: number[]
+  /** A Level 4 fire state's large fires near towns, as [lat, lon]: ringed on the map. */
+  ringed?: [number, number][]
 }
 
 export interface FirePoint {
-  /** fire_events.id; matches large_fires_near_people[].fire_event. */
+  /** fire_events.id (fire_day_points' points have none). */
   id?: number
   latitude: number
   longitude: number
   hotspot_count: number
   frp_max: number
+  /** Only fire_events has it; fire_day_points' points don't. */
   district: string | null
   state: string | null
 }
@@ -88,7 +89,7 @@ function FireDots({
   fires: FirePoint[]
   interactive: boolean
   levels: Map<string, Level>
-  ringed: Set<number>
+  ringed: [number, number][]
 }) {
   const zoom = useZoom()
   const radius = (f: FirePoint) => (zoom <= 4 ? 1.4 : zoom === 5 ? 1.8 : zoom === 6 ? 2.6 : Math.min(7, 2 + Math.sqrt(f.hotspot_count)))
@@ -106,21 +107,18 @@ function FireDots({
           >
             {interactive && (
               <Tooltip>
-                {f.district ?? 'Fire'}
-                {f.state ? `, ${f.state}` : ''} · {f.hotspot_count} {f.hotspot_count === 1 ? 'hotspot' : 'hotspots'}
+                {[f.district, f.state].filter(Boolean).join(', ') || 'Fire'} · {f.hotspot_count} {f.hotspot_count === 1 ? 'hotspot' : 'hotspots'}
               </Tooltip>
             )}
           </CircleMarker>
         )
       })}
-      {fires
-        .filter((f) => f.id !== undefined && ringed.has(f.id))
-        .map((f) => (
-          <Fragment key={`ring:${f.id}`}>
-            <Circle center={[f.latitude, f.longitude]} radius={9000} interactive={false} pathOptions={{ stroke: false, fillColor: ACCENT, fillOpacity: 0.1 }} />
-            <CircleMarker center={[f.latitude, f.longitude]} radius={7} interactive={false} pathOptions={{ color: ACCENT, weight: 1.6, fill: false }} />
-          </Fragment>
-        ))}
+      {ringed.map((at) => (
+        <Fragment key={`ring:${at[0]},${at[1]}`}>
+          <Circle center={at} radius={9000} interactive={false} pathOptions={{ stroke: false, fillColor: ACCENT, fillOpacity: 0.1 }} />
+          <CircleMarker center={at} radius={7} interactive={false} pathOptions={{ color: ACCENT, weight: 1.6, fill: false }} />
+        </Fragment>
+      ))}
     </>
   )
 }
@@ -193,7 +191,7 @@ export default function PaperMap({
   for (const m of items) {
     if (m.category === 'fire' && m.state && !m.closed) levels.set(m.state, Math.max(levels.get(m.state) ?? 1, m.level) as Level)
   }
-  const ringed = new Set(items.flatMap((m) => (m.closed ? [] : (m.ringed ?? []))))
+  const ringed = items.flatMap((m) => (m.closed ? [] : (m.ringed ?? [])))
   // The small, still maps (Desk and item sidebars) draw symbols a little smaller.
   const scale = interactive ? 1 : 0.8
   return (

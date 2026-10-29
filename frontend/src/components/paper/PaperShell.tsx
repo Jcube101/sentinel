@@ -2,6 +2,8 @@ import type { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import ScaleTable from './ScaleTable'
+import type { Scale } from '@/lib/desk/scale'
+import { useLatestScale } from '@/hooks/useEdition'
 
 interface NavItem {
   to: string
@@ -92,7 +94,7 @@ function BottomNav({ path }: { path: string }) {
 }
 
 /** "How levels are set", collapsed: the compact legend at the foot of every page. */
-function Legend({ afterNotes }: { afterNotes: boolean }) {
+function Legend({ afterNotes, scale }: { afterNotes: boolean; scale?: Scale }) {
   return (
     <details className={`group ${afterNotes ? 'mt-8' : 'mt-12'} border-t border-ink`}>
       <summary className="flex justify-between items-center gap-3 py-3 cursor-pointer list-none [&::-webkit-details-marker]:hidden font-mono text-[11px] sm:text-[12px] uppercase tracking-[0.08em]">
@@ -106,7 +108,7 @@ function Legend({ afterNotes }: { afterNotes: boolean }) {
         <p className="m-0 text-[14px] leading-[1.5] text-ink-muted">
           Every item gets a level from 1 (minor) to 4 (severe). Items are ranked by level, never by how many there are.
         </p>
-        <ScaleTable names />
+        <ScaleTable names scale={scale} />
         <Link to="/about" className="self-start font-mono text-[12px] uppercase tracking-[0.06em] border-b border-ink hover:text-accent">
           The full explanation →
         </Link>
@@ -121,11 +123,14 @@ interface Props {
   footer?: ReactNode
   /** The page's Notes (PageNotes), above the legend. */
   notes?: ReactNode
+  /** The rules of the edition on the page, for the legend; else the latest edition's. */
+  scale?: Scale
 }
 
 /** The newspaper frame every Situation Report page sits in. */
-export default function PaperShell({ children, footer, notes }: Props) {
+export default function PaperShell({ children, footer, notes, scale }: Props) {
   const { pathname } = useLocation()
+  const latestScale = useLatestScale(scale === undefined && pathname !== '/about')
   return (
     <div className="min-h-screen bg-paper text-ink font-serif pb-[calc(4rem+env(safe-area-inset-bottom))] sm:pb-0">
       <a href="#content" className="skip-link">
@@ -137,7 +142,7 @@ export default function PaperShell({ children, footer, notes }: Props) {
           {children}
         </div>
         {notes}
-        {pathname !== '/about' && <Legend afterNotes={!!notes} />}
+        {pathname !== '/about' && <Legend afterNotes={!!notes} scale={scale ?? latestScale.data} />}
         <footer className={`${pathname !== '/about' ? 'mt-0' : 'mt-12'} pt-3 border-t border-ink flex flex-wrap justify-between gap-3 font-mono text-[10px] sm:text-[11px] leading-relaxed text-ink-muted tracking-[0.04em]`}>
           <span>
             SENTINEL · EDITIONS AT 02:30, 14:30 AND 20:30 IST, FROM A RASPBERRY PI ·{' '}

@@ -211,7 +211,8 @@ named: "about 250 km from the West Bengal coast". The position is GDACS's, so th
 says so, in its own sentence: "Global disaster monitors give it their highest alert, red,
 with winds of up to 222 km/h. They place it near the Andhra Pradesh coast." Never a track,
 a heading or a landfall, and no latitude or longitude in the copy or the evidence. Past
-editions show a location only when no later run moved the item (plan P1).
+editions show the location the item had in that edition (plan P1, from edition 29);
+before edition 29, only when no later run moved the item.
 
 ## Fire roundup
 

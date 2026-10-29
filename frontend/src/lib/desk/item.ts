@@ -7,7 +7,7 @@ import { closedLine, quakeMemberLine } from './copy'
 import { istDay } from './ist'
 import type { Change, Level, TimedSnapshot } from './types'
 import { timesUsual } from './words'
-import { SCALE } from './scale'
+import { SCALE, minFireEvents } from './scale'
 
 export const LEVEL_STRIP_RUNS = 30
 export const FIRE_DAYS = 21
@@ -42,7 +42,7 @@ export function snapshotNote(e: DeskEntry): string {
     case 'fire': {
       const n = f.fire_events ?? 0
       const day = f.day ? ` on ${dayText(f.day)}` : ''
-      const r = typeof f.ratio_to_norm === 'number' && n >= SCALE.fire.minFireEvents ? `, ${timesUsual(f.ratio_to_norm)}` : ''
+      const r = typeof f.ratio_to_norm === 'number' && n >= minFireEvents(f, SCALE) ? `, ${timesUsual(f.ratio_to_norm)}` : ''
       return `${n} ${n === 1 ? 'fire' : 'fires'}${day}${r}`
     }
     case 'air': {

@@ -13,7 +13,8 @@ import { snapshotEntry, type DeskEntry } from '@/lib/desk/entries'
 import { istShortDate } from '@/lib/desk/ist'
 import { LEVEL_NAMES } from '@/lib/desk/levels'
 import { closedSummaries, daysSinceLevel3, quietStreak, stripDays, type StripDay } from '@/lib/desk/quiet'
-import type { CategoryStatus, DeskHistory, Edition, WatchRow } from '@/lib/desk/types'
+import type { CategoryStatus, DeskHistory, Edition } from '@/lib/desk/types'
+import type { Watching as WatchingList } from '@/hooks/useEdition'
 import { numberWord } from '@/lib/desk/words'
 import LevelSquares from './LevelSquares'
 
@@ -72,16 +73,20 @@ function Meter({ value, threshold, label }: { value: number; threshold: number; 
   )
 }
 
-function Watching({ rows, latest, ctx }: { rows: WatchRow[] | null; latest: boolean; ctx: CopyContext }) {
+function Watching({ list, latest, ctx }: { list: WatchingList | null; latest: boolean; ctx: CopyContext }) {
+  const rows = list?.rows ?? null
+  const kept = !list || rows !== null
   return (
     <section aria-label="Watching">
       <h2 className={head}>
         <span>Watching · close to the next level</span>
-        <span className="text-ink-muted tracking-[0.04em]">{latest ? `${rows?.length ?? 0} now` : 'latest report only'}</span>
+        <span className="text-ink-muted tracking-[0.04em]">{!kept ? 'not kept' : rows ? `${rows.length}${latest ? ' now' : ''}` : ''}</span>
       </h2>
-      {!latest ? (
+      {!kept ? (
         <p className="m-0 py-4 text-[15px] leading-[1.5] text-ink-muted border-b border-rule">
-          The watching list is kept for the latest report only, so it can't be shown for this one.
+          {list?.keptFrom
+            ? `Reports keep their watching list from No. ${list.keptFrom} on, so this one has none.`
+            : "The watching list is kept for the latest report only, so it can't be shown for this one."}
         </p>
       ) : !rows ? (
         <p className="m-0 py-4 font-mono text-[12px] uppercase text-ink-muted">Loading…</p>
@@ -210,8 +215,8 @@ interface Props {
   entries: DeskEntry[]
   status: CategoryStatus[]
   history: DeskHistory
-  /** null while loading; ignored for past editions. */
-  watching: WatchRow[] | null
+  /** null while loading. */
+  watching: WatchingList | null
   latest: boolean
   ctx: CopyContext
   /** The small map for the sidebar. */
@@ -234,13 +239,13 @@ export default function QuietDesk({ run, entries, status, history, watching, lat
           <h1 className="m-0 font-cond font-semibold text-[30px] sm:text-[50px] leading-[1.06] sm:leading-[1.04] tracking-[-0.01em]">
             {quietHeadline(quietStreak(days))}
           </h1>
-          <p className="m-0 text-[16px] sm:text-[19px] leading-[1.55]">{quietStandfirst(entries, latest ? (watching?.length ?? null) : null)}</p>
+          <p className="m-0 text-[16px] sm:text-[19px] leading-[1.55]">{quietStandfirst(entries, watching?.rows ? watching.rows.length : null)}</p>
         </div>
         <DaysSince days={since} last={last} ctx={ctx} />
       </section>
       <div className="flex flex-wrap gap-x-12 gap-y-8 pt-6 sm:pt-8">
         <main className="flex-[999_1_560px] min-w-0 flex flex-col gap-8">
-          <Watching rows={watching} latest={latest} ctx={ctx} />
+          <Watching list={watching} latest={latest} ctx={ctx} />
           <AllClear entries={entries} status={status} editionAt={run.started_at} />
         </main>
         <aside className="flex-[1_1_340px] min-w-0 flex flex-col gap-8">

@@ -46,8 +46,8 @@ export interface DeskEntry {
   /** Its stage failed in this run: figures from this earlier edition. */
   carriedFrom: number | null
   /**
-   * [lat, lon] as of this edition, or null. desk_items keeps only the latest
-   * position, so a past edition gets it only if no later run moved it (P1).
+   * [lat, lon] as of this edition, or null: the snapshot's own from edition
+   * 29 (P1); before that desk_items' latest, only if no later run moved it.
    */
   coords: [number, number] | null
 }
@@ -70,13 +70,14 @@ export function airTop(f: Figures): { band: AirBand; cities: AirCity[] } | null 
 /**
  * The item's title as that edition published it.
  *
- * desk_items keeps only the current title, and fire and air titles change
- * from run to run, so they are rebuilt from the snapshot's own figures the
- * way the pipeline builds them (fire_desk.state_candidate, air.candidate,
- * desk.usgs_candidates). Snapshots will carry the title themselves once the
- * pipeline adds it (plan P1).
+ * From edition 29 the snapshot carries it (plan P1). Before that, desk_items
+ * keeps only the current title, and fire and air titles change from run to
+ * run, so they are rebuilt from the snapshot's own figures the way the
+ * pipeline builds them (fire_desk.state_candidate, air.candidate,
+ * desk.usgs_candidates).
  */
 export function editionTitle(s: Snapshot): string {
+  if (s.title) return s.title
   const f = s.figures ?? {}
   const current = s.desk_items?.title ?? s.item_id
   if (s.category === 'fire' && typeof f.state === 'string' && typeof f.district_count === 'number') {
@@ -91,10 +92,31 @@ export function editionTitle(s: Snapshot): string {
     return `Air quality: ${AIR_BAND_LABELS[top.band].toLowerCase()} in ${where}`
   }
   if (s.category === 'earthquake' && typeof f.magnitude === 'number') {
-    const place = s.desk_items?.place_name
+    const place = placeOf(s)
     return `M${f.magnitude.toFixed(1)} earthquake` + (place ? `, ${place}` : '')
   }
   return current
+}
+
+/** The snapshot carries its own title, place and position (plan P1: edition 29 on). */
+function ownPlace(s: Snapshot): boolean {
+  return s.title != null
+}
+
+/** The item's place name as of the snapshot's run: its own from edition 29, else the item's current one. */
+function placeOf(s: Snapshot): string | null {
+  return ownPlace(s) ? (s.place_name ?? null) : (s.desk_items?.place_name ?? null)
+}
+
+/**
+ * [lat, lon] as of the snapshot's run, or null. From edition 29 the snapshot
+ * has its own. Before that, desk_items keeps only the latest position, so a
+ * past edition gets it only if no later run moved it.
+ */
+function coordsOf(s: Snapshot): [number, number] | null {
+  if (ownPlace(s)) return s.latitude != null && s.longitude != null ? [Number(s.latitude), Number(s.longitude)] : null
+  const d = s.desk_items
+  return d?.latitude != null && d?.longitude != null && d.last_run_id === s.run_id ? [Number(d.latitude), Number(d.longitude)] : null
 }
 
 /** Tie-break inside a level, the same as watch._strength: ratio to norm, else magnitude, else 0. */
@@ -158,13 +180,10 @@ function toEntry(s: Snapshot, moves?: Map<string, Movement>): DeskEntry {
     strength: snapshotStrength(s),
     members: [],
     figures: s.figures ?? {},
-    placeName: s.desk_items?.place_name ?? null,
+    placeName: placeOf(s),
     sourceRef: s.desk_items?.source_ref ?? null,
     carriedFrom: carried,
-    coords:
-      s.desk_items?.latitude != null && s.desk_items?.longitude != null && s.desk_items.last_run_id === s.run_id
-        ? [Number(s.desk_items.latitude), Number(s.desk_items.longitude)]
-        : null,
+    coords: coordsOf(s),
   }
 }
 
