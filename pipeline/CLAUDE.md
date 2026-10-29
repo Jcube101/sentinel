@@ -317,9 +317,9 @@ migration only after it has been applied.
 Applied (checked 28 Oct 2026, every table and view answers): 001 pipeline_runs and
 source freshness, 002 desk_items and snapshots, 003 fire_events, 004 fire_baseline,
 005 quiet-day desk, 006 the DATAGOV sources row, 007 read-only grants on the pre-001
-tables (applied 29 Oct; an anon-key write gets "permission denied" on every table). Planned
-next, with the frontend phase: migration 008 (`last_known` in the `desk_last_level3` view,
-plus the per-edition archive tables, docs/severity-pipeline.md).
+tables (applied 29 Oct; an anon-key write gets "permission denied" on every table), 008
+the per-edition archive (applied 29 Oct: snapshot title/place/position, desk_watch_snapshots,
+pipeline_runs.severity_config, fire_day_points, `last_known` in desk_last_level3).
 
 ## Schema — events table
 id: text (primary key, deterministic)

@@ -24,7 +24,12 @@ which no longer does).
 | GDACS: floods/cyclones query first, wildfires and earthquakes after it and unable to fail the run (*Decisions (29 Oct 2026): GDACS*) | 29 Oct | Offline tests and a dry run |
 | FIRMS fails the run only after 2 timeouts in a row | 28 Oct | Offline tests. Not yet exercised live: FIRMS hasn't timed out since edition 19 |
 | Fire levels only from complete days (night pass in), repair of editions 26-27 (*Decisions (29 Oct 2026)*) | 29 Oct | Offline tests, a dry run, and the fire desk run read-only against live data on 28 Oct 20:13 UTC: 27 Oct incomplete (one night orbit), five items restored to 26 Oct as last-known |
-| Wind speed in the cyclone reason; `last_known` in `desk_last_level3` | not built | Specified for the frontend phase (*Follow-ups*) |
+| Wind speed in the cyclone reason | not built | Specified for the frontend phase (*Follow-ups*) |
+| Migration 008: the per-edition archive (P1-P4) and `last_known` in `desk_last_level3` | applied 29 Oct | Job's check query; through the API the new columns and tables answer, and an anon write is refused |
+| P1: each snapshot keeps the item's `title`, `place_name`, `latitude`, `longitude` | 29 Oct | Offline tests and a dry run |
+| P2: `desk_watch_snapshots`, every watch subject per run | 29 Oct | Offline tests and a dry run |
+| P3: `pipeline_runs.severity_config` per edition; editions 1-28 backfilled from git history (`tools/backfill_severity_config.py`) | 29 Oct | Offline tests; backfill run 29 Oct |
+| P4: `fire_day_points`, fire map points per day kept for good; fire positions in `large_fires_near_people` | 29 Oct | Offline tests, and fire.py read-only on live FIRMS: 28 Oct = 265 events, 7.9 KB |
 
 ## The problem
 
@@ -331,9 +336,9 @@ Open as of 28 Oct 2026 (first listed 21 Oct, when the spec was completed).
   - **Wind speed in the cyclone reason:** "GDACS Red alert" says nothing about strength.
     The speed is already in the item's figures (`severity`, `severity_text`), e.g. "GDACS
     Red alert, 222 km/h winds" for ARNAB-26 (`desk.gdacs_candidates`).
-  - **`last_known` in `desk_last_level3`:** the view picks the latest open Level 3+
-    snapshot, last-known ones included (ARNAB-26 in editions 23–24, while GDACS timed
-    out), and doesn't say so. Add the column (a migration) so the page can mark it.
+  - ~~**`last_known` in `desk_last_level3`**~~: done 29 Oct 2026 (migration 008). The
+    view picks the latest open Level 3+ snapshot, last-known ones included (ARNAB-26 in
+    editions 23–24, while GDACS timed out), and now says so.
 - **Fire threshold tuning:** min 25 / 2× / 4× came from an in-sample replay; recheck with
   `tools/replay_fire_levels.py` against a few weeks of live items.
 - **Static mask gaps:** a replayed Level 4 case near Dhanbad (Jharia coal field) is probably
