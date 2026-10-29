@@ -9,6 +9,7 @@ repeats the 20:30 IST data.
 
 Schema: migrations/001_pipeline_runs_and_source_freshness.sql.
 """
+import json
 import logging
 import re
 from dataclasses import dataclass, field
@@ -169,14 +170,18 @@ def source_updates(
     return updates, summary
 
 
-def start_run(supabase, started_at: datetime, severity_config: dict | None = None) -> int:
-    """Open the run record. severity_config: severity.toml as this edition runs
-    it (migration 008), or None when it failed to load."""
-    row = {"started_at": started_at.isoformat(), "status": "running"}
-    if severity_config is not None:
-        row["severity_config"] = severity_config
-    resp = supabase.table(RUNS_TABLE).insert(row).execute()
+def start_run(supabase, started_at: datetime) -> int:
+    resp = supabase.table(RUNS_TABLE).insert(
+        {"started_at": started_at.isoformat(), "status": "running"}
+    ).execute()
     return resp.data[0]["id"]
+
+
+def store_severity_config(supabase, run_id: int, severity_config: dict) -> None:
+    """The thresholds this edition runs with (migration 008). Separate from
+    start_run, so a failure here can't stop the run record from opening."""
+    value = json.loads(json.dumps(severity_config, default=str))  # e.g. a TOML date, as text
+    supabase.table(RUNS_TABLE).update({"severity_config": value}).eq("id", run_id).execute()
 
 
 def read_previous(supabase) -> dict[str, dict]:

@@ -330,10 +330,16 @@ def run(dry_run: bool = False):
         logger.info("dry-run: skipping run record")
     else:
         try:
-            run_id = runs.start_run(supabase, started_at, severity_config=edition_cfg)
+            run_id = runs.start_run(supabase, started_at)
             logger.info("runs: started edition %d", run_id)
         except Exception as exc:
             logger.error("runs: could not create run record — %s", exc)
+            runs_ok = False
+    if run_id is not None and edition_cfg is not None:
+        try:
+            runs.store_severity_config(supabase, run_id, edition_cfg)
+        except Exception as exc:
+            logger.error("runs: could not store severity.toml on edition %d — %s", run_id, exc)
             runs_ok = False
 
     # --- Run fetchers ---

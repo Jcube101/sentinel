@@ -96,7 +96,18 @@ def test_each_edition_stores_the_thresholds_its_stages_ran_with(harness, monkeyp
     assert harness.run() == 0
     (run,) = harness.db.rows("pipeline_runs")
     assert run["severity_config"] == pipeline.severity_config.load()
-    assert seen == [run["severity_config"]]          # the very dict the stages used
+    assert seen == [run["severity_config"]]          # what the stages were handed
+
+
+def test_failing_to_store_the_thresholds_fails_the_run_but_not_the_edition(harness, monkeypatch):
+    def rejected(*a, **k):
+        raise RuntimeError("Could not find the 'severity_config' column of 'pipeline_runs'")   # 008 not applied
+
+    monkeypatch.setattr(pipeline.runs, "store_severity_config", rejected)
+    assert harness.run() == 1
+    (run,) = harness.db.rows("pipeline_runs")
+    assert run["status"] == "failed" and "severity_config" not in run
+    assert harness.db.rows("category_status")                # the severity stages still ran
 
 
 def test_unloadable_thresholds_still_open_the_run_record_and_fail_the_run(harness, monkeypatch):
