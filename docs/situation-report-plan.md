@@ -470,6 +470,30 @@ writes the field; older rows have it null or missing, so keep the fallbacks for 
   edition's map has its points (edition 2, the first fire stage run, fetched 19 and 20
   Oct; nothing earlier was stored). Also: each fire item's
   `figures.large_fires_near_people[]` now has `latitude` and `longitude`.
+- **P5** (merged 29 Oct, from edition 30, 20:30 IST): on the air item (`air:IN`), each
+  entry of `figures.cities[]` (the cities at Poor or worse) has `latitude` and
+  `longitude`, next to its `city`, `band` and reading (`aqi` from data.gov.in, or
+  `pm25_24h`/`pm10_24h` from the OpenAQ fallback). The position is the mean of the
+  stations counted for the city (coordinates outside India's bounding box skipped);
+  null if none has coordinates (none so far: all 524 feed stations have them). Use the
+  severe guard's `counted_as` for the band shown, as the reason does.
+- **P6** (merged 29 Oct, from edition 30): on each fire item, `figures.state_rank` (1 =
+  the most fire events that day of every state with fires, not only those on the desk),
+  `figures.rank_shared` (true when another state had the same count) and
+  `figures.states_with_fires`. Null rank for a state with no fires that day.
+- **P7** (merged 29 Oct, from edition 30): on a cyclone item, `figures.position` =
+  `{latitude, longitude, at}`: where the storm was and when (`at`, UTC). Correction to
+  the P7 note above: for a cyclone, GDACS's point is the storm's latest observed track
+  point, at the episode's `todate`. The event-list point, the geometry's
+  `Point_Centroid` and the latest observed `Point_Polygon_Point` were the same for all
+  six storms checked on 29 Oct, ARNAB-26 included. So the item's `latitude`/`longitude`
+  already follow the storm, and P1's snapshot position is the storm's at each edition.
+  Floods get no `position` (their point is the area's).
+- **Wording** (merged 29 Oct, from edition 30): the cyclone reason gives the wind speed
+  ("GDACS Orange alert, 222 km/h winds (event peaked Red)"), so don't add it again from
+  `figures.severity`. The air all-clear names the source that assessed it: "No city Poor
+  or worse (CPCB AQI, real-time, unvalidated)" or "(approx. CPCB band)", and neither
+  when last-known.
 
 ### Used by the frontend (29 Oct 2026)
 
