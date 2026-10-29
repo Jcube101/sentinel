@@ -434,6 +434,41 @@ Also:
 - Never delete `pipeline_runs` or `desk_items` rows by hand: the cascades take editions'
   snapshots and status with them.
 
+### Delivered by the pipeline session
+
+Migration 008 was applied on 29 Oct 2026 (anon reads every new table and column, and
+can't write). The code below is on `main`. "From edition n" = the first edition that
+writes the field; older rows have it null or missing, so keep the fallbacks for them.
+
+- **P1** (merged 29 Oct, from edition 29): `desk_item_snapshots.title`, `.place_name`,
+  `.latitude`, `.longitude`, the item's values as of that run (a last-known or closing
+  snapshot keeps the item's last values). Null on editions 1-28: use `desk_items` there,
+  as now.
+- **P2** (merged 29 Oct, from edition 29): table `desk_watch_snapshots`, primary key
+  (`run_id`, `subject_id`), one row per watch subject per run, watching or not (~40 a
+  run). Columns: `run_id`, `subject_id` (= `desk_watch.id`), `category`, `title`,
+  `item_id`, `level`, `next_level`, `metric`, `value`, `next_threshold`,
+  `distance_to_threshold`, `rising_updates`, `watching`, `watch_reason`,
+  `source_updated_at`, `taken_at`. No `trend`: a subject's trend up to run n is its
+  `value` in the earlier runs' rows. No rows for editions 1-28.
+- **P3** (merged 29 Oct, from edition 29): `pipeline_runs.severity_config` (jsonb),
+  severity.toml as the edition ran it, the same dict every severity stage got: e.g.
+  `severity_config.fire.level_2_min_ratio`, `.quake.level_3_min_magnitude`. Editions
+  1-28 are backfilled from git history and carry `_backfill: {commit, certain, note}`.
+  Editions 1, 9 and 10 have `certain: false` (manual runs, assumed to be from the main
+  checkout). Edition 28 is the first with `fire.complete_day`. Ignore keys starting with `_`.
+- **P4** (merged 29 Oct, from edition 29): table `fire_day_points`, one row per UTC day,
+  kept for good: `acq_date` (primary key), `fire_events`, `states` (text[]), `points`
+  (jsonb), `last_run_id`, `updated_at`. `points` = one array per fire event, earliest
+  first: `[latitude, longitude, hotspots, frp_max, first_seen, state]`, where
+  `first_seen` = minutes after 00:00 UTC on `acq_date` and `state` = an index into
+  `states`. A day's row is rewritten by every run whose FIRMS window holds it (today and
+  yesterday, UTC), so it is final two days later. For edition n's map: the fire items'
+  `figures.day`, keeping points with `first_seen` up to the minute of its FIRMS data
+  time (`figures.data_to`). Rows start with 28 Oct; earlier days are only in
+  `fire_events`, kept 14 days. Also: each fire item's
+  `figures.large_fires_near_people[]` now has `latitude` and `longitude`.
+
 ## Decisions (Job, 28 Oct 2026)
 
 1. Preview locally: `vite preview` on the Pi, bound to the LAN. No second Render site.
