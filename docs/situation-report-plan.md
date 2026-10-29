@@ -465,8 +465,10 @@ writes the field; older rows have it null or missing, so keep the fallbacks for 
   `states`. A day's row is rewritten by every run whose FIRMS window holds it (today and
   yesterday, UTC), so it is final two days later. For edition n's map: the fire items'
   `figures.day`, keeping points with `first_seen` up to the minute of its FIRMS data
-  time (`figures.data_to`). Rows start with 28 Oct; earlier days are only in
-  `fire_events`, kept 14 days. Also: each fire item's
+  time (`figures.data_to`). Rows start with 19 Oct: 19-27 Oct were copied from
+  `fire_events` on 29 Oct (every count and point checked against it), so every
+  edition's map has its points (edition 2, the first fire stage run, fetched 19 and 20
+  Oct; nothing earlier was stored). Also: each fire item's
   `figures.large_fires_near_people[]` now has `latitude` and `longitude`.
 
 ## Decisions (Job, 28 Oct 2026)
