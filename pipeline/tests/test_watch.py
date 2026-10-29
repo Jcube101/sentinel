@@ -192,6 +192,34 @@ def test_old_rows_are_deleted():
                                        "updated_at": (NOW - timedelta(days=15)).isoformat()}]})
     watch.run_quiet(db, 7, RESULTS, NOW, _stages([_subject(3)]), cfg=CFG)
     assert [r["id"] for r in db.rows("desk_watch")] == ["fire:punjab"]
+    assert [r["subject_id"] for r in db.rows("desk_watch_snapshots")] == ["fire:punjab"]   # nor copied
+
+
+def test_each_run_copies_every_subject_to_the_watch_snapshots():
+    db = FakeSupabase()
+    quake = _subject(5.8, threshold=6.0, next_level=3, sid="earthquake:USGS-us1", category="earthquake", level=2)
+    summary = watch.run_quiet(db, 7, RESULTS, NOW, _stages([_subject(24), _subject(3, sid="fire:kerala")],
+                                                           quake_watch=[quake]), cfg=CFG)
+    snaps = {r["subject_id"]: r for r in db.rows("desk_watch_snapshots")}
+    assert sorted(snaps) == ["earthquake:USGS-us1", "fire:kerala", "fire:punjab"] and summary["snapshots"] == 3
+    punjab = snaps["fire:punjab"]
+    assert punjab["run_id"] == 7 and punjab["watching"] is True and punjab["taken_at"] == NOW.isoformat()
+    assert punjab["watch_reason"] == "4% below the Level 2 threshold (25)" and "trend" not in punjab
+    assert snaps["fire:kerala"]["watching"] is False
+    stored = {r["id"]: r for r in db.rows("desk_watch")}
+    assert {k: v for k, v in punjab.items() if k in watch.SNAPSHOT_COLUMNS} == {
+        k: v for k, v in stored["fire:punjab"].items() if k in watch.SNAPSHOT_COLUMNS}
+
+    # USGS down next run: the quake's row is kept as it was, and so is its copy
+    watch.run_quiet(db, 8, RESULTS, NOW + timedelta(hours=6), _stages(usgs_good=False), cfg=CFG)
+    run8 = {r["subject_id"]: r for r in db.rows("desk_watch_snapshots") if r["run_id"] == 8}
+    assert run8["earthquake:USGS-us1"]["watching"] is True and run8["earthquake:USGS-us1"]["value"] == 5.8
+
+
+def test_dry_run_writes_no_watch_snapshots():
+    db = FakeSupabase()
+    summary = watch.run_quiet(db, None, RESULTS, NOW, _stages([_subject(24)]), write=False, cfg=CFG)
+    assert summary["snapshots"] == 1 and db.rows("desk_watch_snapshots") == []
 
 
 def test_open_items_come_from_the_table_and_this_runs_stages():

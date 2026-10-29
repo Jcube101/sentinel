@@ -210,6 +210,8 @@ and the Windows scheduled task has been disabled.
   latitude and longitude as of that run (migration 008; null before it); views
   desk_daily_max (most severe open item per IST day) and desk_last_level3
 - desk_watch: watching list, distance to the next level and trend per subject (watch.py)
+- desk_watch_snapshots: desk_watch as of each run, every subject (watching or not),
+  without the trend (watch.py, migration 008)
 - category_status: one row per category per run; view category_status_latest
 
 ## Fire events

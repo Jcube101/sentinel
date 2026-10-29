@@ -26,6 +26,7 @@ import severity_config
 logger = logging.getLogger(__name__)
 
 WATCH_TABLE = "desk_watch"
+WATCH_SNAPSHOTS_TABLE = "desk_watch_snapshots"
 STATUS_TABLE = "category_status"
 TREND_POINTS = 10
 BATCH_SIZE = 500
@@ -120,6 +121,27 @@ def update_row(subject: desk.WatchSubject, stored: dict | None, cfg: dict, now: 
         "last_run_id": run_id,
         "updated_at": now.isoformat(),
     }
+
+
+# desk_watch columns copied into desk_watch_snapshots (the trend stays out:
+# the earlier runs' copies hold it)
+SNAPSHOT_COLUMNS = ("category", "title", "item_id", "level", "next_level", "metric", "value", "next_threshold",
+                    "distance_to_threshold", "rising_updates", "watching", "watch_reason", "source_updated_at")
+
+
+def watch_snapshots(rows, run_id: int | None, now: datetime, keep_from: datetime) -> list[dict]:
+    """The watching list as of this run, for desk_watch_snapshots: every
+    subject desk_watch holds after it (rows updated before keep_from are the
+    ones the cleanup deletes), watching or not."""
+    out = []
+    for r in sorted(rows, key=lambda r: r["id"]):
+        updated = desk._dt(r.get("updated_at"))
+        if updated is not None and updated < keep_from:
+            continue
+        out.append({"run_id": run_id, "subject_id": r["id"], **{c: r.get(c) for c in SNAPSHOT_COLUMNS},
+                    "rising_updates": r.get("rising_updates") or 0, "watching": bool(r.get("watching")),
+                    "taken_at": now.isoformat()})
+    return out
 
 
 # --- category status ---------------------------------------------------------------------------
@@ -231,11 +253,15 @@ def run_quiet(supabase, run_id: int | None, results: dict, now: datetime, stages
             category, open_items, results=results, stage=stages.get(CATEGORY_SOURCES[category][2]), cfg=cfg,
             watching=watching, run_id=run_id, now=now))
 
+    cutoff = now - timedelta(days=cfg["watching"]["keep_days"])
+    snapshots = watch_snapshots(current.values(), run_id, now, cutoff)
     if write:
         for start in range(0, len(rows), BATCH_SIZE):
             supabase.table(WATCH_TABLE).upsert(rows[start:start + BATCH_SIZE], on_conflict="id").execute()
         supabase.table(STATUS_TABLE).upsert(statuses, on_conflict="run_id,category").execute()
-        cutoff = now - timedelta(days=cfg["watching"]["keep_days"])
+        for start in range(0, len(snapshots), BATCH_SIZE):
+            supabase.table(WATCH_SNAPSHOTS_TABLE).upsert(
+                snapshots[start:start + BATCH_SIZE], on_conflict="run_id,subject_id").execute()
         supabase.table(WATCH_TABLE).delete().lt("updated_at", cutoff.isoformat()).execute()
 
     watching_rows = sorted((r for r in current.values() if r.get("watching")), key=lambda r: (r["category"], r["id"]))
@@ -246,4 +272,5 @@ def run_quiet(supabase, run_id: int | None, results: dict, now: datetime, stages
                    + (" last-known" if s["last_known"] else "") for s in statuses},
         "statuses": statuses,
         "subjects": len(rows),
+        "snapshots": len(snapshots),
     }
