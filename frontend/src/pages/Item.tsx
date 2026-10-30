@@ -380,7 +380,7 @@ export default function Item() {
         <Kicker text={asOfKicker(entry, run.started_at)} />
         <h1 className="m-0 font-cond font-semibold text-[30px] sm:text-[46px] leading-[1.06] tracking-[-0.01em]">{copy.title}</h1>
         {copy.standfirst && <p className="m-0 text-[17px] sm:text-[19px] leading-[1.55]">{copy.standfirst}</p>}
-        <SourceLine text={sourceCredit(entry)} />
+        <SourceLine text={sourceCredit(entry, run.started_at)} />
         <p className={`${meta} m-0 text-ink-muted uppercase tracking-[0.04em]`}>
           {since_ && !closed && <>Open since {istShortDate(since_)} · </>}
           Level from: <span className="normal-case">{entry.reason}</span>

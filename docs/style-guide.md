@@ -40,6 +40,8 @@ State facts with confidence; caveats go in the source line or Notes.
   - "Sentinel estimate from OpenAQ monitors": the fallback when the board's feed is down.
   - "NASA FIRMS satellites (27 Oct incomplete: no data after 14:37 IST)": a fire day
     whose data stops before the night pass.
+  - "GDACS (position as of 28 Oct, 11:30 IST)": a cyclone whose position (plan P7) is
+    more than six hours older than the edition.
   - "GDACS", "USGS", "NASA FIRMS satellites; GDACS forest-fire alert".
   - "· didn't answer this time" when the item is last-known.
 - **Kicker:** a last-known item gets a short kicker over its title, never a sentence:
@@ -213,7 +215,9 @@ Pradesh coast" (under 30 km), "in the Bay of Bengal, about 160 km off the Odisha
 "over land, about 120 km from the Odisha coast". Near another country's coast no sea is
 named: "about 250 km from the West Bengal coast". The position is GDACS's, so the copy
 says so, in its own sentence: "Global disaster monitors give it their highest alert, red,
-with winds of up to 222 km/h. They place it near the Andhra Pradesh coast." Never a track,
+with winds of up to 222 km/h. They place it near the Andhra Pradesh coast." When that
+position is more than six hours older than the edition, the source line gives its time,
+not the story. Never a track,
 a heading or a landfall, and no latitude or longitude in the copy or the evidence. Past
 editions show the location the item had in that edition (plan P1, from edition 29);
 before edition 29, only when no later run moved the item.
@@ -259,7 +263,7 @@ above normal they are.
 | Fire (roundup) | "Fires run above normal in five states, led by a spike in Chhattisgarh" | "Chhattisgarh logged 27 fires on Monday across 10 districts, about nine times the late-October average and a two-year high for the season. Madhya Pradesh had the most fires, 200, about three times the late-October average but normal for the season. Telangana, Maharashtra and Uttar Pradesh are also above normal." | NASA FIRMS satellites |
 | Fire (own story) | "Telangana's fires run at six times the usual"; "Madhya Pradesh's fires run at twice the usual" | "Telangana logged 39 fires on Monday across 17 districts, about six times the late-October average but normal for the season." / "Madhya Pradesh logged 145 fires yesterday across 21 districts, about double the late-October average but normal for the season." | NASA FIRMS satellites (27 Oct incomplete: no data after 14:37 IST) |
 | Air | "Air is very poor in Panipat and poor in 16 more cities"; "Air is poor in 23 cities, worst in Panipat" | "Panipat had the worst air in the country, with an index of 293, just short of 'very poor'. 22 other cities were rated poor." / "Baraut had the worst air in the country, with an index of 335, rated 'very poor'. Meerut and Gajraula were also rated very poor. 10 more cities were rated poor." | CPCB live data (unvalidated); Sentinel estimate from OpenAQ monitors |
-| Cyclone | "Cyclone Arnab" | "Global disaster monitors give it their highest alert, red, with winds of up to 222 km/h. They place it near the Andhra Pradesh coast." | GDACS |
+| Cyclone | "Cyclone Arnab" | "Global disaster monitors give it their highest alert, red, with winds of up to 222 km/h. They place it near the Andhra Pradesh coast." | GDACS; GDACS (position as of 28 Oct, 11:30 IST) |
 | Flood | "Flooding in India" | "Global disaster monitors give it their second-highest alert, orange." | GDACS |
 | Earthquake | "Major earthquake strikes 350 km outside India"; Level 1s grouped: "Two small earthquakes strike near India's borders" | "The magnitude 7.0 quake struck 191 km from Nagqu, China, 18 km below the surface. The US Geological Survey's alert for likely impact is orange, the second-highest of four. Eight people reported feeling it." | USGS |
 

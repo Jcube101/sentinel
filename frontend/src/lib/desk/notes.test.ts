@@ -12,19 +12,21 @@ const ed = (x: unknown) => x as EditionData
 const byKey = (entries: DeskEntry[], key: string) => entries.find((e) => e.key === key)!
 
 describe('the source line', () => {
+  const at26 = ed(e26).run.started_at
+
   it('credits each item’s source, with how far to trust it', () => {
     const no26 = deskEntries(ed(e26).snapshots)
     const no14 = deskEntries(ed(e14).snapshots)
     expect([
-      sourceCredit(byKey(no26, 'air:IN')),
-      sourceCredit(byKey(no26, 'cyclone:GDACS-TC-1001345')),
-      sourceCredit(byKey(no14, 'earthquake:USGS-us6000u43g')),
-      sourceCredit(byKey(deskEntries(ed(e25).snapshots), 'fire:roundup')),
+      sourceCredit(byKey(no26, 'air:IN'), at26),
+      sourceCredit(byKey(no26, 'cyclone:GDACS-TC-1001345'), at26),
+      sourceCredit(byKey(no14, 'earthquake:USGS-us6000u43g'), ed(e14).run.started_at),
+      sourceCredit(byKey(deskEntries(ed(e25).snapshots), 'fire:roundup'), ed(e25).run.started_at),
     ]).toEqual(['CPCB live data (unvalidated)', 'GDACS', 'USGS', 'NASA FIRMS satellites'])
   })
 
   it('says when a fire day is incomplete (No. 26: no data after 14:37 IST on 27 Oct)', () => {
-    expect(sourceCredit(byKey(deskEntries(ed(e26).snapshots), 'fire:roundup'))).toBe(
+    expect(sourceCredit(byKey(deskEntries(ed(e26).snapshots), 'fire:roundup'), at26)).toBe(
       'NASA FIRMS satellites (27 Oct incomplete: no data after 14:37 IST)',
     )
   })
@@ -33,11 +35,11 @@ describe('the source line', () => {
     const openaq = ed(e26).snapshots.map((s): Snapshot =>
       s.category === 'air' ? { ...s, figures: { ...s.figures, source: 'openaq', approximate: true, unvalidated: false } } : s,
     )
-    expect(sourceCredit(byKey(deskEntries(openaq), 'air:IN'))).toBe('Sentinel estimate from OpenAQ monitors')
+    expect(sourceCredit(byKey(deskEntries(openaq), 'air:IN'), at26)).toBe('Sentinel estimate from OpenAQ monitors')
   })
 
   it('says a source didn’t answer (No. 19: FIRMS timed out)', () => {
-    expect(sourceCredit(byKey(deskEntries(ed(e19).snapshots), 'fire:roundup'))).toBe("NASA FIRMS satellites · didn't answer this time")
+    expect(sourceCredit(byKey(deskEntries(ed(e19).snapshots), 'fire:roundup'), ed(e19).run.started_at)).toBe("NASA FIRMS satellites · didn't answer this time")
   })
 })
 

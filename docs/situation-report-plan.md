@@ -517,7 +517,9 @@ writes the field; older rows have it null or missing, so keep the fallbacks for 
 - **P6** (30 Oct): `figures.state_rank` and `rank_shared` let the fire copy say "the
   most of any state" (rank 1) or "tied for the most" (shared); see the style guide.
 - **P7** (30 Oct): a cyclone's `figures.position` sets its entry's position (marker and
-  "They place it …"), ahead of the snapshot's point.
+  "They place it …"), ahead of the snapshot's point. When `position.at` is more than six
+  hours older than the edition, the source line dates it: "GDACS (position as of 28 Oct,
+  11:30 IST)" (`notes.ts`, `positionAsOf`; Job, 30 Oct).
 - **Map page** (30 Oct, Job): the Layers rows, with their small symbols, are the key; the
   full explanation is a collapsed "How to read the map" under the map.
 

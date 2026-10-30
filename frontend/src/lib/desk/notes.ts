@@ -4,7 +4,7 @@
 // built only from the edition's own data.
 
 import type { DeskEntry } from './entries'
-import { istDay, istTime } from './ist'
+import { istDay, istShortDate, istTime } from './ist'
 import { SCALE, type Scale } from './scale'
 import type { Level } from './types'
 import { listText, numberWord, relativeDay } from './words'
@@ -31,12 +31,26 @@ function staleWords(e: DeskEntry): string {
   return "didn't answer this time"
 }
 
+// A cyclone's position older than this, against the edition, gets its time in
+// the source line (No. 30-31: Arnab's position is from 28 Oct, 11:30 IST).
+const POSITION_AGE_MS = 6 * 60 * 60 * 1000
+
+/** "position as of 28 Oct, 11:30 IST" when a cyclone's position (plan P7) is more than six hours older than the edition; else null. */
+export function positionAsOf(e: DeskEntry, editionAt: string): string | null {
+  const at = e.category === 'cyclone' ? e.figures.position?.at : null
+  if (typeof at !== 'string') return null
+  const age = Date.parse(editionAt) - Date.parse(at)
+  return age > POSITION_AGE_MS ? `position as of ${istShortDate(at)}, ${istTime(at)} IST` : null
+}
+
 /**
  * The item's source line, like a photo credit: "CPCB live data (unvalidated)",
  * "Sentinel estimate from OpenAQ monitors", "NASA FIRMS satellites (27 Oct
- * incomplete: no data after 14:37 IST)". Printed after "Source: ".
+ * incomplete: no data after 14:37 IST)", "GDACS (position as of 28 Oct, 11:30
+ * IST)". Printed after "Source: ". The edition's run time dates a cyclone's
+ * position.
  */
-export function sourceCredit(e: DeskEntry): string {
+export function sourceCredit(e: DeskEntry, editionAt: string): string {
   const items = e.members.length > 0 ? e.members : [e]
   const f = e.figures
   const quals: string[] = []
@@ -59,8 +73,11 @@ export function sourceCredit(e: DeskEntry): string {
     case 'earthquake':
       base = 'USGS'
       break
-    default:
+    default: {
       base = 'GDACS'
+      const pos = positionAsOf(e, editionAt)
+      if (pos) quals.push(pos)
+    }
   }
   const credit = base + (quals.length > 0 ? ` (${quals.join('; ')})` : '')
   return e.lastKnown ? `${credit} · ${staleWords(e)}` : credit

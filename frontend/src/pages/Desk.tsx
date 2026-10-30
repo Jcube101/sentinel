@@ -247,7 +247,7 @@ export default function Desk({ editionId, dayNote }: DeskProps = {}) {
                       entry={e}
                       copy={itemCopy(e, ctx)}
                       kicker={asOfKicker(e, data.run.started_at)}
-                      source={sourceCredit(e)}
+                      source={sourceCredit(e, data.run.started_at)}
                       rank={i + 1}
                       query={editionQuery(data.run.id, latestId)}
                     />

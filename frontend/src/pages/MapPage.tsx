@@ -261,7 +261,7 @@ export default function MapPage() {
                     {isSel && (
                       <div className="px-1 pb-3 pl-12 flex flex-col gap-2">
                         {copy.standfirst && <p className="m-0 text-[14px] leading-[1.5]">{copy.standfirst}</p>}
-                        <SourceLine text={sourceCredit(row)} />
+                        <SourceLine text={sourceCredit(row, run.started_at)} />
                         <Link
                           to={row.members.length > 0 ? itemPath(selected!) + query : itemPath(row.key) + query}
                           className="self-start font-mono text-[11px] uppercase tracking-[0.06em] border-b border-ink hover:text-accent"

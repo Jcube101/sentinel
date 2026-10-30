@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { copyContext, itemCopy } from './copy'
 import { deskEntries, snapshotEntry } from './entries'
 import { airPoints, dayPoints, fireLayerOf, mapItems, type DayPointsRow } from './mapdata'
-import { deskNotes } from './notes'
+import { deskNotes, sourceCredit } from './notes'
 import { SCALE, minFireEvents, scaleFrom, scaleRows } from './scale'
 import { watchRows, type WatchSnapshot } from './watch'
 import type { EditionData, Snapshot } from './types'
@@ -264,6 +264,18 @@ describe('a cyclone where the storm was (P7)', () => {
     const e = entries.find((x) => x.key === tc)!
     expect(e.coords).toEqual([17.9, 84.2])
     expect(mapItems(entries, ctx).find((m) => m.key === tc)).toMatchObject({ lat: 17.9, lon: 84.2 })
+  })
+
+  it('the source line dates a position more than six hours older than the edition', () => {
+    const credit = (editionAt: string, position: unknown = { latitude: 16.4, longitude: 81.8, at: '2026-10-28T06:00:00+00:00' }) =>
+      sourceCredit(patched(ed, tc, { position }).entries.find((x) => x.key === tc)!, editionAt)
+    // No. 31 ran at 02:30 IST on 30 Oct; Arnab's position is from 11:30 IST on 28 Oct.
+    expect(credit('2026-10-29T21:00:02.343739+00:00')).toBe('GDACS (position as of 28 Oct, 11:30 IST)')
+    expect(credit('2026-10-28T12:00:01Z')).toBe('GDACS (position as of 28 Oct, 11:30 IST)')
+    expect(credit('2026-10-28T12:00:00Z')).toBe('GDACS') // six hours exactly
+    expect(credit('2026-10-28T09:00:00Z')).toBe('GDACS')
+    expect(credit('2026-10-29T21:00:00Z', null)).toBe('GDACS') // no position (editions before 30)
+    expect(credit('2026-10-29T21:00:00Z', { latitude: 16.4, longitude: 81.8 })).toBe('GDACS') // no time
   })
 
   it('no position (editions before 30): the stored point, as before', () => {
