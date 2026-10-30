@@ -1,17 +1,18 @@
 # Sentinel — Severity & Fire-Event Pipeline (brief for Claude Code)
 
-Status: **complete, 21 Oct 2026; last updated 29 Oct 2026.** Build steps 0-7 are merged and
-run on the Pi three times a day; migrations 001-008 are applied (checked 29 Oct: every table
-and view they create answers through the Data API). *Where things stand* lists the changes
-since and how far each has been verified. What is left is under *Follow-ups*; the UI that
-reads the new tables is the next, separate frontend task (*Non-goals*).
+Status: **complete, 21 Oct 2026; last updated 30 Oct 2026.** Build steps 0-7 are merged and
+run on the Pi three times a day; migrations 001-009 are applied (checked 30 Oct: every table
+and view the site reads answers through the Data API; the four older tables refuse anon).
+*Where things stand* lists the changes since and how far each has been verified. What is
+left is under *Follow-ups*; the UI that reads the new tables is the next, separate frontend
+task (*Non-goals*).
 Written 20 Oct 2026 after the Sentinel redesign session.
 Design reference: "Sentinel — Design Directions" canvas, artboards **A2 · Desk ranked by severity** and **A2 · Quiet-day desk**.
 
-## Where things stand (29 Oct 2026)
+## Where things stand (30 Oct 2026)
 
 Every run is an edition (`pipeline_runs.id`). Edition 1 ran on 20 Oct; the latest checked,
-edition 29 (29 Oct, 14:30 IST), was ok: 233 s, every source ok. Of editions 1-29, two
+edition 31 (30 Oct, 02:30 IST), was ok: 177 s, every source ok. Of editions 1-31, two
 failed: 10 (a GDACS HTTP error, which still fails a run) and 19 (a single FIRMS timeout,
 which no longer does).
 
@@ -33,6 +34,8 @@ which no longer does).
 | P2: `desk_watch_snapshots`, every watch subject per run | 29 Oct | Live since edition 29: 41 rows, 2 watching |
 | P3: `pipeline_runs.severity_config` per edition; editions 1-28 backfilled from git history (`tools/backfill_severity_config.py`) | 29 Oct | Live since edition 29. Backfill run 29 Oct: editions 1-28 stored, 1, 9 and 10 marked not certain (manual runs) |
 | P4: `fire_day_points`, fire map points per day kept for good; fire positions in `large_fires_near_people` | 29 Oct | Live since edition 29 (28 Oct: 265 events). 19-27 Oct copied from `fire_events` on 29 Oct, every count and point checked; nothing earlier was stored |
+| Part C: FIRMS hotspots no longer go to `events`; they go to the fire stages and the local archive (`archive.store_hotspots()`); FIRMS's staleness reads its `sources` row | 29 Oct | Live since edition 31: `events` got 141 rows (EONET 2, GDACS 11, USGS 128), 2,242 hotspots stored locally, FIRMS staleness ok from `sources` (12.5 h) |
+| Part C: migration 009, `events`, `aqi_readings`, `sources` and `categories` private | applied 30 Oct | Job's check query; an anon-key read gets 401 on the four, 200 on every desk, fire and run table and view; no anon write anywhere |
 
 ## The problem
 
@@ -371,20 +374,27 @@ Open as of 28 Oct 2026 (first listed 21 Oct, when the spec was completed).
   pattern to the four (RLS on with a read policy, the id sequence too) and keeps anon's
   SELECT, since the live site reads `events` and `aqi_readings`. **Applied 29 Oct:** the
   check query shows no anon or authenticated write on any table or view, and the probe
-  now gets "permission denied" on all eleven tables. Done, apart from *After the frontend
-  switch* below.
-- **After the frontend switch (Job, 29 Oct 2026; waits for Job's go):**
+  now gets "permission denied" on all eleven tables. Done; the four lost anon's SELECT with
+  migration 009 (below).
+- ~~**After the frontend switch (Job, 29 Oct 2026)**~~: done 30 Oct.
   1. Remove anon SELECT on `events`, `aqi_readings` and the other older tables the new site
-     no longer reads.
+     no longer reads. Done 30 Oct: the frontend reads none of `events`, `aqi_readings`,
+     `sources` or `categories` (`/event/:id` looks up `desk_items.source_ref`; the Sources
+     page reads `pipeline_runs.sources`). Migration 009 drops their read policies and every
+     anon and authenticated grant.
   2. Check whether anything still needs FIRMS hotspots in `events`. If not, stop writing them
      there (`fire_events` and the per-day fire points cover the map) and delete the existing
      rows. Done 29 Oct: the site never read them; the staleness check and the local archive
      (the NRT side of *Live vs archive fire counts*) did. FIRMS's staleness now reads its
      `sources` row, and `archive.store_hotspots()` writes each run's hotspots to the local
-     archive directly.
+     archive directly. The 38,531 FIRMS rows in `events` (30 Aug-29 Oct) were copied to the
+     local archive, checked id by id, then deleted on 29 Oct, leaving 645 rows (EONET 199,
+     GDACS 11, USGS 435). The archive holds 43,506 FIRMS hotspots, 14 Jun-29 Oct (30 Oct).
   3. Then reclaim the space: give Job the exact SQL editor command (no VACUUM FULL from the
      pipeline session). On 29 Oct `events` took 118 MB of the database's 134 MB, 98 MB of it
-     heap for 37k rows (~2.6 KB a row on disk for ~0.9 KB of data, so mostly bloat).
+     heap for 37k rows (~2.6 KB a row on disk for ~0.9 KB of data, so mostly bloat). Done
+     30 Oct: Job ran `vacuum (full, analyze, verbose) public.events;` in the SQL editor.
+     `events` is now 920 kB and the database 18 MB.
 - **Live vs archive fire counts:** the baseline uses the reprocessed FIRMS product (SP), the
   live feed is near-real-time (NRT). If NRT detects systematically more or fewer hotspots,
   every `ratio_to_norm` shifts. Only one partial day overlapped in Oct 2026 and FIRMS timed

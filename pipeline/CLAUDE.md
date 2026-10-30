@@ -9,7 +9,7 @@ data.gov.in for the air item. It runs on the Raspberry Pi (jobpi) from a systemd
 `pipeline_runs` row whose id is the edition number.
 
 ## Status (28 Oct 2026)
-Severity pipeline complete (build steps 0-7, 21 Oct) and migrations 001-006 applied. Spec,
+Severity pipeline complete (build steps 0-7, 21 Oct) and migrations 001-009 applied. Spec,
 decisions, what has been verified live and the open follow-ups: `docs/severity-pipeline.md`
 (*Where things stand*). Edition 25 (28 Oct, 02:30 IST), for scale: ok in 662 s; FIRMS
 2,477 hotspot rows, EONET 1, GDACS 9 events, USGS 124 quakes, OpenAQ 424 readings, and
@@ -68,7 +68,7 @@ due to the relative import of `config`.
 ### Supabase Data API grants (from October 30, 2026)
 New tables created in the `public` schema after October 30, 2026 require
 explicit grants before supabase-js or the REST API can access them.
-Existing tables (events, aqi_readings, sources, categories) are unaffected.
+The older tables (events, aqi_readings, sources, categories) are covered below.
 
 The rule (Job): only the service role (the pipeline) writes; anon and
 authenticated are read-only. Every migration that adds a table uses this
@@ -86,8 +86,11 @@ A view gets the same `revoke all`, then `grant select` to anon and to
 service_role. Without the grants, the API returns "permission denied". The
 older tables (events, aqi_readings, sources, categories) predate this pattern:
 anon could still UPDATE them (RLS stopped it, the grant didn't). Migration 007
-puts them on it, keeping anon's SELECT while the live site reads events and
-aqi_readings; dropping that SELECT waits for the frontend switch.
+put them on it, keeping anon's SELECT while the old site read events and
+aqi_readings. Migration 009 (30 Oct) made them private once the Situation Report
+stopped reading them: RLS on, no read policy, and no grant to anon or authenticated
+(an anon-key read gets 401 "permission denied"). Only the service role reads and
+writes them.
 
 ## Tests
 
@@ -206,8 +209,9 @@ and the Windows scheduled task has been disabled.
   read by the air stage only (not a fetcher, writes no rows of its own)
 
 ## Supabase Tables
-- events: disaster events from EONET, GDACS and USGS (FIRMS hotspots until 29 Oct 2026)
-- aqi_readings: air quality readings
+- events: disaster events from EONET, GDACS and USGS (FIRMS hotspots until 29 Oct 2026);
+  service role only since migration 009
+- aqi_readings: air quality readings; service role only since migration 009
 - pipeline_runs: one row per non-dry run; id is the edition number (runs.py);
   severity_config = severity.toml as that edition ran it, the same dict every
   severity stage got (migration 008). Editions 1-28 are backfilled from git history
@@ -337,12 +341,14 @@ source freshness, 002 desk_items and snapshots, 003 fire_events, 004 fire_baseli
 005 quiet-day desk, 006 the DATAGOV sources row, 007 read-only grants on the pre-001
 tables (applied 29 Oct; an anon-key write gets "permission denied" on every table), 008
 the per-edition archive (applied 29 Oct: snapshot title/place/position, desk_watch_snapshots,
-pipeline_runs.severity_config, fire_day_points, `last_known` in desk_last_level3).
+pipeline_runs.severity_config, fire_day_points, `last_known` in desk_last_level3), 009
+the four pre-001 tables private (applied 30 Oct: events, aqi_readings, sources and
+categories answer anon with 401; every desk, fire and run table and view still reads).
 
 ## Schema — events table
 id: text (primary key, deterministic)
 external_id: text
-source: text (FIRMS | EONET | GDACS | USGS)
+source: text (EONET | GDACS | USGS; FIRMS until 29 Oct 2026)
 category: text (fire | flood | cyclone | earthquake)
 title: text
 description: text
