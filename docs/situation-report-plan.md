@@ -551,6 +551,16 @@ writes the field; older rows have it null or missing, so keep the fallbacks for 
   11:30 IST)" (`notes.ts`, `positionAsOf`; Job, 30 Oct).
 - **Map page** (30 Oct, Job): the Layers rows, with their small symbols, are the key; the
   full explanation is a collapsed "How to read the map" under the map.
+- **Cyclone winds and close** (30 Oct, from edition 32): `lib/desk/wind.ts`
+  (`cycloneWind`) reads `wind_kmh`, and the peak from `peak_wind_kmh`, else
+  `figures.severity`. The story says "winds of up to 102 km/h" and, when the peak was
+  higher, "Its winds peaked at 222 km/h."; before 32 it says "peak winds of 222 km/h".
+  The card shows Latest wind and Peak wind; the item page adds their times and the
+  landfall; the map's spiral is sized by the latest wind. A closed cyclone's line
+  (Since yesterday, the item page's title, its history) reads "Cyclone Arnab weakens after
+  crossing the Andhra Pradesh coast" when `wind_kmh` < `peak_wind_kmh` and `landfall` is
+  set, "… weakens" or "… crosses the … coast" with one of them, else the plain line. The
+  track isn't drawn.
 
 ## Decisions (Job, 28 Oct 2026)
 

@@ -16,6 +16,7 @@ import { SOURCE_NAMES } from './sources'
 import { istDay } from './ist'
 import { placeOf, placeText } from './where'
 import { asOfKicker, fireDayCutOff } from './notes'
+import { cycloneWind, weakened } from './wind'
 import {
   SOURCE_WORDS,
   alertRank,
@@ -561,13 +562,14 @@ function gdacsStandfirst(e: DeskEntry, cyclone: boolean): string {
   const f = e.figures
   const now = String(f.episode_alert_level ?? f.alert_level ?? '').toLowerCase()
   const peak = String(f.alert_level ?? '').toLowerCase()
+  // The latest advisory's wind (edition 32 on); before that only the peak is known, and said as the peak.
+  const w = cyclone ? cycloneWind(f) : null
   const wind =
-    cyclone && typeof f.severity === 'number' && f.severity > 0 && f.severity_unit === 'km/h'
-      ? `, with winds of up to ${Math.round(f.severity)} km/h`
-      : ''
+    w?.now != null ? `, with winds of up to ${w.now} km/h` : w?.peak != null ? `, with peak winds of ${w.peak} km/h` : ''
   // Where GDACS places the event (its point is the centre of the area it maps, not a track).
   let s = `Global disaster monitors give it ${alertRank(now, 'their')}${wind}.`
   if (e.coords) s += ` They place it ${placeText(placeOf(e.coords[0], e.coords[1]))}.`
+  if (w && weakened(w)) s += ` Its winds peaked at ${w.peak} km/h.`
   if (f.rising) s += ' Its alert score went up in their latest update.'
   if ((COLOUR_RANK[peak] ?? 0) > (COLOUR_RANK[now] ?? 0)) s += ` It was rated ${peak} earlier.`
   return s
@@ -597,6 +599,20 @@ export function itemCopy(e: DeskEntry, ctx: CopyContext): ItemCopy {
   }
 }
 
+/**
+ * A closed cyclone as news, only as far as its closing figures go (edition 32 on):
+ * "weakens" when its latest wind is below its peak, "crossing the Andhra Pradesh
+ * coast" when it made landfall. Otherwise the closing rule's plain line.
+ */
+function cycloneClosedLine(e: DeskEntry): string {
+  const name = cycloneName(e.title)
+  const land = e.figures.landfall ?? null
+  const crossing = land ? (land.state ? `crossing the ${land.state} coast` : 'making landfall') : null
+  if (weakened(cycloneWind(e.figures))) return crossing ? `${name} weakens after ${crossing}` : `${name} weakens`
+  if (land) return land.state ? `${name} crosses the ${land.state} coast` : `${name} makes landfall`
+  return `Global disaster monitors have stopped tracking ${midName(name)}`
+}
+
 /** Why a closed item left, from its closing rule. */
 export function closedLine(e: DeskEntry): string {
   switch (e.category) {
@@ -605,7 +621,7 @@ export function closedLine(e: DeskEntry): string {
     case 'earthquake':
       return `Two days have passed since the ${quakeStrength(e.figures.magnitude ?? e.strength)} earthquake ${quakeWhere(e)}`
     case 'cyclone':
-      return `Global disaster monitors have stopped tracking ${midName(cycloneName(e.title))}`
+      return cycloneClosedLine(e)
     case 'flood':
       return `Global disaster monitors have stopped tracking ${midName(floodName(e))}`
     case 'air':

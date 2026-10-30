@@ -27,6 +27,16 @@ export interface Edition {
 }
 
 /** Key figures stored with each item. Which keys exist depends on the category. */
+export interface TrackPoint {
+  at: string
+  latitude: number
+  longitude: number
+  wind_kmh: number | null
+  storm_status: string | null
+  state: string | null
+  district: string | null
+}
+
 export interface Figures {
   [key: string]: unknown
   // earthquake (desk.usgs_candidates)
@@ -51,6 +61,20 @@ export interface Figures {
   gdacs_url?: string | null
   /** A cyclone's position and when it was there (plan P7, from edition 30). Floods have none. */
   position?: { latitude: number; longitude: number; at?: string | null } | null
+  // cyclone winds, track and close rule (from edition 32). Before that, `severity` is
+  // GDACS's peak wind, not the wind now.
+  /** The latest advisory's wind, km/h, and its time (UTC). */
+  wind_kmh?: number | null
+  wind_at?: string | null
+  /** The storm's peak wind so far; peak_wind_at is null when the track couldn't be read. */
+  peak_wind_kmh?: number | null
+  peak_wind_at?: string | null
+  /** The observed advisories, oldest first, about one every 6 h; state and district null at sea. */
+  track?: TrackPoint[] | null
+  /** The first point over land after one at sea, or null. */
+  landfall?: { at: string; latitude: number; longitude: number; state: string | null; district: string | null } | null
+  /** The latest advisory is over a day old: the item closes in that run. */
+  advisories_stopped?: boolean
   // fire (fire_desk.state_candidate)
   state?: string
   day?: string

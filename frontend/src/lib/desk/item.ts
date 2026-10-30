@@ -8,6 +8,7 @@ import { istDay } from './ist'
 import type { Change, Level, TimedSnapshot } from './types'
 import { timesUsual } from './words'
 import { SCALE, minFireEvents } from './scale'
+import { cycloneWind } from './wind'
 
 export const LEVEL_STRIP_RUNS = 30
 export const FIRE_DAYS = 21
@@ -57,7 +58,8 @@ export function snapshotNote(e: DeskEntry): string {
     case 'cyclone':
     case 'flood': {
       const colour = String(f.episode_alert_level ?? f.alert_level ?? '').toLowerCase()
-      const wind = typeof f.severity === 'number' && f.severity_unit === 'km/h' ? `, winds up to ${Math.round(f.severity)} km/h` : ''
+      const w = e.category === 'cyclone' ? cycloneWind(f) : null
+      const wind = w?.now != null ? `, winds up to ${w.now} km/h` : w?.peak != null ? `, peak winds ${w.peak} km/h` : ''
       return `${colour ? `${colour[0].toUpperCase()}${colour.slice(1)} alert` : 'Alert'}${wind}`
     }
   }

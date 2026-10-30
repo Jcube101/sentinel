@@ -19,6 +19,7 @@ import { airPoints, fireLayerOf, mapItems } from '@/lib/desk/mapdata'
 import { Chips, Kicker, SourceLine, Strip } from '@/components/paper/DeskEntryRow'
 import PageNotes from '@/components/paper/PageNotes'
 import { asOfKicker, deskNotes, sourceCredit } from '@/lib/desk/notes'
+import { cycloneWind } from '@/lib/desk/wind'
 
 const head = 'm-0 font-mono font-normal text-[11px] sm:text-[12px] tracking-[0.08em] uppercase pb-2 sm:pb-2.5 border-b border-ink flex justify-between gap-3'
 const meta = 'font-mono text-[11px] sm:text-[12px] leading-[1.5]'
@@ -227,6 +228,24 @@ function QuakeDetail({ e, observed }: { e: DeskEntry; observed: string | null })
   )
 }
 
+/** "(28 Oct, 11:30 IST)" after a figure, or nothing. */
+function whenText(at: string | null | undefined): string {
+  return at ? ` (${istShortDate(at)}, ${istTime(at)} IST)` : ''
+}
+
+/** A cyclone's wind: the latest advisory's and the peak (edition 32 on); before that only the peak. */
+function windFacts(f: Figures): [string, string][] {
+  const w = cycloneWind(f)
+  const land = f.landfall
+  return [
+    ...(w.now !== null ? [['Latest wind', `${w.now} km/h${whenText(f.wind_at)}`] as [string, string]] : []),
+    ...(w.peak !== null ? [['Peak wind', `${w.peak} km/h${whenText(f.peak_wind_at)}`] as [string, string]] : []),
+    ...(land
+      ? [['Landfall', `${[land.district, land.state].filter(Boolean).join(', ') || 'over land'}${whenText(land.at)}`] as [string, string]]
+      : []),
+  ]
+}
+
 function GdacsDetail({ e }: { e: DeskEntry }) {
   const f = e.figures
   const place = e.coords ? placeOf(e.coords[0], e.coords[1]) : null
@@ -236,14 +255,20 @@ function GdacsDetail({ e }: { e: DeskEntry }) {
         items={[
           ['Alert now', String(f.episode_alert_level ?? f.alert_level ?? '—')],
           ['Highest alert', String(f.alert_level ?? '—')],
-          ...(typeof f.severity === 'number' && f.severity_unit ? [['Severity', `${Math.round(f.severity)} ${f.severity_unit}`] as [string, string]] : []),
+          ...(e.category === 'cyclone'
+            ? windFacts(f)
+            : typeof f.severity === 'number' && f.severity_unit
+              ? [['Severity', `${Math.round(f.severity)} ${f.severity_unit}`] as [string, string]]
+              : []),
           ...(f.severity_text ? [['GDACS says', String(f.severity_text)] as [string, string]] : []),
           ['Alert score', `${f.alert_score ?? '—'}${typeof f.prev_episode_alert_score === 'number' ? ` (previous update ${f.prev_episode_alert_score})` : ''}`],
           ['Where', place ? `${placeText(place)}, as global disaster monitors place it` : 'not known for this edition'],
           ['Source', f.gdacs_url ? <a href={String(f.gdacs_url)} target="_blank" rel="noreferrer" className="border-b border-ink hover:text-accent">GDACS report ↗</a> : 'GDACS'],
         ]}
       />
-      <p className={`${meta} m-0 text-ink-muted`}>No track or landfall is forecast here.</p>
+      <p className={`${meta} m-0 text-ink-muted`}>
+        {f.landfall ? 'The landfall is from the storm’s observed track. ' : ''}No track or landfall is forecast here.
+      </p>
     </Section>
   )
 }

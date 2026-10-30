@@ -1,12 +1,14 @@
 // What editions from 29 on store for themselves (plan P1-P4), and the fallbacks for older ones.
 import { describe, expect, it } from 'vitest'
-import { copyContext, itemCopy } from './copy'
+import { closedLine, copyContext, itemCopy, movementLine } from './copy'
+import { entryCard } from './cards'
+import { itemHistory } from './item'
 import { deskEntries, snapshotEntry } from './entries'
 import { airPoints, dayPoints, fireLayerOf, mapItems, type DayPointsRow } from './mapdata'
 import { deskNotes, sourceCredit } from './notes'
 import { SCALE, minFireEvents, scaleFrom, scaleRows } from './scale'
 import { watchRows, type WatchSnapshot } from './watch'
-import type { EditionData, Snapshot } from './types'
+import type { EditionData, Snapshot, TimedSnapshot } from './types'
 import configs from './__fixtures__/severity-configs.json'
 import e25 from './__fixtures__/edition-25.json'
 import e26 from './__fixtures__/edition-26.json'
@@ -282,5 +284,66 @@ describe('a cyclone where the storm was (P7)', () => {
     const e = deskEntries(ed.snapshots, new Map()).find((x) => x.key === tc)!
     const s = ed.snapshots.find((x) => x.item_id === tc)!
     expect(e.coords).toEqual([Number(s.desk_items!.latitude), Number(s.desk_items!.longitude)])
+  })
+})
+
+describe('a cyclone’s wind now, its peak and its close (edition 32 on)', () => {
+  const tc = 'cyclone:GDACS-TC-1001345'
+  // What ARNAB-26 is expected to close with in edition 32.
+  const arnab = {
+    wind_kmh: 102,
+    wind_at: '2026-10-28T06:00:00Z',
+    peak_wind_kmh: 222,
+    peak_wind_at: '2026-10-27T12:00:00Z',
+    landfall: { at: '2026-10-27T18:00:00Z', latitude: 16.4, longitude: 81.5, state: 'Andhra Pradesh', district: 'West Godavari' },
+    advisories_stopped: true,
+  }
+  const entry = (patch: Record<string, unknown>) => patched(ed, tc, patch).entries.find((x) => x.key === tc)!
+
+  it('the story gives the latest wind, and the peak when it was higher', () => {
+    const { entries, ctx } = patched(ed, tc, arnab)
+    expect(itemCopy(entries.find((x) => x.key === tc)!, ctx).standfirst).toBe(
+      'Global disaster monitors give it their highest alert, red, with winds of up to 102 km/h. ' +
+        'They place it near the Andhra Pradesh coast. Its winds peaked at 222 km/h.',
+    )
+    expect(entryCard(entry(arnab))!.cells.map((c) => `${c.value} ${c.label}`)).toEqual([
+      'Red GDACS alert',
+      '102 km/h Latest wind',
+      '222 km/h Peak wind',
+    ])
+    expect(mapItems(entries, ctx).find((m) => m.key === tc)?.strength).toBe(102)
+  })
+
+  it('at its peak, one wind; a run with no track says the peak as the peak', () => {
+    const { entries, ctx } = patched(ed, tc, { ...arnab, wind_kmh: 222 })
+    expect(itemCopy(entries.find((x) => x.key === tc)!, ctx).standfirst).toMatch(/with winds of up to 222 km\/h\. They place it near the Andhra Pradesh coast\.$/)
+    expect(entryCard(entry({ ...arnab, wind_kmh: 222 }))!.cells.map((c) => c.label)).toEqual(['GDACS alert', 'Latest wind'])
+    const noTrack = patched(ed, tc, { wind_kmh: null, wind_at: null, peak_wind_kmh: 222, peak_wind_at: null })
+    expect(itemCopy(noTrack.entries.find((x) => x.key === tc)!, noTrack.ctx).standfirst).toMatch(/^Global disaster monitors give it their highest alert, red, with peak winds of 222 km\/h\./)
+  })
+
+  it('closed: news only as far as the figures go', () => {
+    expect(closedLine(entry(arnab))).toBe('Cyclone Arnab weakens after crossing the Andhra Pradesh coast')
+    expect(closedLine(entry({ ...arnab, landfall: null }))).toBe('Cyclone Arnab weakens')
+    expect(closedLine(entry({ ...arnab, wind_kmh: 222 }))).toBe('Cyclone Arnab crosses the Andhra Pradesh coast')
+    expect(closedLine(entry({ ...arnab, landfall: { ...arnab.landfall, state: null, district: null } }))).toBe(
+      'Cyclone Arnab weakens after making landfall',
+    )
+    // No latest wind (editions before 32, or no track): never "weakens".
+    expect(closedLine(entry({ ...arnab, wind_kmh: null, landfall: null }))).toBe('Global disaster monitors have stopped tracking Cyclone Arnab')
+    expect(closedLine(entry({}))).toBe('Global disaster monitors have stopped tracking Cyclone Arnab')
+  })
+
+  it('the Since yesterday line and the item’s history read the same', () => {
+    const { entries, ctx } = patched(ed, tc, arnab)
+    const e = entries.find((x) => x.key === tc)!
+    const snapshot = { ...ed.snapshots.find((x) => x.item_id === tc)!, figures: { ...ed.snapshots.find((x) => x.item_id === tc)!.figures, ...arnab }, change: 'closed', status: 'closed' } as Snapshot
+    expect(movementLine({ kind: 'closed', itemId: tc, category: 'cyclone', from: 3, to: null, snapshot }, e, ctx)).toEqual({
+      tag: '− CLOSED',
+      text: 'Cyclone Arnab weakens after crossing the Andhra Pradesh coast',
+      levels: 'was Level 3',
+    })
+    const rows = itemHistory([{ ...snapshot, taken_at: '2026-10-30T09:00:00Z' } as TimedSnapshot])
+    expect(rows[0].note).toBe('Cyclone Arnab weakens after crossing the Andhra Pradesh coast')
   })
 })

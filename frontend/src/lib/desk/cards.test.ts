@@ -43,7 +43,7 @@ describe('entryCard', () => {
 
   it('cyclone: GDACS alert and wind speed (no alert score or episode), and the GDACS report link', () => {
     const card = entryCard(entry(25, 'cyclone:GDACS-TC-1001345'))!
-    expect(card.cells.map((c) => `${c.value} ${c.label}`)).toEqual(['Red GDACS alert', '222 km/h Max wind speed'])
+    expect(card.cells.map((c) => `${c.value} ${c.label}`)).toEqual(['Red GDACS alert', '222 km/h Peak wind'])
     expect(card.link?.href).toContain('gdacs.org/report.aspx?eventid=1001345')
   })
 

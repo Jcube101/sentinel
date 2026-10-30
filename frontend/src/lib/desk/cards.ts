@@ -7,6 +7,7 @@ import { counted, AIR_BANDS, type DeskEntry } from './entries'
 import { ratioText } from './headline'
 import { SCALE } from './scale'
 import type { AirCity, Figures, Level, Snapshot } from './types'
+import { cycloneWind } from './wind'
 
 export interface Cell {
   value: string
@@ -149,12 +150,13 @@ function gdacsCard(f: Figures, cyclone: boolean): Card {
   const cells: Cell[] = []
   const colour = f.episode_alert_level ?? f.alert_level
   if (colour) cells.push({ value: colour, label: 'GDACS alert', short: 'Alert' })
-  if (typeof f.severity === 'number' && f.severity > 0 && f.severity_unit) {
-    cells.push({
-      value: `${Math.round(f.severity)} ${f.severity_unit}`,
-      label: cyclone ? 'Max wind speed' : 'Severity',
-      short: cyclone ? 'Max wind' : 'Severity',
-    })
+  if (cyclone) {
+    // The latest wind (edition 32 on), and the peak when it was higher; before 32 only the peak.
+    const w = cycloneWind(f)
+    if (w.now !== null) cells.push({ value: `${w.now} km/h`, label: 'Latest wind', short: 'Wind' })
+    if (w.peak !== null && (w.now === null || w.peak > w.now)) cells.push({ value: `${w.peak} km/h`, label: 'Peak wind', short: 'Peak' })
+  } else if (typeof f.severity === 'number' && f.severity > 0 && f.severity_unit) {
+    cells.push({ value: `${Math.round(f.severity)} ${f.severity_unit}`, label: 'Severity', short: 'Severity' })
   }
   return { cells, detail: null, link: f.gdacs_url ? { href: f.gdacs_url, text: 'GDACS report' } : null }
 }

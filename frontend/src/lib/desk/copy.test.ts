@@ -52,7 +52,7 @@ describe('edition 25 (Wed 28 Oct, 02:30 IST)', () => {
   it('cyclone: no position, since a later edition moved it (P1)', () => {
     expect(item(25, 'cyclone:GDACS-TC-1001345')).toMatchObject({
       title: 'Cyclone Arnab',
-      standfirst: 'Global disaster monitors give it their highest alert, red, with winds of up to 222 km/h.',
+      standfirst: 'Global disaster monitors give it their highest alert, red, with peak winds of 222 km/h.',
     })
   })
 
@@ -89,7 +89,7 @@ describe('edition 26 (Wed 28 Oct, 14:30 IST): four fire states fall back on an i
 
   it('the cyclone: where global disaster monitors place it, in words', () => {
     expect(item(26, 'cyclone:GDACS-TC-1001345').standfirst).toBe(
-      'Global disaster monitors give it their highest alert, red, with winds of up to 222 km/h. They place it near the Andhra Pradesh coast.',
+      'Global disaster monitors give it their highest alert, red, with peak winds of 222 km/h. They place it near the Andhra Pradesh coast.',
     )
   })
 

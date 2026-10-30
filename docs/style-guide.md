@@ -176,6 +176,13 @@ figure behind it:
   fires" means the most of the states in the story, never "of any state".
 - "the worst air in the country": the worst of the cities reporting to the board's
   national feed.
+- A cyclone's "winds of up to 102 km/h": the latest advisory's wind (from edition 32).
+  GDACS's own figure is the storm's peak, so without the latest wind (editions before 32,
+  or a run that couldn't read the track) it is said as the peak: "peak winds of 222
+  km/h". "Its winds peaked at 222 km/h." only when the peak is above the latest wind.
+- A closed cyclone "weakens": its latest wind is below its peak; "after crossing the
+  Andhra Pradesh coast": it made landfall, in that state (the first point over land
+  after one at sea). Without either, the plain closing line.
 - A neutral verb ("run at twice the usual") when nothing changed.
 
 ### Every line rebuilds for past editions
@@ -215,7 +222,7 @@ Pradesh coast" (under 30 km), "in the Bay of Bengal, about 160 km off the Odisha
 "over land, about 120 km from the Odisha coast". Near another country's coast no sea is
 named: "about 250 km from the West Bengal coast". The position is GDACS's, so the copy
 says so, in its own sentence: "Global disaster monitors give it their highest alert, red,
-with winds of up to 222 km/h. They place it near the Andhra Pradesh coast." When that
+with peak winds of 222 km/h. They place it near the Andhra Pradesh coast." When that
 position is more than six hours older than the edition, the source line gives its time,
 not the story. Never a track,
 a heading or a landfall, and no latitude or longitude in the copy or the evidence. Past
@@ -263,7 +270,7 @@ above normal they are.
 | Fire (roundup) | "Fires run above normal in five states, led by a spike in Chhattisgarh" | "Chhattisgarh logged 27 fires on Monday across 10 districts, about nine times the late-October average and a two-year high for the season. Madhya Pradesh had the most fires, 200, about three times the late-October average but normal for the season. Telangana, Maharashtra and Uttar Pradesh are also above normal." | NASA FIRMS satellites |
 | Fire (own story) | "Telangana's fires run at six times the usual"; "Madhya Pradesh's fires run at twice the usual" | "Telangana logged 39 fires on Monday across 17 districts, about six times the late-October average but normal for the season." / "Madhya Pradesh logged 145 fires yesterday across 21 districts, about double the late-October average but normal for the season." | NASA FIRMS satellites (27 Oct incomplete: no data after 14:37 IST) |
 | Air | "Air is very poor in Panipat and poor in 16 more cities"; "Air is poor in 23 cities, worst in Panipat" | "Panipat had the worst air in the country, with an index of 293, just short of 'very poor'. 22 other cities were rated poor." / "Baraut had the worst air in the country, with an index of 335, rated 'very poor'. Meerut and Gajraula were also rated very poor. 10 more cities were rated poor." | CPCB live data (unvalidated); Sentinel estimate from OpenAQ monitors |
-| Cyclone | "Cyclone Arnab" | "Global disaster monitors give it their highest alert, red, with winds of up to 222 km/h. They place it near the Andhra Pradesh coast." | GDACS; GDACS (position as of 28 Oct, 11:30 IST) |
+| Cyclone | "Cyclone Arnab" | "Global disaster monitors give it their second-highest alert, orange, with winds of up to 102 km/h. They place it near the Andhra Pradesh coast. Its winds peaked at 222 km/h." (edition 32 on) / "Global disaster monitors give it their highest alert, red, with peak winds of 222 km/h. They place it near the Andhra Pradesh coast." (before 32: only the peak is known) | GDACS; GDACS (position as of 28 Oct, 11:30 IST) |
 | Flood | "Flooding in India" | "Global disaster monitors give it their second-highest alert, orange." | GDACS |
 | Earthquake | "Major earthquake strikes 350 km outside India"; Level 1s grouped: "Two small earthquakes strike near India's borders" | "The magnitude 7.0 quake struck 191 km from Nagqu, China, 18 km below the surface. The US Geological Survey's alert for likely impact is orange, the second-highest of four. Eight people reported feeling it." | USGS |
 
@@ -279,7 +286,10 @@ Chhattisgarh"; "Fires jump above normal in two states: Gujarat and Telangana". A
 state reads "Chhattisgarh's fires jump above normal". Closed items say what happened,
 from the closing rule: "Gujarat's fires have stayed down for two days"; "Two days have
 passed since the major earthquake 350 km outside India"; "Global disaster monitors have
-stopped tracking Cyclone Arnab"; "No city's air is poor any more".
+stopped tracking Cyclone Arnab"; "No city's air is poor any more". A closed cyclone reads
+as news when its closing figures show it (edition 32 on; see Never say more than the
+data): "Cyclone Arnab weakens after crossing the Andhra Pradesh coast", "Cyclone Arnab
+weakens", "Cyclone Arnab crosses the Andhra Pradesh coast".
 
 ## The quiet desk
 

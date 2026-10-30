@@ -8,12 +8,13 @@ import { dayBefore } from './ist'
 import type { FirePoint, MapItem } from '@/components/paper/PaperMap'
 import type { AirPoint } from '@/components/paper/mapSymbols'
 import type { AirCity } from './types'
+import { cycloneWind } from './wind'
 
-/** What sizes an item's map symbol: a cyclone's wind in km/h (quakes and floods are sized by level). */
+/** What sizes an item's map symbol: a cyclone's latest wind in km/h, else its peak (quakes and floods are sized by level). */
 function symbolStrength(e: DeskEntry): number | null {
-  const f = e.figures
-  if (e.category === 'cyclone') return typeof f.severity === 'number' && f.severity > 0 && f.severity_unit === 'km/h' ? f.severity : null
-  return null
+  if (e.category !== 'cyclone') return null
+  const w = cycloneWind(e.figures)
+  return w.now ?? w.peak
 }
 
 /** A Level 4 fire state's large fires near towns, as [lat, lon], to ring on the map (positions stored from edition 29). */
