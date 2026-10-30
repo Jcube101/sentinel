@@ -132,8 +132,8 @@ open_min_level = 1
 # Hotspot filter and clustering.
 confidence = ["n", "h"]  # VIIRS confidence: l(ow), n(ominal), h(igh)
 cluster_km = 1.5         # hotspots this close (same UTC day) join one fire event
-# fire_events keeps this many days; older days are deleted (the events
-# table still has 60 days of hotspots to rebuild from).
+# fire_events keeps this many days; older days are deleted (fire_day_points
+# keeps every day's map points, and the local archive every run's hotspots).
 events_retention_days = 14
 # Districts left out of fire roll-ups entirely (no fire_events rows). They
 # stay in India's outline for the quake scope.
