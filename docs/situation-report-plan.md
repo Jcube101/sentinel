@@ -516,7 +516,7 @@ writes the field; older rows have it null or missing, so keep the fallbacks for 
     in the copy, cards and item page should come from `wind_kmh` (fall back to
     `figures.severity` as the peak for editions before 32). The map spiral can be sized by
     `wind_kmh` too.
-  - ARNAB-26 is expected to close in edition 32 with `wind_kmh` 102 (28 Oct 06:00 UTC),
+  - ARNAB-26 closed in edition 32 (checked 30 Oct) with `wind_kmh` 102 (28 Oct 06:00 UTC),
     `peak_wind_kmh` 222 (27 Oct 12:00), `landfall` 27 Oct 18:00 UTC in West Godavari,
     Andhra Pradesh, and the last point in East Godavari. Job asks that the closed item's
     "Since yesterday" line read as news, e.g. "Cyclone Arnab weakens after crossing the

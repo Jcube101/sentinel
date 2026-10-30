@@ -12,7 +12,7 @@ Design reference: "Sentinel — Design Directions" canvas, artboards **A2 · Des
 ## Where things stand (30 Oct 2026)
 
 Every run is an edition (`pipeline_runs.id`). Edition 1 ran on 20 Oct; the latest checked,
-edition 31 (30 Oct, 02:30 IST), was ok: 177 s, every source ok. Of editions 1-31, two
+edition 32 (30 Oct, 14:30 IST), was ok: 200 s, every source ok. Of editions 1-32, two
 failed: 10 (a GDACS HTTP error, which still fails a run) and 19 (a single FIRMS timeout,
 which no longer does).
 
@@ -36,6 +36,7 @@ which no longer does).
 | P4: `fire_day_points`, fire map points per day kept for good; fire positions in `large_fires_near_people` | 29 Oct | Live since edition 29 (28 Oct: 265 events). 19-27 Oct copied from `fire_events` on 29 Oct, every count and point checked; nothing earlier was stored |
 | Part C: FIRMS hotspots no longer go to `events`; they go to the fire stages and the local archive (`archive.store_hotspots()`); FIRMS's staleness reads its `sources` row | 29 Oct | Live since edition 31: `events` got 141 rows (EONET 2, GDACS 11, USGS 128), 2,242 hotspots stored locally, FIRMS staleness ok from `sources` (12.5 h) |
 | Part C: migration 009, `events`, `aqi_readings`, `sources` and `categories` private | applied 30 Oct | Job's check query; an anon-key read gets 401 on the four, 200 on every desk, fire and run table and view; no anon write anywhere |
+| Cyclones: closed once the latest advisory is over 24 h old, reopened by a new one; the latest wind next to the peak, the track and the landfall from GDACS's advisory timeline (*Decisions (30 Oct 2026): cyclones*) | 30 Oct | Live in edition 32: ARNAB-26 closed (last advisory 28 Oct 06:00 UTC), "GDACS Orange alert, 102 km/h winds (peaked at 222 km/h)", peak 27 Oct 12:00 UTC, landfall 27 Oct 18:00 UTC in West Godavari, Andhra Pradesh; the track requests took 8.9 s (`pipeline_runs.sources.GDACS.parts.tracks`). Reopening: offline tests only |
 
 ## The problem
 
