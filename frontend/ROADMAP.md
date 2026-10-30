@@ -1,6 +1,10 @@
 # Sentinel Frontend — Roadmap
 
-## Phase 1 — V1 Dashboard (COMPLETE ✅)
+Status (30 Oct 2026): the Situation Report (Phase 7) has been live since 29 Oct 2026 and
+replaced every page from Phases 1–4. Those phases are kept below as history; their code is
+gone.
+
+## Phase 1 — V1 Dashboard (COMPLETE ✅, replaced by Phase 7)
 
 ### Infrastructure
 - [x] Vite + React + TypeScript scaffold
@@ -36,14 +40,18 @@
 - [x] Per-category stat counts on landing page (4 separate queries)
 - [x] Per-category query limits (fire 2000, earthquake 1000, flood/cyclone 500)
 
-## Phase 2 — V2 Enhancements (PLANNED 📋)
-- [ ] AQI heatmap overlay
-- [ ] Cyclone track lines
-- [ ] Historical trend charts (90-day)
-- [ ] Tighter India bbox on frontend
+## Phase 2 — V2 Enhancements (SUPERSEDED by Phase 7)
+- [x] ~~AQI heatmap overlay~~: the Situation Report's map has a square per city at poor
+      or worse (from edition 30)
+- [ ] Cyclone track lines: the pipeline stores each storm's observed track from edition 32
+      (`figures.track`); the map doesn't draw it yet
+- [x] ~~Historical trend charts (90-day)~~: item pages chart each item's history; fire
+      states their daily counts against the usual
+- [x] ~~Tighter India bbox on frontend~~: moot; the site shows only desk items, which
+      the pipeline scopes to India
 - [ ] Custom subdomain (sentinel.job-joseph.com)
 
-## Phase 4 — UI / IA Revamp (COMPLETE ✅)
+## Phase 4 — UI / IA Revamp (COMPLETE ✅, replaced by Phase 7)
 
 A fresh look + real information architecture. India-scoped. No pipeline or
 schema changes — everything below is derivable from the existing `events` and
@@ -192,7 +200,7 @@ root; this section is the self-contained execution spec.
       at common desktop widths and hid the count, so it became an icon
       button instead.
 
-## Phase 7 — The Situation Report (COMPLETE ✅)
+## Phase 7 — The Situation Report (COMPLETE ✅, live 29 Oct 2026)
 
 The site rebuilt over the severity desk, replacing the Phase 1–4 pages (Home, Live Map,
 Insights, Event detail): a newspaper front page per edition, item pages, a map with a
@@ -200,9 +208,27 @@ symbol per hazard, an archive by day, Sources and About. Steps 0–9, decisions 
 requests to the pipeline: [docs/situation-report-plan.md](../docs/situation-report-plan.md).
 The copy follows [docs/style-guide.md](../docs/style-guide.md).
 
+- [x] Steps 1–9: Desk (severity day and quiet day), About, item pages, map, Sources,
+      Archive and `/date`, switch-over prep (28 Oct)
+- [x] Each edition as published, from the pipeline's P1–P4 (29 Oct); live on Render on
+      29 Oct 2026, about 22:30 IST
+- [x] Air squares on the map (P5), "the most of any state" (P6), the cyclone's own position
+      and its time in the source line (P7), the map key collapsed under the map (30 Oct)
+- [x] A cyclone's latest wind next to its peak, and its close as news ("Cyclone Arnab
+      weakens after crossing the Andhra Pradesh coast"), live in edition 32 (30 Oct)
+
+Open (not scheduled):
+- [ ] Draw a cyclone's observed track on the map
+- [ ] The map's activity-grid and vs-norm modes (need a simplified state outline file)
+- [ ] District names on the fire dots (left off for now, Job, 29 Oct)
+- [ ] The quiet desk has never appeared live (every edition through 32 had a Level 2+
+      item); it has only been checked with simulated data
+
+Dropped: an OpenAQ station layer on the map (`aqi_readings` is private since migration 009).
+
 ## Phase 5 — Future (💡)
-- [ ] Light mode (tokens already in place from Phase 4.1 — flip via a
-      `[data-theme]` override + toggle)
+- [x] ~~Light mode~~: the Situation Report is a light paper design; a dark mode would
+      need its own tokens
 - [ ] Alert / subscribe page (notification opt-in)
 - [ ] Public API documentation page
 - [ ] Offline support (PWA)

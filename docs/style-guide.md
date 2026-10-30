@@ -2,9 +2,11 @@
 
 How the site writes. Every line the desk generates (the page headline, item titles and
 standfirsts, source lines, Notes, Since yesterday, the late notice, the phone wire) follows
-this guide. The templates live in `frontend/src/lib/desk/copy.ts`, `notes.ts` and
-`words.ts`; tests in `copy.test.ts` and `notes.test.ts` hold the examples below to the
-letter.
+this guide. The templates live in `frontend/src/lib/desk/` (`copy.ts`, `notes.ts`,
+`words.ts`, and `sources.ts` for the late notice and footer); tests in `copy.test.ts`,
+`notes.test.ts`, `quiet.test.ts`, `desk.test.ts` and `editions.test.ts` hold the examples
+taken from real editions to the letter; the others show a template's shape.
+Checked against the templates on 30 Oct 2026; change the guide and the tests together.
 
 ## Who we write for
 
@@ -61,7 +63,7 @@ State facts with confidence; caveats go in the source line or Notes.
 ### Lead with what happened
 Say what is happening in plain English, then give the number that shows it. Not "27 fire
 events on 26 Oct, 9.07× the seasonal norm (3.0/day)", but "Chhattisgarh's fires jump to
-nine times normal".
+nine times the usual".
 
 ### Translate and round numbers
 | In the data | In the story |
@@ -142,7 +144,7 @@ average").
 Never "top story", "on the desk", "in this report", "this edition", "the list" or "the
 report" in generated copy. The headline states the news directly; its position on the
 page shows it is the lead. Not "A severe cyclone is the top story today", but "Cyclone
-Arnab holds at red alert in the Bay of Bengal as fires ease across central India". Not
+Arnab holds at red alert as fires spread across central India" (No. 25). Not
 "nothing in this report is above minor", but "A quiet day across India, with nothing above
 minor". Closed items say what happened, not that they left a list: "Gujarat's fires have
 stayed down for two days".
@@ -224,10 +226,12 @@ named: "about 250 km from the West Bengal coast". The position is GDACS's, so th
 says so, in its own sentence: "Global disaster monitors give it their highest alert, red,
 with peak winds of 222 km/h. They place it near the Andhra Pradesh coast." When that
 position is more than six hours older than the edition, the source line gives its time,
-not the story. Never a track,
-a heading or a landfall, and no latitude or longitude in the copy or the evidence. Past
-editions show the location the item had in that edition (plan P1, from edition 29);
-before edition 29, only when no later run moved the item.
+not the story. Never a forecast track, heading or landfall, and no latitude or longitude
+in the copy or the evidence. An observed landfall (from edition 32) appears only in a
+closed cyclone's line ("weakens after crossing the Andhra Pradesh coast") and in the item
+page's evidence (district, state and time). Past editions show the location the item had
+in that edition (plan P1, from edition 29); before edition 29, only when no later run
+moved the item.
 
 ## Fire roundup
 
@@ -321,5 +325,6 @@ published.
 ## The late notice
 
 Which source didn't answer, in words, and what that means: "NASA's fire satellites and the
-global disaster monitors didn't answer this time, so fire, cyclone and flood news is as
-last reported."
+global disaster monitors didn't answer this time, so cyclone, flood and fire news is as
+last reported." (No. 19; categories in desk order.) A source that answered with nothing
+"sent nothing this time".

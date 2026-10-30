@@ -8,13 +8,17 @@ data.gov.in for the air item. It runs on the Raspberry Pi (jobpi) from a systemd
 09:00, 15:00 and 21:00 UTC (14:30, 20:30 and 02:30 IST). Each run is an edition: a
 `pipeline_runs` row whose id is the edition number.
 
-## Status (28 Oct 2026)
-Severity pipeline complete (build steps 0-7, 21 Oct) and migrations 001-009 applied. Spec,
-decisions, what has been verified live and the open follow-ups: `docs/severity-pipeline.md`
-(*Where things stand*). Edition 25 (28 Oct, 02:30 IST), for scale: ok in 662 s; FIRMS
-2,477 hotspot rows, EONET 1, GDACS 9 events, USGS 124 quakes, OpenAQ 424 readings, and
-3,780 records from the data.gov.in feed (read by the air stage, not stored). GDACS took
-499 s of that run (*Data Sources*).
+## Status (30 Oct 2026)
+Severity pipeline complete (build steps 0-7, 21 Oct) and migrations 001-009 applied. Since
+then: the fixes after the editions 11-24 health review (28 Oct), complete fire days and the
+GDACS split (29 Oct), P1-P7 for the Situation Report (29 Oct), Part C (FIRMS out of
+`events`, the older tables private; 29-30 Oct), and the cyclone close rule with latest
+winds (30 Oct, live in edition 32). Spec, decisions, what has been verified live and the
+open follow-ups: `docs/severity-pipeline.md` (*Where things stand*, *Follow-ups*).
+Edition 32 (30 Oct, 14:30 IST), for scale: ok in 200 s; FIRMS 1,541 hotspots (fire stages
+and the local archive only), EONET 2, GDACS 11 events (50 s), USGS 128 quakes, OpenAQ 434
+readings (123 s), and 3,794 records from the data.gov.in feed (read by the air stage, not
+stored). Edition 25, before the GDACS split, took 662 s, 499 s of it GDACS.
 
 ## Run order
 `pipeline.run()`, in order. Stages 4-8 are each isolated: one that fails marks the run
@@ -120,10 +124,21 @@ its `.venv` included. So:
 - Check the next live edition. Revert only if the changed stage itself fails; an outage at
   an unrelated source (GDACS, FIRMS, OpenAQ, data.gov.in) is not a reason to revert. Keep
   the merge and report the outage.
+- One session on `main` at a time: when a frontend session works in parallel, only one
+  merges into or pushes `main` at a time. Check `main` = `origin/main` before merging. A
+  commit on local `main` that isn't pushed goes out with the next push of `main`, so tell
+  the other session before pushing.
+- Pipeline merges before frontend: a change the site will read (new figures, a table, a
+  column) merges and is verified on a live edition first. Then give the field names to the
+  frontend in docs/situation-report-plan.md (*Delivered by the pipeline session*), with the
+  first edition that writes them.
+- Tests and dry runs never create `pipeline_runs` rows (a row is an edition); only the
+  timer's runs do.
 - Removing a worktree after merging and pushing: check it is clean and merged, delete its
   two symlinks first (so nothing can reach their targets), then `git worktree remove
   <path>` (no `--force`) and `git branch -d <branch>`.
-- Before pushing: no secrets (`.env`, keys) and no raw FIRMS archive in the repo.
+- Before pushing: no secrets (`.env`, keys), no local paths, and no raw FIRMS archive or
+  `sentinel_archive.db` in the repo.
 
 ## Severity thresholds
 
@@ -173,6 +188,13 @@ and the Windows scheduled task has been disabled.
 - EONET / USGS events: keep 365 days
 - AQI readings: keep 7 days
 
+The severity stages keep their own windows: `fire_events` 14 days
+(`fire.events_retention_days`, fire.py) and `desk_watch` subjects not updated for 14 days
+(`watching.keep_days`, watch.py). Nothing deletes `pipeline_runs`, `desk_items`,
+`desk_item_snapshots`, `desk_watch_snapshots`, `category_status`, `fire_day_points` or
+`fire_baseline`: past editions are read from them. Never delete those rows by hand either
+(deleting a run or an item cascades to its snapshots).
+
 ## Stack
 - Python 3.13 on the Pi (3.11 or later: `severity_config.py` uses `tomllib`)
 - supabase-py
@@ -204,7 +226,8 @@ and the Windows scheduled task has been disabled.
   into `pipeline_runs.sources.GDACS.parts`. Read timeout `config.GDACS_READ_TIMEOUT_S`,
   90 s (the others keep 30 s); each page's time is logged
 - USGS: earthquakes (India bbox, min magnitude 4.0)
-- OpenAQ: AQI readings for Indian cities (PM2.5, PM10, NO2); the map's aqi_readings
+- OpenAQ: AQI readings for Indian cities (PM2.5, PM10, NO2) into `aqi_readings` (no
+  longer read by the site); the air item's fallback
 - data.gov.in (CPCB real-time AQI, `datagov.py`): the air desk item's primary source,
   read by the air stage only (not a fetcher, writes no rows of its own)
 
@@ -351,14 +374,24 @@ psql on the Pi: Job pastes each file into the Supabase SQL editor. Write them
 idempotent, with the Data API grants above, and merge code that needs a
 migration only after it has been applied.
 
-Applied (checked 28 Oct 2026, every table and view answers): 001 pipeline_runs and
-source freshness, 002 desk_items and snapshots, 003 fire_events, 004 fire_baseline,
-005 quiet-day desk, 006 the DATAGOV sources row, 007 read-only grants on the pre-001
-tables (applied 29 Oct; an anon-key write gets "permission denied" on every table), 008
-the per-edition archive (applied 29 Oct: snapshot title/place/position, desk_watch_snapshots,
-pipeline_runs.severity_config, fire_day_points, `last_known` in desk_last_level3), 009
-the four pre-001 tables private (applied 30 Oct: events, aqi_readings, sources and
-categories answer anon with 401; every desk, fire and run table and view still reads).
+All nine are applied:
+- 001 `pipeline_runs` and source freshness
+- 002 `desk_items` and snapshots
+- 003 `fire_events`
+- 004 `fire_baseline`
+- 005 the quiet-day desk
+- 006 the DATAGOV sources row
+- 007 read-only grants on the pre-001 tables (applied 29 Oct; an anon-key write gets
+  "permission denied" on every table)
+- 008 the per-edition archive (applied 29 Oct: snapshot title/place/position,
+  `desk_watch_snapshots`, `pipeline_runs.severity_config`, `fire_day_points`, `last_known`
+  in `desk_last_level3`)
+- 009 the four pre-001 tables private (applied 30 Oct: `events`, `aqi_readings`, `sources`
+  and `categories` answer anon with 401; every desk, fire and run table and view still
+  reads)
+
+001-006 were checked on 28 Oct 2026 (every table and view answers), 007-009 with Job's
+check queries when applied.
 
 ## Schema — events table
 id: text (primary key, deterministic)

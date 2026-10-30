@@ -9,12 +9,15 @@ public APIs three times a day, normalises the data into a consistent schema,
 and upserts it into Supabase. Severity stages then turn the same data, plus
 CPCB's real-time AQI from data.gov.in, into a severity desk: one item per
 hazard with a level from 1 to 4 and a reason, snapshotted every run (an
-edition). A Vite + React frontend visualises active events on a map; it
-doesn't read the desk yet.
+edition). The site, the Situation Report (Vite + React, on Render), prints
+each edition from the desk tables as a newspaper front page; it has been live
+since 29 Oct 2026.
 
-This file covers the base pipeline and the current frontend. The severity
-desk has its own spec, with decisions, status and follow-ups:
-[docs/severity-pipeline.md](docs/severity-pipeline.md).
+This file covers the base pipeline. The severity desk has its own spec, with
+decisions, status and follow-ups:
+[docs/severity-pipeline.md](docs/severity-pipeline.md). The site:
+[frontend/README.md](frontend/README.md) and
+[docs/situation-report-plan.md](docs/situation-report-plan.md).
 
 **Goals:**
 - Aggregate fire, flood, cyclone, earthquake, and air quality data for India
@@ -30,7 +33,7 @@ desk has its own spec, with decisions, status and follow-ups:
 
 ```
 sentinel/
-├── docs/                  — severity desk spec (severity-pipeline.md), design mock-ups
+├── docs/                  — severity desk spec, the site's plan, style guide, design mock-ups
 ├── pipeline/              — Python data pipeline
 │   ├── fetchers/          — one module per data source
 │   ├── pipeline.py        — orchestrator (fetch → upsert → severity stages → archive → cleanup)
@@ -38,7 +41,7 @@ sentinel/
 │   ├── fire.py, baseline.py, fire_desk.py, desk.py, air.py, datagov.py, watch.py
 │   │                      — severity stages (see docs/severity-pipeline.md)
 │   ├── severity.toml      — every severity threshold
-│   ├── migrations/        — numbered SQL, pasted into the Supabase SQL editor
+│   ├── migrations/        — numbered SQL (001-009), pasted into the Supabase SQL editor
 │   ├── data/, tools/      — reference data and the scripts that build it
 │   ├── tests/             — offline pytest suite
 │   ├── backfill.py        — historical data loader
@@ -46,12 +49,12 @@ sentinel/
 │   ├── config.py          — env vars + India bbox constants
 │   ├── requirements.txt
 │   └── render.yaml        — legacy Render cron config (unused; pipeline runs on the Pi)
-└── frontend/              — Vite + React + TypeScript app
+└── frontend/              — the Situation Report: Vite + React + TypeScript
     ├── src/
-    │   ├── lib/            — Supabase client, types, time/severity helpers
-    │   ├── hooks/          — React Query data hooks
-    │   ├── pages/          — Landing (Home), LiveMap, Insights, EventDetail, About
-    │   └── components/     — map, layout, ui
+    │   ├── lib/desk/       — the desk logic and copy templates, pure and tested
+    │   ├── hooks/          — every Supabase read (useEdition.ts)
+    │   ├── pages/          — Desk, Item, MapPage, Archive, DatePage, Sources, About
+    │   └── components/paper/ — the newspaper parts and the map
     ├── package.json
     └── render.yaml         — Render static site config
 ```
@@ -62,25 +65,25 @@ sentinel/
 
 ```
 backfill.py (one-time)         Pi systemd timer (09:00, 15:00, 21:00 UTC)
-  ├── firms.fetch_range()         └── pipeline/pipeline.py
-  ├── eonet.fetch()                     ├── runs.start_run()     → pipeline_runs (edition)
-  ├── gdacs.fetch()                     ├── fetchers/firms.py    → events table
-  └── usgs.fetch()                      ├── fetchers/eonet.py    → events table
+  ├── eonet.fetch()               └── pipeline/pipeline.py
+  ├── gdacs.fetch()                     ├── runs.start_run()     → pipeline_runs (edition)
+  └── usgs.fetch()                      ├── fetchers/firms.py    → the fire stages only
+         │                              ├── fetchers/eonet.py    → events table
          │                              ├── fetchers/gdacs.py    → events table
          │                              ├── fetchers/usgs.py     → events table
          │                              ├── fetchers/openaq.py   → aqi_readings table
          │                              ├── runs.record_sources() → sources (freshness)
-         │                              ├── severity stages      → fire_events, desk_items,
-         │                              │   (fire, fire_desk,       desk_item_snapshots,
-         │                              │    desk, air, watch)      desk_watch, category_status
-         │                              ├── archive.run()        → sentinel_archive.db
+         │                              ├── severity stages      → fire_events, fire_day_points,
+         │                              │   (fire, fire_desk,       desk_items, desk_item_snapshots,
+         │                              │    desk, air, watch)      desk_watch(_snapshots), category_status
+         │                              ├── archive.run(), store_hotspots() → sentinel_archive.db
          │                              └── _cleanup()           → delete stale rows
          └──────────────────────────────────────┐
                                                 ▼
                                          Supabase (Postgres)
-                                                │
+                                                │  anon key, read-only, desk tables only
                                                 ▼
-                                    Frontend (events, aqi_readings)
+                                  The Situation Report (Render static site)
 ```
 
 ---
@@ -97,10 +100,13 @@ backfill.py (one-time)         Pi systemd timer (09:00, 15:00, 21:00 UTC)
 - **Day range is 2, not 1:** VIIRS NOAA-20 overpasses India around 06:00-08:00
   UTC. The trailing path segment is the current UTC calendar day, not a
   rolling 24 hours, so a pipeline run scheduled before the overpass queries a
-  day that hasn't happened yet. `2` covers today and yesterday; upserts
-  dedupe by deterministic `id`, so the overlap is harmless. Never drop this
-  back to `1` without also confirming every scheduled run happens after
-  08:00 UTC.
+  day that hasn't happened yet. `2` covers today and yesterday; the fire stage
+  rebuilds both days each run, and the archive dedupes by deterministic `id`, so
+  the overlap is harmless. Never drop this back to `1` without also confirming
+  every scheduled run happens after 08:00 UTC.
+- **Stored:** not in Supabase since 29 Oct 2026. The fire stages read the fetch
+  (`fire_events`, `fire_day_points`), and `archive.store_hotspots()` writes the
+  hotspots to the local archive.
 
 ### EONET (NASA Earth Observatory Natural Event Tracker)
 - **Endpoint:** `https://eonet.gsfc.nasa.gov/api/v3/events`
@@ -115,12 +121,19 @@ backfill.py (one-time)         Pi systemd timer (09:00, 15:00, 21:00 UTC)
 - **Auth:** None
 - **Format:** GeoJSON FeatureCollection
 - **Provides:** Floods, cyclones, earthquakes, wildfires with alert levels (Green/Orange/Red)
-- **Parameters:** `eventtypes=EQ,TC,FL,WF` (droughts not requested since 28 Oct 2026),
-  `country=IND`, `alertlevel=Green,Orange,Red`, rolling 90-day window
-- **Paging:** the API returns at most 100 rows a page; a 90-day window is ~6 pages
+- **Parameters:** three queries a run, each filtered with `eventlist` (the API ignores
+  `eventtypes`): floods and cyclones (`TC;FL`, one page, what the desk levels, and the
+  only query that can fail GDACS for the run), then wildfires (`WF`), then earthquakes
+  (`EQ`, best effort, for `events` only). `country=IND`, `alertlevel=Green;Orange;Red`,
+  rolling 90-day window. Each query's status, count and time go into
+  `pipeline_runs.sources.GDACS.parts`
+- **Cyclone advisories:** for each current India cyclone, the event record and its
+  advisory timeline (2 requests, best effort): the latest wind, the peak, the observed
+  track and the landfall (from 30 Oct 2026)
+- **Paging:** the API returns at most 100 rows a page
 - **Timeouts:** 90 s read timeout for GDACS only (`config.GDACS_READ_TIMEOUT_S`; 30 s
-  connect), 3 tries on timeouts and connection errors, each page's time logged. A GDACS
-  timeout never fails the run. Whether 90 s stays is pending (docs/severity-pipeline.md)
+  connect; kept, decided 29 Oct 2026), 3 tries on timeouts and connection errors, each
+  page's time logged. A GDACS timeout never fails the run
 - **Note:** Country filter is not strict (it also matches Indonesia) — requires post-fetch bbox filter
 - **Wildfire alerts** are kept out of `events` (EONET carries the same fires); the fire
   desk uses them only to lift a state to Level 3
@@ -144,7 +157,7 @@ backfill.py (one-time)         Pi systemd timer (09:00, 15:00, 21:00 UTC)
   last 96 h, and pulls sensors for up to 120 of them, most recent first; 0.5 s delay
   between sensor requests
 - **Also:** fallback source for the severity desk's air item (24 h means at reference
-  monitors, `air.py`)
+  monitors, `air.py`). `aqi_readings` is no longer read by the site
 - **Update frequency:** Hourly per station
 
 ### data.gov.in (CPCB real-time AQI)
@@ -170,7 +183,7 @@ backfill.py (one-time)         Pi systemd timer (09:00, 15:00, 21:00 UTC)
 |--------|------|-------|
 | id | text | Primary key. Deterministic, built from source fields |
 | external_id | text | Original ID from source API |
-| source | text | `FIRMS` \| `EONET` \| `GDACS` \| `USGS` |
+| source | text | `EONET` \| `GDACS` \| `USGS` (`FIRMS` until 29 Oct 2026) |
 | category | text | `fire` \| `flood` \| `cyclone` \| `earthquake` |
 | title | text | Human-readable event name |
 | description | text | Detail string including key metrics |
@@ -190,6 +203,8 @@ backfill.py (one-time)         Pi systemd timer (09:00, 15:00, 21:00 UTC)
 | updated_at | timestamptz | Set by Supabase on each upsert |
 
 **Upsert conflict key:** `id`
+
+Service role only since migration 009 (no anon access).
 
 ### aqi_readings table
 
@@ -213,22 +228,27 @@ ALTER TABLE aqi_readings ADD CONSTRAINT aqi_readings_location_param_time_key
 UNIQUE (location_id, parameter, recorded_at);
 ```
 
+Service role only since migration 009 (no anon access).
+
 ### Run record and severity desk tables
 
-Created or extended by `pipeline/migrations/001`-`006` (all applied; `sources` is older
+Created or extended by `pipeline/migrations/001`-`009` (all applied; `sources` is older
 and gained its freshness columns in 001). Columns are in the SQL files and summarised in
 `pipeline/CLAUDE.md` (*Supabase Tables*). Grant rule for the new tables: anon and
-authenticated read only, the service role writes.
+authenticated read only, the service role writes. Migration 007 put the older tables on
+the same rule; 009 made `events`, `aqi_readings`, `sources` and `categories` private.
 
 | Table / view | One row per |
 |--------------|-------------|
-| `pipeline_runs` | run (edition), with each source's status and duration |
-| `sources` | source, plus freshness columns written every run |
-| `fire_events` (+ views `fire_district_daily`, `fire_state_daily`) | fire event per UTC day |
+| `pipeline_runs` | run (edition), with each source's status and duration, and the thresholds it ran with (`severity_config`) |
+| `sources` | source, plus freshness columns written every run (private) |
+| `fire_events` (+ views `fire_district_daily`, `fire_state_daily`) | fire event per UTC day (14 days) |
+| `fire_day_points` | UTC day: the fire map's points, kept for good |
 | `fire_baseline` | state and calendar week: mean daily fire events (the seasonal norm) |
 | `desk_items` | desk item, with its 1-4 level, reason and status |
 | `desk_item_snapshots` (+ views `desk_daily_max`, `desk_last_level3`) | desk item per run |
 | `desk_watch` | watched subject, with its trend toward the next level |
+| `desk_watch_snapshots` | watched subject per run |
 | `category_status` (+ view `category_status_latest`) | category per run |
 
 ---
@@ -273,7 +293,7 @@ REPLACE`, so it's idempotent and safe to run multiple times a day.
 
 `_cleanup()` runs at the end of every `pipeline.run()`, gated on a
 successful archive:
-- FIRMS / GDACS events: deleted after 60 days
+- FIRMS / GDACS events: deleted after 60 days (no FIRMS rows are written since 29 Oct 2026)
 - EONET / USGS events: deleted after 365 days (low volume)
 - AQI readings: deleted after 7 days
 
@@ -305,7 +325,7 @@ each API's documented cadence:
 
 | Source | Classification | Threshold | Why |
 |--------|----------------|-----------|-----|
-| FIRMS | Dense | 2 days | Active essentially every UTC day in the observed history |
+| FIRMS | Dense | 2 days | Active essentially every UTC day in the observed history. Measured from its newest observation on its `sources` row, since its hotspots aren't in `events` |
 | USGS | Dense | 7 days | Worst observed gap between active days (M4+, this bbox) in the last 50 rows was 7 days; old threshold was 30 |
 | OpenAQ (aqi_readings) | Dense | 48 hours | Documented hourly-per-station cadence |
 | EONET | Event-driven | not row-age-checked | Own history has a 28-day gap between active days with nothing wrong; a live probe found 0 events in the trailing 30 days but 178 in the trailing 180, confirming the current ~50-day gap is a real lull, not a broken fetcher |
@@ -358,7 +378,7 @@ Two call sites:
 
 | Source | ID format |
 |--------|-----------|
-| FIRMS | `FIRMS-{lat}-{lon}-{acq_date}-{acq_time}` |
+| FIRMS | `FIRMS-{lat}-{lon}-{acq_date}-{acq_time}` (local archive only) |
 | EONET | `EONET-{eonet_event_id}` |
 | GDACS | `GDACS-{eventtype}-{eventid}` |
 | USGS | `USGS-{geojson_feature_id}` |
@@ -368,94 +388,26 @@ Desk items: `earthquake:USGS-…`, `flood:GDACS-FL-…`, `cyclone:GDACS-TC-…`,
 
 ---
 
-## Frontend Spec
+## Frontend
 
-**Stack:** Vite + React + TypeScript + Leaflet + Recharts + React Router
-
-**Design system:** Dark (#0a0a0f), amber accent (#f97316), Inter — values live as
-CSS custom properties in `src/index.css` (`--bg`, `--surface`, `--border`,
-`--text`, `--muted`, `--accent`, `--cat-*` category hues, `--sev-*` severity
-ramp), aliased in `tailwind.config.js`.
-
-**Routes (Phase 4, Jul 2026):**
-| Route | Page | Purpose |
-|-------|------|---------|
-| `/` | Home (`Landing.tsx`) | Hero, live status line, Active Threats feed, category strip, mini-map preview |
-| `/map` | Live Map (`LiveMap.tsx`) | Full-bleed map + filters + detail panel + AQI panel |
-| `/insights` | Insights | Recharts analytics: events over time, severity distribution, regions, open/closed, AQI leaderboard |
-| `/event/:id` | Event detail | Single event, locator map, nearby events |
-| `/about` | About | Methodology, data sources, scope, disclaimer |
-| `/dashboard` | — | Redirects to `/map` (legacy bookmarks) |
-
-**Map:**
-- Base layer: Leaflet with Esri Dark Gray Canvas raster tiles plus its Reference label layer, no API key, darkened via a CSS filter on the tile pane (renders as DOM `<img>` tiles, so it needs no WebGL — replaces an earlier MapLibre map that showed a blank void when WebGL was unavailable)
-- Initial view: lon 82.8, lat 22.5, zoom 4
-- Event markers: coloured by category (fire=#ef4444, flood=#3b82f6, cyclone=#8b5cf6, earthquake=#f59e0b)
-- Supercluster clustering for dense FIRMS hotspots
-- `SentinelMap` also supports a non-interactive mode (drag/zoom disabled) and a `center`/`zoom` override, used by the Home mini-map preview and the Event detail locator map
-- Click: opens event detail panel
-
-**Event detail panel / page:**
-- Bottom sheet on mobile, side panel on desktop (panel); full page at `/event/:id`
-- Event title, category badge, severity badge, relative-time line, severity meter (0-100, see `lib/severity.ts`)
-- Started/closed dates
-- Place name + coordinates
-- Source link + "View full page" link (panel only)
-- Description
-- Event detail page adds: locator map, nearby events (client-side, ~1° box, sorted by distance)
-
-**Filters:**
-- Toggle by category (grouped, labeled segments: Category | Status | Window | AQI)
-- Toggle by status (open/closed/all)
-- Days range selector (7/30/90)
-- Clear-filters affordance when filters differ from defaults
-- Command palette (Ctrl-K or a search icon button) — searches loaded event titles/places, navigates to `/event/:id`
-
-**AQI panel (shipped Jul 2026):**
-- `AqiPanel.tsx`, toggled from a button in the filter bar, reuses
-  `EventDetailPanel`'s exact slide-in construction (bottom sheet on mobile,
-  fixed panel on desktop), anchored left instead of right so the two panels
-  never collide when both are open
-- Queries `aqi_readings` directly via `useAqiReadings` (last 24h), grouped
-  by station, sorted worst-PM2.5-first
-- Latest PM2.5 per station with an indicative CPCB/EPA-style color band, an
-  up/down trend arrow computed from the oldest vs newest PM2.5 reading
-  already in the fetched window, and the other pollutants read at that
-  station
-- **Not yet built:** map overlay with color-coded station markers and a
-  hover tooltip, this panel is a list view, not a map layer
-
-**Stats bar:**
-- Count by category (plain counts, not a chart)
-- Worst current PM2.5 reading (station name + value)
-- Relative time since the most recently-started loaded event, as a proxy for
-  "last updated" — not an actual pipeline-run timestamp, there is no
-  `pipeline_runs` table
-
-**Insights page (Phase 4, Jul 2026):** `/insights`, Recharts, all derived from
-the existing `events`/`aqi_readings` queries over a 90-day window — no new
-tables:
-- Events by category over time (stacked area, daily buckets)
-- Severity distribution per category (bucketed by the normalized `severity`
-  label, not raw `severity_value` — that field's units aren't comparable
-  even within one category, e.g. USGS magnitude vs. GDACS alert-level numerics
-  for earthquakes)
-- Most-affected regions (top `place_name` by count; events with no
-  `place_name` — mostly raw FIRMS hotspots — are excluded rather than lumped
-  into an "Unknown" bucket that would dwarf every real place)
-- Open vs. closed ratio + median duration
-- AQI leaderboard (worst current PM2.5 stations)
+The Situation Report, live since 29 Oct 2026, replaced the Phase 1-4 pages (Home, Live
+Map, Insights, Event detail, the AQI panel). It reads only the desk tables, read-only
+through the anon key, and prints each edition as a newspaper front page: Desk
+(`/`, `/edition/:n`, `/date/YYYY-MM-DD`), item pages, a map with a symbol per hazard,
+Archive, Sources and About. Routes, the tables it reads, stack and working rules:
+[frontend/README.md](frontend/README.md). Plan and decisions:
+[docs/situation-report-plan.md](docs/situation-report-plan.md). How it writes:
+[docs/style-guide.md](docs/style-guide.md).
 
 ---
 
 ## Backfill
 
 `backfill.py` loads historical event data into the `events` table. It accepts
-`--source` (`all` | `firms` | `eonet` | `gdacs` | `usgs`) and `--days` arguments.
-
-**FIRMS chunking:** 5-day windows; `VIIRS_NOAA20_NRT` for chunks within the
-last 10 days, `VIIRS_NOAA20_SP` for older data. SP has a ~2-month processing
-lag — chunks in that window return 0 rows (expected).
+`--source` (`all` | `eonet` | `gdacs` | `usgs`) and `--days` arguments. FIRMS isn't
+backfilled: its hotspots no longer go to `events`. The fire baseline's 2024-2025 archive
+comes from `tools/pull_firms_archive.py` (5-day `VIIRS_NOAA20_SP` windows; SP has a
+~2-month processing lag, so recent chunks return 0 rows).
 
 **USGS chunking:** 90-day windows to avoid the 20,000-result API cap.
 
@@ -468,6 +420,8 @@ lag — chunks in that window return 0 rows (expected).
 
 - Events older than 30 days
 - AQI readings older than 7 days
+- Each run's FIRMS hotspots, straight from the fetch (`archive.store_hotspots()`, since
+  29 Oct 2026); the archive holds them from 14 Jun 2026
 - SQLite schema mirrors Supabase exactly (TEXT for timestamptz, REAL for numeric,
   TEXT for jsonb with JSON serialization)
 - Uses `INSERT OR REPLACE` — safe to run multiple times
@@ -529,12 +483,11 @@ Pi.
 
 ## Frontend Stack
 
-- React 19 + TypeScript 6
+- React 19 + TypeScript 6, Vite 8
 - Tailwind CSS 3
-- Leaflet + react-leaflet v5 + supercluster
+- Leaflet + react-leaflet v5 (raster tiles, no WebGL)
 - Supabase client (`@supabase/supabase-js`) + React Query (`@tanstack/react-query`)
-- React Router (`react-router-dom`)
-- Recharts
-- Lucide icons
+- React Router 7 (`react-router-dom`)
+- Vitest
 
 **Path alias:** `@/` maps to `src/` (configured in both `vite.config.ts` and `tsconfig.app.json`)

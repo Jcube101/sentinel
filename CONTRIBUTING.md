@@ -22,16 +22,16 @@ Run the tests (no network or credentials needed):
 python -m pytest
 ```
 
-Run the full pipeline:
-```bash
-PYTHONPATH=. python pipeline.py
-```
-
-Run it without writing to Supabase or running cleanup, to check what a change
-would do first:
+Run it without writing to Supabase, creating an edition or running cleanup, to
+check what a change would do:
 ```bash
 PYTHONPATH=. python pipeline.py --dry-run
 ```
+
+A real run (`PYTHONPATH=. python pipeline.py`) writes to Supabase and creates an
+edition (a `pipeline_runs` row). Against your own Supabase project that's fine; in
+this repo's deployment only the Pi's timer makes editions, and tests and dry runs
+never do.
 
 Run a single fetcher to test it in isolation:
 ```bash
@@ -44,9 +44,15 @@ PYTHONPATH=. python -m fetchers.firms
 cd sentinel/frontend
 npm install
 cp .env.example .env.local
-# fill in Supabase anon key in .env.local
+# fill in the Supabase URL and anon key in .env.local
 npm run dev
+npm test
 ```
+
+The site reads only the desk tables, through the anon key. Every line it writes follows
+[docs/style-guide.md](docs/style-guide.md); the tests hold real editions' copy to the
+letter, so change the guide and the tests together. More in
+[frontend/README.md](frontend/README.md).
 
 ---
 
@@ -90,9 +96,10 @@ Add a numbered SQL file to `pipeline/migrations/`: idempotent, with the grant pa
 
 1. Fork the repo and create a branch: `git checkout -b feat/your-feature`
 2. Make your changes
-3. Test pipeline changes: `cd pipeline && python -m pytest`, then `PYTHONPATH=. python pipeline.py --dry-run`, then a real run
-4. Test frontend changes: `cd frontend && npm run build` (must pass with zero errors)
-5. Open a PR with a clear description of what you changed and why
+3. Test pipeline changes: `cd pipeline && python -m pytest`, then `PYTHONPATH=. python pipeline.py --dry-run`
+4. Test frontend changes: `cd frontend && npm test && npm run lint && npm run build` (all must pass)
+5. Check that no secrets (`.env`, `.env.local`, keys), local paths or FIRMS archive files are in the diff
+6. Open a PR with a clear description of what you changed and why
 
 ---
 

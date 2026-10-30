@@ -1,11 +1,12 @@
 # Sentinel — Severity & Fire-Event Pipeline (brief for Claude Code)
 
-Status: **complete, 21 Oct 2026; last updated 30 Oct 2026.** Build steps 0-7 are merged and
-run on the Pi three times a day; migrations 001-009 are applied (checked 30 Oct: every table
-and view the site reads answers through the Data API; the four older tables refuse anon).
-*Where things stand* lists the changes since and how far each has been verified. What is
-left is under *Follow-ups*; the UI that reads the new tables is the next, separate frontend
-task (*Non-goals*).
+Status: **complete.** Build steps 0-7 were done on 21 Oct 2026; this file was last
+updated on 30 Oct 2026. They are merged and run on the Pi three times a day, and
+migrations 001-009 are applied (checked 30 Oct: every table and view the site reads
+answers through the Data API, and the four older tables refuse anon). *Where things
+stand* lists the changes since and how far each has been verified. The site that reads
+these tables, the Situation Report, has been live since 29 Oct 2026
+(docs/situation-report-plan.md). What is left is under *Follow-ups*, *Open*.
 Written 20 Oct 2026 after the Sentinel redesign session.
 Design reference: "Sentinel — Design Directions" canvas, artboards **A2 · Desk ranked by severity** and **A2 · Quiet-day desk**.
 
@@ -71,7 +72,8 @@ aggregated by district**, with hotspots kept only as supporting evidence.
 - October Punjab/Haryana stubble burning should read as "seasonal", not an emergency.
 
 ### 3. Severity mapping (one level per item)
-Draft thresholds, to be tuned:
+Draft thresholds, to be tuned (the values in use are in `pipeline/severity.toml`; fire's
+changed in *Decisions (21 Oct 2026)*, and air reads CPCB's AQI from data.gov.in first):
 
 | Source | 1 Minor | 2 Elevated | 3 High | 4 Severe |
 |---|---|---|---|---|
@@ -262,7 +264,8 @@ wind. Job, 30 Oct:
    km/h)".
 3. The design session gets the field names. A closed cyclone's "Since yesterday" line
    should read as news ("Cyclone Arnab weakens after crossing the Andhra coast"), but only
-   when the stored track and winds support it.
+   when the stored track and winds support it. Done 30 Oct: edition 32 reads "Cyclone
+   Arnab weakens after crossing the Andhra Pradesh coast" (docs/style-guide.md).
 
 ## Build plan
 Rules: one work item at a time, each tested and committed separately; the existing
@@ -325,8 +328,8 @@ Notes that apply across steps:
   counters advance only when a source's data actually changes.
 - Desk item ids are deterministic (`earthquake:USGS-…`, `flood:GDACS-FL-…`, `cyclone:GDACS-TC-…`, `fire:<state>`, `air:IN`).
 - Existing `events.severity` labels (low/medium/high/extreme) are left unchanged.
-- **TODO (About page, separate frontend task):** credit geoBoundaries (India outline and
-  district boundaries, ODbL 1.0, source LGD via Pathways Data) and DataMeet / Election
+- **About page credits (done, Situation Report step 4):** geoBoundaries (India outline
+  and district boundaries, ODbL 1.0, source LGD via Pathways Data), DataMeet / Election
   Commission of India (state boundaries, CC BY 2.5 IN), GeoNames (populated places,
   CC BY 4.0) and CPCB via data.gov.in (real-time AQI, Government Open Data License -
   India); the FIRMS acknowledgement covers the baseline and mask. See
@@ -352,78 +355,72 @@ come from the same days), so live levels will be a little noisier; GDACS wildfir
 are not replayed; mask, clustering or confidence changes need a baseline rebuild first.
 
 ## Follow-ups (not scheduled)
-Open as of 28 Oct 2026 (first listed 21 Oct, when the spec was completed).
-- **Live vs archive fire counts, then the calibration cap:** see the last item; once the norm
-  is checked (and scaled if needed), decide whether to raise `fire.calibration_cap` from 2.
-  Until then FIRMS-derived fire items never show above Level 2 (Level 4 "large fire near
-  people" included); only a GDACS wildfire alert lifts a state to Level 3.
-- **Frontend (separate task):** the redesign reads `desk_items`, `desk_item_snapshots`,
-  `desk_watch`, `category_status_latest`, `desk_daily_max`, `desk_last_level3`,
-  `fire_events` (+ views) and `fire_baseline`; the About-page credits (TODO under *Build
-  plan*) go in with it. Design mock-ups: `docs/design/` (added 28 Oct 2026).
-  Two pipeline changes go in with it (added 28 Oct 2026):
-  - ~~**Wind speed in the cyclone reason**~~: done 29 Oct 2026 (Part B), e.g. "GDACS
-    Orange alert, 222 km/h winds (event peaked Red)"; from GDACS's `severity` when its
-    unit is km/h (`desk.gdacs_candidates`).
-  - ~~**`last_known` in `desk_last_level3`**~~: done 29 Oct 2026 (migration 008). The
-    view picks the latest open Level 3+ snapshot, last-known ones included (ARNAB-26 in
-    editions 23–24, while GDACS timed out), and now says so.
+First listed 21 Oct 2026, when the spec was completed; reviewed 30 Oct 2026.
+
+### Open
+- **Live vs archive fire counts, then the calibration cap.** The baseline uses the
+  reprocessed FIRMS product (SP), the live feed is near-real-time (NRT). If NRT detects
+  systematically more or fewer hotspots, every `ratio_to_norm` shifts. Only one partial day
+  overlapped in Oct 2026 and FIRMS timed out on it. Once SP covers Jul-Sep 2026 (about 3
+  months after the fact), compare it with the NRT hotspots kept in `sentinel_archive.db` and
+  scale the norm if needed. The archive has them from 14 Jun 2026; since 29 Oct they go
+  there straight from each run's fetch (`archive.store_hotspots()`), not through Supabase's
+  `events`. Then decide whether to raise `fire.calibration_cap` from 2. Until then
+  FIRMS-derived fire items never show above Level 2 (Level 4 "large fire near people"
+  included); only a GDACS wildfire alert lifts a state to Level 3.
 - **Fire threshold tuning:** min 25 / 2× / 4× came from an in-sample replay; recheck with
   `tools/replay_fire_levels.py` against a few weeks of live items.
 - **Static mask gaps:** a replayed Level 4 case near Dhanbad (Jharia coal field) is probably
   a coal-seam fire the mask missed; check live Level 4 candidates near mining areas.
-- ~~**Fresher air source**~~: done 21 Oct 2026, see *Decisions (21 Oct 2026): air source*.
 - **data.gov.in reliability:** one afternoon of evidence when it went in. Watch the DATAGOV
   row in `sources` (`last_status`, `newest_observation_at`) and how often the air reason says
-  "approx. CPCB band" (the fallback); the map's `aqi_readings` could move to the feed later.
-  Seen so far: the feed returned HTTP 500 in editions 21–22 (26–27 Oct), recovered by
-  itself and answered in editions 23–25. OpenAQ's CPCB data stopped at 18 Oct 14:00 IST,
-  and again from 23 Oct 21:00 to 27 Oct 09:00 IST (the gap wasn't backfilled). Since then
-  it has run about 1–2 h behind real time, not the 2–3 days `air.fresh_within_hours` (72)
-  was set for.
-- ~~**GDACS reliability**~~: decided 29 Oct 2026, see *Decisions (29 Oct 2026): GDACS*.
-  Still to watch: how often the wildfire and earthquake queries fail
-  (`pipeline_runs.sources.GDACS.parts`).
-- **Grants on `sources` (added 23 Oct 2026):** an anon-key update of the DATAGOV row returned
-  HTTP 200 and changed nothing, where a revoked grant gives "permission denied". So RLS
-  blocks the write, but anon probably still holds write grants on this older table (it
-  predates the grant pattern). Fix with a migration in the standard pattern (revoke all
-  from anon/authenticated, grant select to anon, grant writes to service_role), and check
-  the other older tables (`events`, `aqi_readings`, `categories`) the same way.
-  **28 Oct:** the same probe (an update matching no row) got HTTP 200 on all four older
-  tables and "permission denied" on every table from 001 on. Migration 007 applies the
-  pattern to the four (RLS on with a read policy, the id sequence too) and keeps anon's
-  SELECT, since the live site reads `events` and `aqi_readings`. **Applied 29 Oct:** the
-  check query shows no anon or authenticated write on any table or view, and the probe
-  now gets "permission denied" on all eleven tables. Done; the four lost anon's SELECT with
-  migration 009 (below).
-- ~~**After the frontend switch (Job, 29 Oct 2026)**~~: done 30 Oct.
-  1. Remove anon SELECT on `events`, `aqi_readings` and the other older tables the new site
-     no longer reads. Done 30 Oct: the frontend reads none of `events`, `aqi_readings`,
-     `sources` or `categories` (`/event/:id` looks up `desk_items.source_ref`; the Sources
-     page reads `pipeline_runs.sources`). Migration 009 drops their read policies and every
-     anon and authenticated grant.
-  2. Check whether anything still needs FIRMS hotspots in `events`. If not, stop writing them
-     there (`fire_events` and the per-day fire points cover the map) and delete the existing
-     rows. Done 29 Oct: the site never read them; the staleness check and the local archive
-     (the NRT side of *Live vs archive fire counts*) did. FIRMS's staleness now reads its
-     `sources` row, and `archive.store_hotspots()` writes each run's hotspots to the local
-     archive directly. The 38,531 FIRMS rows in `events` (30 Aug-29 Oct) were copied to the
-     local archive, checked id by id, then deleted on 29 Oct, leaving 645 rows (EONET 199,
-     GDACS 11, USGS 435). The archive holds 43,506 FIRMS hotspots, 14 Jun-29 Oct (30 Oct).
-  3. Then reclaim the space: give Job the exact SQL editor command (no VACUUM FULL from the
-     pipeline session). On 29 Oct `events` took 118 MB of the database's 134 MB, 98 MB of it
-     heap for 37k rows (~2.6 KB a row on disk for ~0.9 KB of data, so mostly bloat). Done
-     30 Oct: Job ran `vacuum (full, analyze, verbose) public.events;` in the SQL editor.
-     `events` is now 920 kB and the database 18 MB.
-- **Live vs archive fire counts:** the baseline uses the reprocessed FIRMS product (SP), the
-  live feed is near-real-time (NRT). If NRT detects systematically more or fewer hotspots,
-  every `ratio_to_norm` shifts. Only one partial day overlapped in Oct 2026 and FIRMS timed
-  out on it; once SP covers Jul-Sep 2026 (about 3 months after the fact), compare it with
-  the NRT hotspots kept in `sentinel_archive.db` and scale the norm if needed. The archive
-  has them from 14 Jun 2026; since 29 Oct they go there straight from each run's fetch
-  (`archive.store_hotspots()`), not through Supabase's `events`.
+  "approx. CPCB band" (the fallback). Seen so far: the feed returned HTTP 500 in editions
+  21–22 (26–27 Oct), recovered by itself, and answered in every edition since (checked
+  through edition 32). OpenAQ's
+  CPCB data stopped at 18 Oct 14:00 IST, and again from 23 Oct 21:00 to 27 Oct 09:00 IST
+  (the gap wasn't backfilled). Since then it has run about 1–2 h behind real time, not the
+  2–3 days `air.fresh_within_hours` (72) was set for.
+- **GDACS's other queries:** watch how often the wildfire and earthquake queries fail
+  (`pipeline_runs.sources.GDACS.parts`); neither can fail the run.
+- **Cyclone reopening:** a closed cyclone reopens on a new advisory. Tested offline only;
+  no storm has reopened yet.
+- **Not yet exercised live** (tested offline and in dry runs): the air fallback's guard
+  against older data and the no-mean guard (decision 6 under *air source*), and FIRMS
+  failing a run only on a second timeout in a row. See *Where things stand*.
+- **A three-orbit night with its main orbit missing** still counts as complete (*Decisions
+  (29 Oct 2026): complete fire days*, 4). Not seen so far.
+
+### Done
+- **Frontend:** the Situation Report reads the desk tables and has been live since 29 Oct
+  2026 (docs/situation-report-plan.md), with the About-page credits. The two pipeline
+  changes that went in with it: the wind speed in the cyclone reason (29 Oct, Part B) and
+  `last_known` in `desk_last_level3` (migration 008, 29 Oct). The requests P1-P8 are all
+  delivered (plan, section 7).
+- **Fresher air source:** done 21 Oct 2026, see *Decisions (21 Oct 2026): air source*.
+- **GDACS reliability:** decided 29 Oct 2026, see *Decisions (29 Oct 2026): GDACS*.
+- **Grants on the older tables:** on 23 Oct an anon-key update of the DATAGOV row on
+  `sources` returned HTTP 200 and changed nothing: RLS blocked the write, but anon still held
+  write grants on the four tables that predate the grant pattern. Migration 007 (applied 29
+  Oct) put them on the pattern; the probe now gets "permission denied" on all eleven tables.
+  Migration 009 (applied 30 Oct) then made the four private.
+- **After the frontend switch (Part C, Job, 29 Oct 2026):** done 30 Oct.
+  1. Anon SELECT removed on `events`, `aqi_readings`, `sources` and `categories`, which the
+     site no longer reads (`/event/:id` looks up `desk_items.source_ref`; the Sources page
+     reads `pipeline_runs.sources`). Migration 009 drops their read policies and every anon
+     and authenticated grant.
+  2. FIRMS hotspots no longer go to `events` (29 Oct): the site never read them; the
+     staleness check and the local archive did. FIRMS's staleness now reads its `sources`
+     row, and `archive.store_hotspots()` writes each run's hotspots to the local archive
+     directly. The 38,531 FIRMS rows in `events` (30 Aug-29 Oct) were copied to the local
+     archive, checked id by id, then deleted on 29 Oct, leaving 645 rows (EONET 199, GDACS
+     11, USGS 435). The archive holds 43,506 FIRMS hotspots, 14 Jun-29 Oct (30 Oct).
+  3. Space reclaimed: on 29 Oct `events` took 118 MB of the database's 134 MB (mostly
+     bloat). On 30 Oct Job ran `vacuum (full, analyze, verbose) public.events;` in the SQL
+     editor: `events` is now 920 kB and the database 18 MB.
+- **Cyclones that stayed open after their advisories stopped**, with the peak wind shown
+  as the wind now: done 30 Oct, see *Decisions (30 Oct 2026): cyclones*.
 
 ## Non-goals
-- No frontend changes in this task — UI redesign is separate (Situation Report direction A).
+- No frontend changes in this task — UI redesign is separate (Situation Report direction A;
+  built as Phase 7, docs/situation-report-plan.md).
 - Not changing the schedule (09:00 / 15:00 / 21:00 UTC = 14:30 / 20:30 / 02:30 IST).

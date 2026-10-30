@@ -39,7 +39,9 @@
 - [x] Webhook alert on pipeline failure or dense-source staleness (see above),
       live end to end: `NOTIFY_WEBHOOK_URL` points at an n8n workflow that
       emails Job via Gmail, tested for real from the Pi
-- [ ] FIRMS backfill beyond 30 days (SP source coverage gaps investigation)
+- [x] ~~FIRMS backfill beyond 30 days~~: superseded. FIRMS hotspots no longer go to
+      `events` (29 Oct 2026); the 2024–2025 SP archive behind the fire baseline is pulled by
+      `tools/pull_firms_archive.py`, and live hotspots are kept in the local archive
 
 ## Severity desk (COMPLETE ✅, Oct 2026)
 Spec, decisions, status and follow-ups: `docs/severity-pipeline.md`.
@@ -51,8 +53,21 @@ Spec, decisions, status and follow-ups: `docs/severity-pipeline.md`.
 - [x] Quiet-day desk: watching list, category status, 14-day strip
 - [x] Reliability fixes (28 Oct): air fallback never uses older data, GDACS 90 s
       read timeout and no droughts, FIRMS fails only on a second timeout
-- [ ] Open follow-ups: see the spec (fire calibration, threshold tuning, mask
-      gaps, older tables' grants, GDACS timeout decision, frontend items)
+- [x] Fire levels only from complete days (night pass in); GDACS split into three
+      queries, floods and cyclones first (29 Oct)
+- [x] P1–P7 for the Situation Report: per-edition titles, places, watching lists,
+      thresholds and fire map points (migration 008), air city positions, each fire
+      state's national rank, a cyclone's position (29 Oct)
+- [x] Part C: FIRMS hotspots out of `events` (local archive only, live since edition 31);
+      `events`, `aqi_readings`, `sources` and `categories` private (migration 009); `events`
+      vacuumed (29–30 Oct)
+- [x] Cyclones close 24 h after their last advisory; latest wind, peak, track and
+      landfall from GDACS's advisory timeline (30 Oct, live in edition 32)
+- [ ] Open follow-ups (detail in the spec, *Follow-ups*): fire calibration (live vs
+      archive counts, then the Level 2 cap), fire threshold tuning, static mask gaps,
+      data.gov.in reliability, the cyclone reopen path (tested offline only), and two
+      rules not yet exercised live (the air fallback's older-data guard, FIRMS failing
+      only on a second timeout)
 
 ## Phase 3 — Pipeline Enhancements (FUTURE 💡)
 - [ ] Additional data source for floods (GDACS coverage is thin)

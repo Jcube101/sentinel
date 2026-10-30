@@ -2,7 +2,8 @@
 
 Real lessons from building Sentinel. Recorded so the next project starts smarter.
 
-These are primarily from building the data pipeline (`pipeline/`).
+Most are from building the data pipeline (`pipeline/`); the last section is from the
+Situation Report (Phase 7, Oct 2026), the site that prints the severity desk.
 
 ---
 
@@ -38,7 +39,9 @@ The `/v3/locations/{id}/sensors` endpoint rate-limits at roughly 2 requests
 per second. With 100 locations, ~20% of requests returned 429 errors without
 any throttling. Fix: `time.sleep(0.5)` between each sensor request, and cap
 locations at 50 per run. This keeps the OpenAQ portion of the pipeline under
-30 seconds and keeps error rate near zero.
+30 seconds and keeps error rate near zero. (Later raised to 120 locations, most
+recently reporting first, for the air item's fallback; OpenAQ now takes about two
+minutes of a run and still gets a few 429s.)
 
 ---
 
@@ -392,3 +395,121 @@ is no older than the data behind the current level; otherwise the item stays
 The same goes for "no data" read as "all clear". When OpenAQ came back after
 a 3.5-day gap with too few hourly values for any 24 h mean, the fallback
 would have closed the item. Now a missing mean keeps it last-known.
+
+---
+
+# From the Situation Report (Oct 2026)
+
+---
+
+## A Satellite Day Isn't Complete Until Its Night Pass Is In
+
+Edition 26 judged 27 Oct's fires on FIRMS data that stopped at 09:07 UTC: the day pass
+only. Four states fell to Level 1 (Telangana on one fire event, Chhattisgarh on none), and
+a quiet next day would have closed them. A partial day doesn't look partial; it looks like
+fires easing.
+
+VIIRS passes over India twice: a day pass around 06:00-09:30 UTC and a night pass in two or
+three orbits from about 18:20 to 22:20 UTC. A day now counts as complete only when its
+night-pass hotspots span at least an hour (two orbits). Until then the desk keeps the last
+complete day's levels, marked last-known. Data for the next day is no proof: on 28 Oct FIRMS
+had 27 Oct's last orbit and 28 Oct's day pass, but not 27 Oct's main orbit. The site says
+so in the source line ("27 Oct incomplete: no data after 14:37 IST") and never claims
+easing on an incomplete day.
+
+---
+
+## Copy That Hedges Everything Says Nothing
+
+The first version of the site's copy carried every caveat inside the story: "on these
+counts", "estimates", "not yet confirmed", "held at Level 2", "would be Level 3". A reader
+had to get past three qualifiers to find out what happened. Titles also contradicted their
+own standfirsts: "well above normal" over "normal for the season".
+
+The fix was a style guide (`docs/style-guide.md`) and one rule above the others: facts in
+the story, caveats in notes. Each story states one fact per sentence; how far to trust it
+goes in a source line like a photo credit ("CPCB live data (unvalidated)"), a short kicker
+("As of Saturday") or the page's Notes, said once. Intensity words follow the verdict
+against past years, and any claim of our own ("spreading", "weakens") needs a stored figure
+behind it. Tests hold real editions' copy to the letter, so a template change that alters
+what a past edition said fails.
+
+---
+
+## Group Repeated Items the Way an Editor Would
+
+Edition 25 had five fire states at Level 2: five near-identical stories that pushed
+everything else down the page, and Since yesterday listed each state again. No newspaper
+runs five fire stories. All fire states are now one roundup story, led by its strongest
+true angle, with a state table under it as evidence. A state gets its own story only at
+Level 3 or above, or when it is the only one. Level 1 quakes share one row, and changes of
+the same kind share one line ("Fires fall back toward normal in four states: …"). Ranking
+is by level first, so grouping never hides something more severe.
+
+---
+
+## Check What a Field Means Before You Print It
+
+GDACS kept cyclone ARNAB-26 on its current list two days after the storm's last advisory,
+so the desk kept it open at Level 3. Its wind came from GDACS's `severitydata`, which is the
+storm's peak, not its wind now. The site said "winds of up to 222 km/h" two days after the
+storm had crossed the Andhra Pradesh coast at 102 km/h.
+
+Now a cyclone closes 24 hours after its last advisory. Each storm's advisory timeline gives
+its latest wind, its track and its landfall, and the copy uses them: "with winds of up to
+102 km/h … Its winds peaked at 222 km/h", or "peak winds of 222 km/h" when only the peak is
+known. The closing line says "weakens after crossing the Andhra Pradesh coast" only when
+the stored figures show both. The same check worked the other way for the storm's position:
+GDACS's point was assumed to be the centre of the area it maps, but on six storms it was the
+latest track point, so no extra request was needed.
+
+---
+
+## An Archive Needs What Each Edition Said, Not the Current State
+
+The site prints every past edition as it was published, but `desk_items` holds only an
+item's latest title and position. Past editions showed today's titles, and markers moved to
+where the item is now. The level rules were a single copy in the frontend, and storing them
+per edition showed that copy was wrong for editions 1-8. The pipeline now snapshots what
+each edition needs (title, place, position, the watching list, the thresholds it ran with,
+the fire map's points), and every reader keeps a fallback for the editions before a field
+existed.
+
+---
+
+## Two Sessions, One `main`
+
+A pipeline session and a frontend session worked in parallel, and the Pi's timer runs
+whatever is on `main`. The risks are quiet ones: a commit one session hasn't pushed sits on
+local `main`, and the other session's next push publishes it. A docs commit lands on `main`
+mid-review, and the other branch no longer fast-forwards. Field names change between the
+plan and the code.
+
+The rules that worked: one session merges into or pushes `main` at a time, and says when
+it is done. Check `main` = `origin/main` before merging, and ask before pushing a commit
+that isn't yours. The pipeline change merges first and is checked on a live edition. Then
+its field names go in the plan, and the frontend rebases, reruns its tests and merges.
+
+---
+
+## An API Filter It Ignores Looks Exactly Like One That Works
+
+The GDACS fetcher asked for event types with `eventtypes`, which the API silently ignores.
+Every run fetched every type, droughts and volcanoes included: about 536 features over six
+pages. When page 6 answered HTTP 400, the whole fetch failed and the desk lost its cyclone
+and flood alerts with it. The filter that works is `eventlist`, and the desk's alerts now
+come first, from their own one-page query, so wildfire and earthquake pages can't sink
+them. As with OpenAQ's country filter, check a filter by what comes back, not by the
+absence of an error.
+
+---
+
+## Stop Exposing What You No Longer Read
+
+Once the new site stopped reading `events` and `aqi_readings`, the public anon key could
+still read them. The 38,531 FIRMS hotspot rows in `events` had never been read by any site,
+only by the staleness check and the local archive, and they took 118 MB of a 134 MB
+database, mostly bloat. Hotspots now go straight to the local
+archive, the four older tables are private (migration 009), and `events` was vacuumed to
+under 1 MB. When a reader goes away, take its access and its data with it.
+

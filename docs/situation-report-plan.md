@@ -1,20 +1,29 @@
 # Sentinel — "Situation Report" frontend (Phase 7): plan
 
-Status: **live since 29 Oct 2026, 22:30 IST: `main` fast-forwarded to `frontend/situation-report` (ff13f0e) and deployed on Render; checked live on every page type, with P1 and P2 on editions 29 and 30. Steps 1 to 9 done; P1-P7 used by the site (see "Used by the frontend" under section 7; P5-P7 and the map page's collapsed key from 30 Oct). The copy follows `docs/style-guide.md`; caveats sit in source lines and Notes; map symbols follow `docs/design/MapSymbols.dc.html` (decisions 11–13).** Built on branch
-`frontend/situation-report` (merged; its worktree is removed). Design reference:
-`docs/design/` (DeskSeverity, DeskQuiet, DeskPhone, MapView, ItemFire), read as visual and
-copy spec, not code. Data model: `docs/severity-pipeline.md` and
-`pipeline/migrations/001-006`. Everything below was checked against live data (editions
-1-25) with read-only anon-key requests.
+Status: **complete.** Live since 29 Oct 2026, about 22:30 IST: `main` was fast-forwarded
+to `frontend/situation-report` (ff13f0e) and Render deployed it; every page type was checked
+live, with P1 and P2 on editions 29 and 30. Steps 1-9 are done, and the requests to the
+pipeline (P1-P8) are all delivered and used (section 7). Added on 30 Oct: P5-P7, the map's
+collapsed key, the cyclone's position time, and its latest wind and closing line (live in
+edition 32). The copy follows `docs/style-guide.md`; caveats sit in source lines and Notes;
+map symbols follow `docs/design/MapSymbols.dc.html` (decisions 11-13). What's left:
+section 8, *Open follow-ups*.
+
+Design reference: `docs/design/` (DeskSeverity, DeskQuiet, DeskPhone, MapView, ItemFire,
+MapSymbols), read as visual and copy spec, not code. Data model: `docs/severity-pipeline.md`
+and `pipeline/migrations/001-009`. Sections 1-7 were written on 28 Oct, before the build,
+against live data (editions 1-25, read-only anon-key requests), and were updated on 30 Oct
+where the build or the pipeline changed them.
 
 ## 0. Setup and ground rules
 
-- **Design files:** `docs/design/` (commit d1a768b). The mockups' map image points at
-  `docs/design/map-news.svg` (Job is adding the file). No screenshots.
-- **Preview on the Pi, not on Render.** `npm run build`, then `vite preview` bound to the
-  LAN (`--host 0.0.0.0 --port 4173`), opened from Job's laptop at `http://<pi-lan-ip>:4173`.
-  The live site deploys from `main` and stays as it is until Job approves the switch; the
-  switch is a fast-forward merge of this branch into `main`.
+- **Design files:** `docs/design/` (commit d1a768b). The mockups' map image is
+  `docs/design/map-news.svg` (added 28 Oct). No screenshots.
+- **Preview on the Pi, not on Render.** `npm run build:preview`, then `vite preview` bound
+  to the LAN (`--host 0.0.0.0 --port 4173`), opened from Job's laptop at
+  `http://<pi-lan-ip>:4173`. The live site deploys from `main`; a change goes live by a
+  fast-forward merge into `main` after the preview (frontend/README.md, *Working on the
+  frontend*).
 - **Read-only.** The site uses the anon key and only selects. No changes under `pipeline/`
   in this worktree, and nothing here runs the pipeline. Pipeline changes this phase needs
   (section 7) go to the pipeline session.
@@ -27,13 +36,13 @@ The front page is a newspaper archive: every edition stays readable as it was pu
 
 | Page | Route | Reads |
 |---|---|---|
-| Desk | `/` (latest edition), `/edition/:n` (any edition) | `pipeline_runs` row n (number, start time, status, per-source `sources` jsonb). `desk_item_snapshots` of run n with `desk_items` embedded (title, place, lat/lon, source; one request, tested). Snapshots of the runs in the 24 h up to n ("since yesterday") and of runs up to n (14-day strip, days since Level 3+, recently closed, on-the-desk-since). `category_status` of run n. `desk_watch` (latest edition only, until P2). `fire_events` for the mini map. |
+| Desk | `/` (latest edition), `/edition/:n` (any edition) | `pipeline_runs` row n (number, start time, status, per-source `sources` jsonb, `severity_config`). `desk_item_snapshots` of run n with `desk_items` embedded (one request). Snapshots of the runs in the 24 h up to n ("since yesterday") and of runs up to n (14-day strip, days since Level 3+, recently closed, on-the-desk-since). `category_status` of run n. `desk_watch_snapshots` of run n (from edition 29, P2; before that `desk_watch`, latest edition only). `fire_day_points` (P4), else `fire_events`, for the mini map. |
 | Date | `/date/YYYY-MM-DD` | That IST day's 20:30 edition, shown as on `/edition/:n`, with links to the day's other editions (rules in section 2). |
-| Map | `/map` | The latest edition's items. `fire_events` (complete day, plus today marked partial). `fire_state_daily` + `fire_baseline` (vs-norm mode). Closed `desk_items` ("incl. closed"). Snapshots of the last 21 runs (edition strip: highest level per run). `aqi_readings` for an optional OpenAQ station layer, off by default. |
-| Item | `/item/:category/:ref` (id = `category:ref`, e.g. `/item/fire/madhya-pradesh`) | The `desk_items` row and all its snapshots (history, chart). Its `desk_watch` row. Fire: `fire_state_daily`, `fire_district_daily` (14 days), the state's `fire_baseline` weeks, `fire_events` for the locator map; older days from snapshot figures. Source links from figures (`gdacs_url`) or the USGS id, not from `events`. The edition's other items (Also on the desk, previous/next). |
-| Archive | `/archive` | One row per IST day: the day's `/date` edition, its top item and level, and the day's highest level over all its editions. From `pipeline_runs` (every edition) and the open snapshots of those editions. Also closed items (`desk_items` closed, peak level, opened and closed). |
-| Sources | `/sources` | `sources` (freshness columns). `pipeline_runs.sources` for the last ~21 runs (a per-source status grid: status, rows, duration, error). `category_status` (which categories are last-known and why). |
-| About | `/about` | Nothing (static text). The thresholds table reads the edition's stored scale once P3 lands. |
+| Map | `/map` (`?edition=n`, `?item=id`) | The edition's items from its snapshots, closed ones with "incl. closed". The fire items' day from `fire_day_points` (else `fire_events`). Air squares from the air item's figures (P5). Snapshots of the last 21 runs (edition strip: highest level per run). |
+| Item | `/item/:category/:ref` (id = `category:ref`, e.g. `/item/fire/madhya-pradesh`) | The `desk_items` row and its snapshots up to the edition (history, chart). Fire: `fire_state_daily` for the days before the edition's own, older days and districts from snapshot figures, and the fire dots for the locator map. Source links from figures (`gdacs_url`) or the USGS id, not from `events`. The edition's other items (Also on the desk, previous/next). |
+| Archive | `/archive` (`?month=YYYY-MM`) | One row per IST day: the day's `/date` edition, its top item and level, and the day's highest level over all its editions. From `pipeline_runs` (every edition) and the open snapshots of those editions. Also the month's closings, from the closing snapshots (peak level, days open). |
+| Sources | `/sources` (`?edition=n`) | `pipeline_runs.sources` of the edition and the last 21 runs (a per-source status grid: status, rows, duration). `category_status` (which categories are last-known and why). Not the `sources` table. |
+| About | `/about` | The latest edition's `severity_config` for the levels table (P3); otherwise static. |
 
 How the pages work:
 
@@ -65,8 +74,8 @@ How the pages work:
   A state gets its own row at Level 3+, or when it is the only fire state. Title angles
   and copy: `docs/style-guide.md`, *Fire roundup*.
 - **Legend:** "How levels are set" is a collapsed section at the foot of every page, with
-  the full explanation on About. The Desk's sidebar holds the map (a placeholder until
-  step 6) and Since yesterday.
+  the full explanation on About. The Desk's sidebar holds the small map and Since
+  yesterday.
 - **Quiet mode:** when nothing open is above Level 1, the Desk switches to the DeskQuiet
   layout (same route).
 - **Phone:** same routes, bottom nav Desk / Map / Archive / Sources (About in the footer),
@@ -82,8 +91,9 @@ How the pages work:
 - **`/edition/:n` reads only what existed at edition n:** run n's snapshots and
   `category_status`, snapshots and runs up to n, and `pipeline_runs.sources` of run n.
   Never the "now" tables or views (`sources`, `desk_daily_max`, `desk_last_level3`,
-  `category_status_latest`, `desk_watch`), which describe the present. The one exception,
-  until P1 lands: titles and places come from `desk_items`.
+  `category_status_latest`, `desk_watch`), which describe the present. The exceptions are
+  for editions before P1 and P2 (before 29): titles and places come from `desk_items`, and
+  the latest edition's watching list from `desk_watch`.
 - **`/date/YYYY-MM-DD`** shows the day's 20:30 edition: the first edition that started
   between 20:30 and 23:59 IST that day (the scheduled evening run, even if it ran late).
   If there is none (today before 20:30, or a missed run), it shows the day's latest
@@ -122,41 +132,52 @@ How the pages work:
 ### Retention check
 
 - **Nothing deletes what the archive needs.** Every delete in `pipeline/`: `events`
-  (FIRMS/GDACS after 60 days, EONET/USGS after 365), `aqi_readings` (7 days), `fire_events`
-  (14 days), `desk_watch` (rows not updated for 14 days). `pipeline_runs`, `desk_items`,
-  `desk_item_snapshots`, `category_status` and `fire_baseline` are never deleted.
-  `archive.py` copies only `events` and `aqi_readings` to SQLite.
+  (GDACS after 60 days, EONET/USGS after 365; FIRMS rows are no longer written),
+  `aqi_readings` (7 days), `fire_events` (14 days), `desk_watch` (rows not updated for 14
+  days). `pipeline_runs`, `desk_items`, `desk_item_snapshots`, `desk_watch_snapshots`,
+  `category_status`, `fire_day_points` and `fire_baseline` are never deleted. `archive.py`
+  copies `events` and `aqi_readings` to SQLite, and each run's FIRMS hotspots go there
+  directly.
 - **Cascades:** deleting a `pipeline_runs` row deletes that edition's snapshots and
   `category_status` rows (`on delete cascade`); deleting a `desk_items` row deletes all its
   snapshots. Nothing does either today. Rule for manual clean-ups: never delete editions or
   desk items.
 - **Not kept, so the site doesn't depend on them:** `events` rows behind quake and GDACS
-  items (links come from figures and ids instead); `fire_events` beyond 14 days (P4);
-  `desk_watch` history (P2).
+  items (links come from figures and ids instead; the site can't read `events` since
+  migration 009); `fire_events` beyond 14 days (`fire_day_points` keeps the map's points,
+  P4); `desk_watch` history (`desk_watch_snapshots` keeps each edition's, P2).
 - **Size:** snapshots run ~22 KB per edition (the air item ~11.7 KB, fire ~3.6 KB per
   state), about 24 MB a year.
 
 ## 3. Gaps
 
+Listed on 28 Oct, before the build. **Now:** notes give the state on 30 Oct.
+
 ### A. In the designs, not supported by the data (yet)
 
 1. **Thresholds aren't in the data.** The pipeline will store the scale per edition (P3).
-   Until it lands, the site uses a copy (`frontend/src/lib/scale.ts`). The mockups'
-   thresholds are out of date: fire is 2× / 4× with at least 25 fire events and a cap at
-   Level 2 (mockup: 1.25× / 2×); the baseline is 2024–2025 (mockup: 2023–25); air uses CPCB
-   AQI bands, Poor above 200, Very poor above 300, Severe above 400.
+   The mockups' thresholds are out of date: fire is 2× / 4× with at least 25 fire events
+   and a cap at Level 2 (mockup: 1.25× / 2×); the baseline is 2024–2025 (mockup: 2023–25);
+   air uses CPCB AQI bands, Poor above 200, Very poor above 300, Severe above 400.
+   **Now:** each edition's scale comes from its `pipeline_runs.severity_config` (P3,
+   `lib/desk/scale.ts`, `scaleFrom`); `SCALE` there is the current rules, the fallback.
 2. **Editorial prose.** The headlines and paragraphs are hand-written ("Landfall expected
    between Gopalpur and Paradip", "All fires are low-intensity and on farmland"). The data
    has plain titles ("Fire activity in 26 Madhya Pradesh districts") and reasons. Plan:
    per-category templates that build the headline and summary from figures, and no
-   forecasts, land-cover or cause claims the data can't back.
+   forecasts, land-cover or cause claims the data can't back. **Now:** done
+   (`lib/desk/copy.ts`, `docs/style-guide.md`).
 3. **Cyclones:** no track, distance from the coast or landfall forecast (GDACS publishes a
    track; the pipeline doesn't store it). Wind speed is in the figures but not the reason
-   (section 7).
+   (section 7). **Now:** the reason has the wind (29 Oct); from edition 32 the figures
+   carry the latest wind, the peak, the observed track and the landfall. The copy places
+   the storm from its position (`where.ts`) and says "weakens after crossing the … coast"
+   only from the stored figures. Still no forecast, and the track isn't drawn (section 8).
 4. **Air:** no station names and no µg/m³ values (the feed gives AQI sub-indices; figures
    keep each city's AQI, band, prominent pollutant and station count). Air cities have no
    coordinates, so the map can't place "Mumbai air · 712" (P5). "4 of 52 stations" becomes
-   "1 of N cities very poor, 16 poor", from `counts` and `cities_reporting`.
+   "1 of N cities very poor, 16 poor", from `counts` and `cities_reporting`. **Now:** cities
+   have positions from edition 30 (P5); the map has a square per city.
 5. **Fire:**
    - No norm per district ("vs norm" column, "districts active · norm 9"): the baseline is
      per state. The districts table shows counts and the change from the day before.
@@ -175,13 +196,15 @@ How the pages work:
 7. **"On the desk since":** `opened_at` keeps the first opening when an item reopens. Use
    the item's latest `opened` / `reopened` snapshot.
 8. **Closing reasons** ("fell to norm", "very poor ended") aren't stored. Recently closed
-   shows title, peak level and how long it was open.
+   shows title, peak level and how long it was open. **Now:** the closed line says what
+   the closing rule means ("have stayed down for two days"); a closed cyclone's line uses
+   its closing figures (edition 32 on).
 9. **Copy that is wrong in the mockups:** refresh times are 02:30 / 14:30 / 20:30 IST
    (mockup: 06:00 / 14:00 / 22:00); edition numbers are around 25 (mockup: 293); the air
    item's primary source is CPCB via data.gov.in (mockup: OpenAQ).
 10. **No mockups for Archive, Date, Sources or About.** They are built from the same parts
     (masthead, rules, mono labels, tables).
-11. Past editions: see section 2 (P1, P2, P4).
+11. Past editions: see section 2 (P1, P2, P4). **Now:** delivered 29 Oct.
 
 ### B. In the data, not used by the designs
 
@@ -214,14 +237,14 @@ checked on the Pi preview against live data. Smallest shippable step first.
 1. **Desk v0, and `/edition/:n` with it** (same code). Paper palette tokens and IBM Plex
    fonts; masthead, nav, edition line with previous/next edition, footer with the
    edition's source status; typed hooks for `pipeline_runs` and an edition's snapshots
-   with embedded items and its `category_status`; `lib/levels.ts` (level names, ranking,
+   with embedded items and its `category_status`; `lib/desk/levels.ts` (level names, ranking,
    reason splitting, Level 1 quake grouping). The edition's items ranked by level, each
    with level, category, title, reason and the last-known, air and cap labels; the late
    sources banner. Phone layout from the start. Vitest for the pure functions. Other nav
    links show placeholders; old pages stay in the tree, unrouted, until step 9.
 2. **Desk, severity day.** Level counts; new, escalated and closed counts; the headline
    template; Since yesterday; per-category cards (fire figures strip, quake, GDACS, air);
-   the "How levels are set" panel (`lib/scale.ts`); the phone wire. **Done.** Notes:
+   the "How levels are set" panel (`lib/desk/scale.ts`); the phone wire. **Done.** Notes:
    - Headline: the top item ("… is the most severe item on the desk", or "Six items lead
      the desk at Level 2: …" with same-category items counted together), then one change
      sentence (new, else escalated, else eased or closed, else "No change since
@@ -248,20 +271,20 @@ checked on the Pi preview against live data. Smallest shippable step first.
    14-day strip and days since Level 3+ (both from snapshots, so past editions work),
    recently closed. **Done.** Notes:
    - The Desk switches to it when nothing open is above Level 1. No edition so far has
-     been quiet (every run from No. 2 to 26 had a Level 2+ item), so it was checked with
-     unit tests on real history and in the browser with the replies trimmed to Level 1.
-   - Everything reads runs and snapshots up to the edition (`useDeskHistory`), except the
-     watching list: on a past quiet edition it says the list is kept for the latest
-     report only (P2).
+     been quiet (every run from No. 2 to 32 had a Level 2+ item, checked 30 Oct), so it
+     was checked with unit tests on real history and in the browser with the replies
+     trimmed to Level 1.
+   - Everything reads runs and snapshots up to the edition (`useDeskHistory`). The
+     watching list is the edition's own from edition 29 (P2); before that, a past quiet
+     edition says from which edition lists are kept.
    - "A quiet day, the third in a row" counts IST days with nothing above Level 1; a day
      without an edition ends the count.
    - Recently closed: the last five, each with its closing day, peak level and days on
      the list since its latest opening (closing reasons aren't stored, gap A8).
 4. **About.** Levels, the cap, the air labels, the schedule, the not-an-alert-system
    disclaimer and the credits (clears the spec's TODO). Small and static. **Done** with 2c,
-   since the full levels explanation moved there. The Esri basemap credit joins with the
-   map (step 6). The spec's About TODO (`docs/severity-pipeline.md`) can be ticked when
-   this merges.
+   since the full levels explanation moved there. The Esri basemap credit joined with the
+   map (step 6). The spec's About TODO (`docs/severity-pipeline.md`) is ticked.
 5. **Item page.** Generic parts first (header, reason, labels, history from snapshots,
    also on the desk, previous/next, permalink); then fire (districts, daily chart vs norm,
    count funnel, locator map); then air, quake, cyclone and flood. **Done.** `/item/:category/:ref`,
@@ -279,10 +302,12 @@ checked on the Pi preview against live data. Smallest shippable step first.
    item opened, level and open/incl.-closed filters, layer toggles, the day's fires as
    dots (`fire_events`, about 400–650 a day, drawn on a canvas, so no clustering needed),
    the 21-edition strip; a small still map in the Desk's sidebar and on item pages.
-   Not yet: the activity grid and vs-norm state map modes (need a state outline file),
-   an OpenAQ station layer. Past editions show no item markers whose position a later
-   run moved (P1); fire dots go back 14 days (P4). Leaflet adds about 75 KB gzipped: split
-   the map pages into their own chunk in step 9.
+   Not built: the activity grid and vs-norm state map modes (they need a state outline
+   file; section 8). The OpenAQ station layer is dropped: `aqi_readings` is private since
+   migration 009. Since P1 and P4, past editions place their own markers (from edition 29;
+   before that, only items no later run moved) and fire dots (from 19 Oct). Leaflet
+   (about 75 KB gzipped) is a chunk of its own (step 9). Later: air squares (P5) and the
+   collapsed "How to read the map" key under the map (30 Oct).
 7. **Sources page.** Freshness table, per-run status grid, which categories depend on
    which source. **Done.** `/sources` (`?edition=n`), built from each run's own
    `pipeline_runs.sources` and `category_status`, so a past edition shows how its sources
@@ -324,74 +349,46 @@ checked on the Pi preview against live data. Smallest shippable step first.
      longer keyboard stops, and the full map's are buttons named by their item.
    - CLAUDE.md (intro, Structure, Frontend), `frontend/README.md` and both roadmaps
      describe the new site as it will be once merged.
-   - **For Job:** review the preview; then fast-forward `main` to this branch and push, and
-     Render deploys the site (`render.yaml` runs `npm run build`, without the dev pages).
-     The branch changes nothing under `pipeline/`, so the timer's runs are unaffected.
+   - **Switch-over:** done 29 Oct. Job reviewed the preview; the branch was rebased onto
+     `main` (with the pipeline's P1-P4 field names), fast-forwarded and pushed, and Render
+     deployed it (`render.yaml` runs `npm run build`, without the dev pages), about 22:30
+     IST.
 
-## 5. Labels: last-known, air, fire cap
+## 5. Last-known, the air source and the fire cap
 
-**Superseded in part by decision 11 (28 Oct):** no labels in the story. Air's
-provisional/estimate status and an incomplete fire day are in the item's source line;
-last-known is an "As of …" kicker over the title plus "didn't answer this time" in the
-source line; the fire cap is the dashed square, explained once in the page's Notes. The
-data each one reads, below, is unchanged.
+No labels in the story (decision 11, 28 Oct; style guide, *Facts in the story, caveats in
+notes*). How each shows, and what it reads:
 
-### Last-known items
-From: `last_known` on snapshots; `category_status.last_known` and `source_status`; the
-reason's ` · last known: <why>` suffix; per-source status in `pipeline_runs.sources`.
+- **Last-known:** an "As of …" kicker over the title ("As of Saturday", "As of 14:00 IST",
+  "Not updated") and "· didn't answer this time" in the source line. The item keeps its
+  level and rank. Reads `last_known` on snapshots, `category_status.last_known` and
+  `source_status`, and per-source status in `pipeline_runs.sources`. The late notice names
+  the sources that didn't answer or sent nothing, and which news is as last reported.
+  Footer: each source's newest data at publication, in the accent colour when it didn't
+  answer; event-driven sources (GDACS, EONET, USGS) read "no new events" when quiet.
+- **The shown reason** ("Level from: …") is the text before the first ` · `, since the
+  pipeline appends notes with ` · ` (last known, cap, unconfirmed Severe).
+- **Air:** the source line, from `figures.source`, `figures.approximate` and
+  `figures.unvalidated` (not the reason text): "CPCB live data (unvalidated)" (DATAGOV) or
+  "Sentinel estimate from OpenAQ monitors" (the OPENAQ fallback). A Severe city not yet
+  confirmed (`severe_unconfirmed`) is in the page's Notes. The item page shows
+  `figures.method`.
+- **Fire cap:** level squares filled up to the shown level, dashed up to `firms_level`
+  (`figures.capped`, `figures.firms_level`, `figures.calibration_cap`), in the story and the
+  state table; the Notes explain it once. Ranking and the headline use the shown level. An
+  incomplete fire day (`figures.data_to` before the night pass) is in the source line.
 
-- The item keeps its level and rank (it is still the best information there is), with a
-  line in the accent colour: "LAST-KNOWN · <why>". The item page adds "figures from
-  <time>": its latest snapshot with `last_known = false`.
-- The shown reason is the text before the first ` · `, since the pipeline appends notes
-  with ` · ` (last known, cap, unconfirmed Severe). Each note shows as its label, not twice.
-- An edition banner (the phone mockup's LATE box, on desktop too) when any category is
-  last-known or a source's fetch failed in that run, e.g. "GDACS didn't answer in this
-  run. Cyclone and flood items are the last known."
-- Footer: a source turns accent-coloured when its status in that run isn't `ok`. Dense
-  sources (FIRMS, OpenAQ, data.gov.in) show the age of their newest data at run time;
-  event-driven ones (GDACS, EONET, USGS) read "quiet" when their newest data is over a day
-  old, since no news is normal for them.
-- Map: a dashed marker outline.
-- Days since Level 3+: read from the snapshot itself, which carries `last_known`; once
-  migration 007 lands the view has it too.
+## 6. Follow-ups that were in the spec
 
-### Air: unvalidated vs approximate
-From `figures.source`, `figures.approximate` and `figures.unvalidated`, not by matching
-reason text.
-
-- **data.gov.in (source DATAGOV):** label "CPCB REAL-TIME · UNVALIDATED", with the note
-  "CPCB's hourly AQI, before CPCB validates it. A city counts as Severe only after 2 runs
-  in a row." `severe_unconfirmed` shows as "Severe in X, not yet confirmed".
-- **OpenAQ fallback (source OPENAQ):** label "APPROXIMATE", with the note "Sentinel's
-  estimate of the CPCB band from 24-hour means of OpenAQ readings, not an official AQI",
-  and the date the data runs to (`data_as_of` / `oldest_data`), since fallback data can be
-  days old.
-- Values always read "AQI 301, very poor", never "official". The item page shows
-  `figures.method`. Watching distances are in AQI points (DATAGOV) or µg/m³ (OPENAQ).
-
-### Fire calibration cap
-From `figures.capped`, `figures.firms_level` and `figures.calibration_cap`.
-
-- Level squares: filled up to the shown level, dashed up to `firms_level`. Label "CAPPED AT
-  L2 · WOULD BE L3".
-- The shown reason drops the ` · capped at …` suffix (the label says it).
-- Ranking and the headline use the shown level; ties go to the higher `ratio_to_norm`.
-- The "How levels are set" fire row and About: "Fire levels from satellite counts stop at
-  Level 2 until live counts are checked against the archive. A GDACS forest-fire alert can
-  still lift a state to Level 3." Shown while the cap is below 4.
-- Item page: what the cap holds back (`firms_level`, and `large_fires_near_people` when the
-  Level 4 rule fired).
-
-## 6. Follow-ups already in the spec
-
-| Follow-up | Who | Frontend handling |
-|---|---|---|
-| Wind speed in the cyclone reason ("GDACS Red alert, 222 km/h winds"). The speed is already in `figures.severity` / `severity_unit` / `severity_text`. | Pipeline session (`desk.gdacs_candidates`); no migration | Cards and the item page read wind speed from the figures, so the frontend doesn't wait. Once the reason has it, don't show it twice. |
-| `last_known` in `desk_last_level3` | Pipeline session writes migration 007 (add `s.last_known` to the view, same grants); Job applies it | The archive reads snapshots directly (section 2), which carry `last_known`, so the site doesn't wait |
-| About-page credits: geoBoundaries (ODbL 1.0), DataMeet / ECI state boundaries (CC BY 2.5 IN), GeoNames (CC BY 4.0), CPCB via data.gov.in (Government Open Data License - India); the FIRMS acknowledgement covers the baseline and the mask | Frontend, step 4 | Alongside the existing credits (NASA FIRMS, NASA EONET, GDACS, USGS, OpenAQ), the Esri basemap, and the state-outline file if step 6 adds one |
+All three done: the wind speed in the cyclone reason (pipeline, 29 Oct; the site doesn't
+repeat it), `last_known` in `desk_last_level3` (migration 008; the site reads snapshots,
+which carry it), and the About-page credits (step 4, with the Esri basemap credit from
+step 6).
 
 ## 7. For the pipeline session
+
+All delivered; field names under *Delivered by the pipeline session*, how the site uses
+them under *Used by the frontend*. The requests as made on 28 Oct:
 
 Needed so past editions can be shown exactly as published (section 2):
 
@@ -408,11 +405,10 @@ Needed so past editions can be shown exactly as published (section 2):
 
 Also:
 - **P5.** Lat/lon per city in the air figures (the feed has station coordinates; no
-  migration). **Requested by Job on 28 Oct** for the map's air layer (decision 12): the
-  frontend builds the layer against the field names the pipeline session gives, and keeps
-  the "Air has no place on the map yet" placeholder until then. It needs, for each city
-  at poor or worse in `figures.cities`, a position (station mean or city centre) and its
-  band and reading, as the figures already carry.
+  migration). **Requested by Job on 28 Oct** for the map's air layer (decision 12). It
+  needs, for each city at poor or worse in `figures.cities`, a position (station mean or
+  city centre) and its band and reading, as the figures already carry. Delivered from
+  edition 30.
 - **P7.** A cyclone's current position: GDACS's point (`Class: Point_Centroid`) is the
   centre of the area it maps for the event, not the storm. The latest track point would
   let the copy say where the storm is.
@@ -422,15 +418,20 @@ Also:
   24 h old, so the footer read 23H 58M). Four states fell to Level 1 on that partial day.
   Suggest: treat a UTC day as complete only once it has data after ~18:00 UTC (the night
   pass), else keep the last levels as last-known. Until then the site says the counts are
-  incomplete and claims no easing.
+  incomplete and claims no easing. Delivered 29 Oct as the complete-day rule (live from
+  edition 28; `docs/severity-pipeline.md`, *Decisions (29 Oct 2026): complete fire
+  days*). The site still says so in the source line when an edition's fire day is
+  incomplete.
 - **P6.** Each fire item's national rank by fires that day (e.g. `figures.state_rank`,
   and the number of states with fires), so a title can say "the most fires of any state".
   An edition holds only the states on the desk, so today the copy says "the most fires of
   the five states above normal" (No. 25: Punjab had 53 fires but no item).
 - The air all-clear line always says "approx. CPCB band", even when data.gov.in set the
-  level (`watch.all_clear`).
+  level (`watch.all_clear`). Delivered 29 Oct (*Wording*, below).
 - Grants on `sources`, `events`, `aqi_readings` (already a follow-up): fix before the new
-  site goes live, since it is public and uses the anon key.
+  site goes live, since it is public and uses the anon key. Delivered: migration 007 (29
+  Oct) made anon read-only everywhere; migration 009 (30 Oct) made the four older tables
+  private.
 - Never delete `pipeline_runs` or `desk_items` rows by hand: the cascades take editions'
   snapshots and status with them.
 
@@ -562,13 +563,37 @@ writes the field; older rows have it null or missing, so keep the fallbacks for 
   set, "… weakens" or "… crosses the … coast" with one of them, else the plain line. The
   track isn't drawn.
 
+## 8. Open follow-ups (30 Oct 2026)
+
+Not scheduled. The pipeline's are in `docs/severity-pipeline.md`, *Follow-ups*, *Open*
+(fire calibration and the Level 2 cap, threshold tuning, static mask gaps, data.gov.in
+reliability, the cyclone reopen path).
+
+- **Draw a cyclone's track.** The figures carry the observed track from edition 32
+  (`figures.track`); the map draws only the storm's position.
+- **The map's activity-grid and vs-norm modes** (step 6): they need a simplified state
+  outline file in `frontend/public`, credited.
+- **District names on the fire dots:** `fire_day_points` keeps each point's state, not its
+  district, so the dots' tooltips name the state only. Left off for now (Job, 29 Oct).
+- **Not yet seen live:**
+  - The quiet desk: no edition through 32 has been quiet. Checked with unit tests on
+    real history and in the browser with the replies trimmed to Level 1.
+  - The P2 watching list on a quiet desk: checked the same way on editions 29 and 30.
+  - A reopened cyclone: no storm has reopened since the close rule (edition 32). The
+    pipeline's reopen path is tested offline; the site's reopened line ("+ BACK", "is back
+    on … alert") is shared with other categories and tested on reopened fire states
+    (edition 17), not on a cyclone.
+- **The Since yesterday closed lines** are folded under "N items · show" on the Desk,
+  including a closed cyclone's news line. That's how it was built; unfolding them hasn't
+  been asked for.
+
 ## Decisions (Job, 28 Oct 2026)
 
 1. Preview locally: `vite preview` on the Pi, bound to the LAN. No second Render site.
 2. Insights is dropped; `/insights` redirects to `/archive`.
 3. Level 1 quakes are grouped into one desk row.
 4. Thresholds: the pipeline will store them per edition (handed to the pipeline session);
-   until then the site uses a copy.
+   until then the site uses a copy. (Delivered as P3, 29 Oct.)
 5. Design files are the ones in `docs/design/` (d1a768b); the mockups' map image points at
    `map-news.svg`. No screenshots.
 6. New: the front page is a newspaper archive (`/edition/:n`, `/date/YYYY-MM-DD`,
@@ -607,7 +632,7 @@ writes the field; older rows have it null or missing, so keep the fallbacks for 
     for Severe, under every hazard (its own pane below the fire dots); only the worst
     city is named, left of its square, else on the first side clear of every marker, else
     not at all. On the map from edition 30 (P5), with its own Layers row; see "Used by
-    the frontend".
+    the frontend". Not on the Desk's small map (Job, 30 Oct).
 13. `/dev/symbols` draws every symbol at every level, the size ramps, selected and closed
     markers, the air squares and a made-up busy day, so quake and flood symbols can be
     checked without a real event. Not linked from the site, `noindex`. It is in

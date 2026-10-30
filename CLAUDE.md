@@ -7,16 +7,27 @@ national air quality) has a level from 1 to 4 and a reason. Each run is an **edi
 numbered in `pipeline_runs`. The site, the **Situation Report**, prints each edition as a
 newspaper front page from the desk tables; it no longer reads `events` or `aqi_readings`.
 
+## Status (30 Oct 2026)
+Both phases are complete. The severity pipeline (Phase 6) has run since 20 Oct, and
+migrations 001-009 are applied. The Situation Report (Phase 7) has been live since 29 Oct
+2026, about 22:30 IST. Part C followed on 29-30 Oct: FIRMS hotspots no longer go to `events`,
+and the four older tables are private. The latest edition checked is 32 (30 Oct, 14:30 IST):
+ok, every source ok. Open follow-ups: docs/severity-pipeline.md (*Follow-ups*),
+docs/situation-report-plan.md (*Open follow-ups*) and ROADMAP.md.
+
 ## Structure
 - pipeline/: Python pipeline, runs on the Raspberry Pi (jobpi) via a systemd timer at
   09:00, 15:00 and 21:00 UTC (14:30, 20:30 and 02:30 IST). Details: pipeline/CLAUDE.md
-- frontend/ — Vite + React frontend, Render static site (live at sentinel-frontend-8hem.onrender.com)
+- frontend/: the Situation Report, Vite + React, a Render static site that deploys from
+  `main` (live at sentinel-frontend-8hem.onrender.com). Details: frontend/README.md
 - docs/severity-pipeline.md: the severity desk's spec, decisions, current status and open
   follow-ups
 - docs/situation-report-plan.md: the frontend's plan, decisions and the requests to the
   pipeline (P1–P8); docs/style-guide.md: how the site writes (every generated line follows it)
 - docs/design/: design mock-ups for the site (DeskSeverity, DeskQuiet, DeskPhone, ItemFire,
   MapView, MapSymbols), read as visual and copy spec, not code
+- ROADMAP.md (and pipeline/, frontend/ ROADMAP.md): phases and what's next; LEARNINGS.md:
+  lessons from building it
 
 ## Rules
 - Never mix pipeline and frontend dependencies
@@ -45,23 +56,35 @@ earlier writes stand.
 
 ## Working rules
 - **Worktrees:** the timer runs whatever is checked out in the main checkout, so it stays
-  on `main`. Build each work item in its own git worktree, test it (pytest and
-  `pipeline.py --dry-run`), and fast-forward merge only tested steps into `main`. One work
-  item at a time, each tested and committed separately. Steps, symlinks and clean-up:
-  pipeline/CLAUDE.md, *Working on the pipeline*
+  on `main`. Build each work item in its own git worktree, test it, and fast-forward merge
+  only tested steps into `main`. One work item at a time, each tested and committed
+  separately. Pipeline: pytest and `pipeline.py --dry-run` (steps, symlinks and clean-up in
+  pipeline/CLAUDE.md, *Working on the pipeline*). Frontend: `npm test`, lint, both builds
+  and a preview, then a check of the live site after Render deploys (frontend/README.md,
+  *Working on the frontend*).
+- **One session on `main` at a time.** When two sessions work in parallel (pipeline and
+  frontend), only one merges into or pushes `main` at a time, and says when it is done.
+  Before merging, check that `main` = `origin/main`. Another session's unpushed commit on
+  local `main` is published by any push of `main`, so don't push until its owner says so.
+- **Pipeline merges before frontend.** A frontend change that reads new pipeline fields
+  merges after the pipeline change is on `main` and verified on a live edition. The
+  frontend branch then rebases onto `main`, reruns its tests and merges. The field names go
+  in docs/situation-report-plan.md (*Delivered by the pipeline session*).
 - **Revert rule:** after a merge is verified on a live run, revert only if the changed
   stage itself fails. A run that fails because an unrelated outside source failed (GDACS,
   FIRMS, OpenAQ, data.gov.in) is not a reason to revert: keep the merge and report it.
 - **Thresholds** live in `pipeline/severity.toml`, never in code.
-- **Migrations** are numbered SQL files in `pipeline/migrations/`. Job pastes each one into
-  the Supabase SQL editor (there is no DB URL on the Pi). Code that needs a migration is
-  merged only after Job has applied it.
+- **Migrations** are numbered SQL files in `pipeline/migrations/` (001-009 applied; list in
+  pipeline/CLAUDE.md, *Migrations*). Job pastes each one into the Supabase SQL
+  editor (there is no DB URL on the Pi). Code that needs a migration is merged
+  only after Job has applied it.
 - **Grants:** only the service role (the pipeline) writes; anon and authenticated are
   read-only. Every migration that adds a table or view follows the pattern in
-  pipeline/CLAUDE.md (*Supabase Data API grants*).
+  pipeline/CLAUDE.md (*Supabase Data API grants*). The four older tables (`events`,
+  `aqi_readings`, `sources`, `categories`) are private since migration 009: no anon access.
 - **Tests and dry runs** never create `pipeline_runs` rows: a row is an edition.
-- **Before pushing:** check that no secrets (`.env`, `.env.local`, keys) and no raw FIRMS
-  archive are in the repo.
+- **Before pushing:** check that no secrets (`.env`, `.env.local`, keys), no local paths
+  and no raw FIRMS archive (or `sentinel_archive.db`) are in the repo or the diff.
 
 ## Frontend
 
@@ -100,7 +123,7 @@ symbol (not linked, noindex).
 
 ### Key Patterns
 - **Reads only the desk tables:** `pipeline_runs` (with `severity_config`),
-  `desk_item_snapshots` (with `desk_items` embedded), `category_status`,
+  `desk_item_snapshots` (with `desk_items` embedded), `desk_items`, `category_status`,
   `desk_watch_snapshots`, `desk_watch`, `fire_day_points`, `fire_events`,
   `fire_state_daily`. Hooks in `src/hooks/useEdition.ts`.
 - **Each edition as published (plan P1-P4):** from edition 29 a snapshot carries its own
@@ -108,11 +131,17 @@ symbol (not linked, noindex).
   back to `desk_items` and (latest edition only) `desk_watch`. Every edition's level rules
   come from `pipeline_runs.severity_config` (`scale.ts`, `scaleFrom`); its fire map from
   `fire_day_points`, cut at the fire items' `data_to`.
+- **Fields from later editions (plan P5-P7, cyclone winds):** air city positions and each
+  fire state's national rank from edition 30; a cyclone's position from 30, and its latest
+  wind, peak, track and landfall from 32 (`wind.ts`). Older editions lack them, so every
+  reader of these fields keeps a fallback (field names: docs/situation-report-plan.md,
+  *Delivered by the pipeline session*).
 - **Every line rebuilds for past editions:** templates in `src/lib/desk/` (copy, notes,
   words) read only the edition's own snapshots, its run time and the comparison with the
   edition about a day earlier (`changes.ts`), so `/edition/:n` prints the same words it
-  did when published. `copy.test.ts` and `notes.test.ts` hold real editions' copy to the
-  letter; fixtures in `src/lib/desk/__fixtures__/`.
+  did when published. `copy.test.ts`, `notes.test.ts` and `quiet.test.ts` hold real
+  editions' copy to the letter, `editions.test.ts` the later fields and their fallbacks;
+  fixtures in `src/lib/desk/__fixtures__/`.
 - **Copy follows docs/style-guide.md:** news for ordinary readers, facts said plainly;
   caveats in each item's source line, the "As of" kicker and the page's Notes.
 - **Ranking** (`entries.ts`): level, then cyclone, flood, earthquake, air, fire, then

@@ -11,8 +11,7 @@ India's outline, used for the quake scope ("within 100 km of India").
   follows India's official boundary.
 - **Licence:** Open Database License (ODbL) 1.0. This file is a derived
   database, so it is shared under ODbL too. Attribution:
-  "Contains geoBoundaries data (ODbL 1.0)". The credit on the frontend's
-  About page is a TODO (docs/severity-pipeline.md).
+  "Contains geoBoundaries data (ODbL 1.0)". Credited on the site's About page.
 
 ## india_districts.geojson
 
@@ -68,4 +67,4 @@ Populated places in India with 15,000+ people (3,739 places, 526 with
   destroyed places. Population is GeoNames' figure (often census 2011).
 - **Source:** [GeoNames](https://www.geonames.org), downloaded 21 Oct 2026.
 - **Licence:** CC BY 4.0. Attribution: "Contains GeoNames data (CC BY 4.0)".
-  The credit on the frontend's About page is a TODO (docs/severity-pipeline.md).
+  Credited on the site's About page.

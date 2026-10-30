@@ -6,9 +6,34 @@ air quality, fires), each with a level from 1 to 4, written as news for ordinary
 One responsive site: the phone is the same site at narrow width. Read-only, through the
 Supabase anon key.
 
+Live since 29 Oct 2026 at https://sentinel-frontend-8hem.onrender.com.
+
 Plan, decisions and the requests to the pipeline: [docs/situation-report-plan.md](../docs/situation-report-plan.md).
 How the site writes: [docs/style-guide.md](../docs/style-guide.md). Design mock-ups:
 [docs/design/](../docs/design/).
+
+## How it fits with the pipeline
+
+The pipeline (`../pipeline/`) runs on a Raspberry Pi at 09:00, 15:00 and 21:00 UTC (14:30,
+20:30 and 02:30 IST). Each run is an edition, numbered in `pipeline_runs`, and writes the
+severity desk to Supabase. The site reads only the desk tables, through the anon key, which
+can read them and write nothing:
+
+| Table | What the site takes from it |
+|---|---|
+| `pipeline_runs` | Editions: number, time, status, each source's answer, `severity_config` (the level rules the edition ran with) |
+| `desk_item_snapshots` (with `desk_items` embedded) | Every item in every edition: level, reason, figures, change; title, place and position from edition 29 |
+| `desk_items` | An item's current row (item pages, `/event/:id` redirects) |
+| `category_status` | The all-clear lines and which categories are last-known |
+| `desk_watch_snapshots`, `desk_watch` | The watching list (per edition from 29; `desk_watch` for the latest before that) |
+| `fire_day_points`, `fire_events` | The fire dots on the maps |
+| `fire_state_daily` | A state's daily fire counts on its item page |
+
+All reads are in `src/hooks/useEdition.ts`. The site doesn't read `events`, `aqi_readings`,
+`sources` or `categories`; since migration 009 the anon key can't. Fields that only later
+editions carry (title and place from 29; air positions, fire rank and cyclone position from
+30; cyclone winds from 32) each have a fallback for older editions; the field names are in
+the plan, *Delivered by the pipeline session*.
 
 ## Stack
 
@@ -29,12 +54,40 @@ npm run dev
 npm test
 ```
 
-## Build
+## Build and deploy
 
 ```bash
+npm run lint
 npm run build          # what Render runs; output in dist/
 npm run build:preview  # the same, with /dev/symbols included (VITE_DEV_PAGES=1)
 ```
+
+Render builds `main` as a static site (`render.yaml`: `npm install && npm run build` in
+`frontend/`, publish `dist/`, every path rewritten to `index.html` for the router). A push
+to `main` is live about a minute later.
+
+## Working on the frontend
+
+The main checkout stays on `main` (the Pi's timer runs the pipeline from it), so:
+
+1. Build each work item in its own git worktree (`git worktree add -b frontend/x
+   ../sentinel-x main`). Symlink its `frontend/.env.local` to the main checkout's and run
+   `npm ci` in its `frontend/`.
+2. Test: `npm test`, `npm run lint`, `npm run build` and `npm run build:preview`. Check the
+   preview (`npx vite preview`) against live data at desktop and phone width. The site
+   only reads, so a preview never changes anything.
+3. Commit. Before merging, check that `main` = `origin/main`. One session merges into or
+   pushes `main` at a time. If the change reads new pipeline fields, the pipeline change
+   merges first and is verified on a live edition; rebase onto `main` and rerun the tests.
+4. In the main checkout: `git merge --ff-only <branch>`, check for secrets (`.env`,
+   `.env.local`, keys), local paths and FIRMS archive files, then push.
+5. After Render deploys, check the live site: the Desk, an edition, a `/date` page,
+   Archive, Map, an item page and Sources.
+6. Remove the worktree: check it is clean and merged, delete the `.env.local` symlink, then
+   `git worktree remove <path>` (no `--force`) and `git branch -d <branch>`.
+
+Every generated line follows `docs/style-guide.md`, and the tests hold real editions' copy
+to the letter: change the guide and the tests together.
 
 ## Environment variables
 

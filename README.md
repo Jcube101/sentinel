@@ -5,20 +5,104 @@
 [![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?logo=supabase&logoColor=white)](https://supabase.com)
 [![Made with Claude](https://img.shields.io/badge/Made%20with-Claude-blueviolet)](https://claude.ai)
 
-**Natural hazard tracker for India, with a severity desk.**
+**The Situation Report: natural hazards in India, as a newspaper front page.**
 
-Sentinel pulls fire hotspots, earthquakes, floods, cyclones and air quality from six public sources three times a day and writes them to Supabase. On top of the raw data it keeps a **severity desk**: every item gets a level from 1 (minor) to 4 (severe) on one shared scale, with a plain-language reason such as "GDACS Red alert" or "Very poor in Panipat". A cyclone, a state's fire activity and a bad air day can then be ranked against each other, instead of by raw counts (one run can hold ~2,500 fire hotspots and a single cyclone).
+**Live:** https://sentinel-frontend-8hem.onrender.com
 
-Each run is an **edition**, numbered and recorded with every source's status and freshness. Per edition the pipeline produces:
+Three times a day, Sentinel reads six public sources: NASA's fire satellites, NASA's event
+tracker, the global disaster alert system GDACS, the US Geological Survey, CPCB's real-time
+air quality index and OpenAQ. It turns what they report into a **severity desk**. Every hazard
+becomes an item with a level from 1 (minor) to 4 (severe) on one shared scale, and a reason.
+A cyclone, a state's fires and a bad air day can then be ranked against each other, instead of
+by raw counts (one run can hold ~2,000 fire hotspots and a single cyclone).
 
-- **Desk items:** quakes near India (or M6+ in the region), GDACS flood and cyclone alerts, fire activity per state measured against its seasonal norm (from the 2024–2025 NASA FIRMS archive; capped at Level 2 until live counts are calibrated against the archive), and one national air-quality item from CPCB's real-time AQI. Items open, escalate and close by rule. When a source fails, its items are kept and marked "last-known" rather than dropped.
-- **History:** a snapshot of every item in every edition, for trends, "since yesterday" changes and a 14-day strip of the most severe level per day.
-- **Quiet-day status:** a watching list (anything close to its next level) and a one-line status per category, so a quiet day reads as an all-clear rather than an empty page.
+Each run is an **edition**, numbered like a newspaper's. The site prints it as a front page,
+with its stories ranked by level and written as news for ordinary readers.
 
-The live site shows the event map and an air-quality panel. The desk view is the next frontend phase and is not live yet. Design, decisions and status: [docs/severity-pipeline.md](docs/severity-pipeline.md).
+## The site
 
-## Live Demo
-https://sentinel-frontend-8hem.onrender.com
+- **Desk** (`/`): the latest edition. A headline, the stories ranked by level, Since
+  yesterday, a small map, and the page's notes. On a day when nothing is above Level 1 it
+  becomes a quiet desk: an all-clear line per hazard, what's worth watching, and the last
+  14 days.
+- **Every edition, as it was published** (`/edition/32`), and **a day's edition**
+  (`/date/2026-10-30`). Each past edition shows the words, levels and map it had when it
+  came out.
+- **Item pages** (`/item/cyclone/GDACS-TC-1001345`): one hazard's story, its figures, its
+  history across editions and, for fires, the state's daily counts against the usual.
+- **Map** (`/map`): a symbol per hazard (spirals, ripples, waves, fire dots, air squares),
+  sized and coloured by level, with the items list beside it.
+- **Archive** (`/archive`): every day with an edition, a month at a time, and the items
+  that closed.
+- **Sources** (`/sources`): how each source answered in each edition, and how fresh its
+  data was.
+- **About** (`/about`): how levels are set, what the marks mean, and the data credits.
+
+Sentinel is not an official emergency alert system. In an emergency, follow local
+authorities (NDMA, 112).
+
+## How levels are set
+
+| | 1 Minor | 2 Elevated | 3 High | 4 Severe |
+|---|---|---|---|---|
+| Cyclone, flood (GDACS alert) | green | green, rising | orange | red |
+| Earthquake (USGS; within 100 km of India, or M6+ in the region) | M4–4.9 | M5–5.9 | M6–6.9 | M7+ |
+| Air (CPCB AQI, worst cities) | poor (201–300) | very poor (301–400) | severe (401+) in 1 city | severe in 3+ cities |
+| Fire (per state, against its 2024–25 average for that week) | below 2× | 2× (25+ fires) | 4×, or a GDACS forest-fire alert | a large fire near a town of 100,000+ |
+
+Fire levels from satellite counts are held at Level 2 until live counts have been checked
+against the archive the averages come from; only a GDACS forest-fire alert lifts a state to
+Level 3 for now. Every threshold lives in [`pipeline/severity.toml`](pipeline/severity.toml),
+and each edition stores the rules it ran with, so a past edition's levels are explained by
+its own rules.
+
+## How a run works
+
+A systemd timer on a Raspberry Pi runs the pipeline at 09:00, 15:00 and 21:00 UTC (14:30,
+20:30 and 02:30 IST). One run:
+
+1. Opens the edition: a `pipeline_runs` row, whose id is the edition number, with the
+   thresholds it runs with.
+2. Fetches FIRMS, EONET, GDACS, USGS and OpenAQ.
+3. Writes EONET, GDACS and USGS events to `events` and OpenAQ readings to `aqi_readings`,
+   then each source's freshness to `sources`. FIRMS hotspots aren't stored in Supabase; they
+   go to the fire stages and a local archive.
+4. Clusters the fire hotspots into fire events by district.
+5. Levels fire per state against its seasonal norm.
+6. Levels quakes, floods and cyclones.
+7. Levels air quality, from CPCB's real-time feed on data.gov.in (OpenAQ as the fallback).
+8. Builds the quiet-day desk: the watching list and a status line per hazard.
+9. Archives old rows and the run's FIRMS hotspots to local SQLite, then cleans up (only if
+   the archive succeeded).
+10. Checks each source's freshness, alerts if one has gone stale, and closes the edition as
+    ok or failed.
+
+Each severity stage (4–8) is isolated: if one fails, the run is marked failed and alerts,
+but the other stages still run. When a source doesn't answer, its items keep their last
+known level and are marked as such, rather than dropped. The site, a static React app on
+Render, reads the desk tables through Supabase's read-only anon key.
+
+Design and decisions: [docs/severity-pipeline.md](docs/severity-pipeline.md) (the pipeline)
+and [docs/situation-report-plan.md](docs/situation-report-plan.md) (the site). How the site
+writes: [docs/style-guide.md](docs/style-guide.md).
+
+---
+
+## Data Sources
+
+| Source | What Sentinel uses it for | Auth | Update frequency |
+|--------|---------------------------|------|------------------|
+| [NASA FIRMS](https://firms.modaps.eosdis.nasa.gov/) | Fire hotspots (VIIRS NOAA-20), clustered into fire events; its 2024–2025 archive sets each state's seasonal norm | API key | Near real-time, two passes a day |
+| [GDACS](https://www.gdacs.org/) | Flood and cyclone alerts (with each storm's advisories: wind, track, landfall); forest-fire alerts lift a state's fire level | None | Event-driven |
+| [USGS Earthquake Hazards](https://earthquake.usgs.gov/fdsnws/event/1/) | Earthquakes, M4.0+ | None | Real-time |
+| [CPCB real-time AQI on data.gov.in](https://data.gov.in/resource/real-time-air-quality-index-various-locations) | The air item's primary source: station AQI sub-indices (read each run, not stored) | API key | Hourly |
+| [OpenAQ v3](https://api.openaq.org/) | The air item's fallback (24 h means at reference monitors) | API key | Hourly |
+| [NASA EONET](https://eonet.gsfc.nasa.gov/) | Wildfire and storm events, stored in `events`; not on the desk | None | Real-time |
+
+Map data: geoBoundaries (district boundaries, ODbL 1.0), DataMeet / Election Commission of
+India (state boundaries, CC BY 2.5 IN), GeoNames (populated places, CC BY 4.0) and an Esri
+basemap. Details in [pipeline/data/README.md](pipeline/data/README.md) and the site's About
+page.
 
 ---
 
@@ -26,108 +110,49 @@ https://sentinel-frontend-8hem.onrender.com
 
 ```
 sentinel/
-├── pipeline/    — Python data pipeline (runs on the Pi)
+├── pipeline/              — Python pipeline (runs on the Pi)
+│   ├── pipeline.py        — one run: fetch → write → severity stages → archive → cleanup
 │   ├── fetchers/          — FIRMS, EONET, GDACS, USGS, OpenAQ
-│   ├── pipeline.py        — orchestrator: fetch → write → severity stages → archive → cleanup
 │   ├── runs.py            — editions and per-source freshness
 │   ├── fire.py            — FIRMS hotspots clustered into fire events by district
-│   ├── baseline.py        — seasonal fire norm per state and week
-│   ├── fire_desk.py       — one fire item per state
+│   ├── fire_desk.py       — one fire item per state, against the seasonal norm
 │   ├── desk.py            — quake, flood and cyclone items
-│   ├── air.py, datagov.py — national air item (CPCB feed on data.gov.in, OpenAQ fallback)
-│   ├── watch.py           — watching list and per-category status
+│   ├── air.py, datagov.py — the national air item (CPCB on data.gov.in, OpenAQ fallback)
+│   ├── watch.py           — the watching list and per-category status
 │   ├── severity.toml      — every severity threshold
-│   ├── migrations/        — SQL, applied by hand in the Supabase SQL editor
+│   ├── migrations/        — numbered SQL (001–009), applied by hand in the Supabase SQL editor
 │   ├── data/              — boundaries, populated places, fire baseline, heat-source mask
 │   ├── tools/             — one-off builders and the fire-threshold replay
 │   ├── tests/             — offline pytest suite
-│   ├── backfill.py, archive.py, notify.py, notify_failure.py, config.py
-│   ├── requirements.txt, requirements-dev.txt
-│   └── render.yaml        (legacy Render cron config, unused; pipeline runs on the Pi)
-├── frontend/    — Vite + React map interface (live at sentinel-frontend-8hem.onrender.com)
-│   ├── src/
-│   │   ├── lib/          — Supabase client, types, time/severity helpers
-│   │   ├── hooks/        — React Query data hooks
-│   │   ├── pages/        — Landing (Home), LiveMap, Insights, EventDetail, About
-│   │   └── components/   — map, layout, ui
-│   ├── package.json
-│   └── render.yaml
+│   └── archive.py, backfill.py, notify.py, notify_failure.py, config.py
+├── frontend/              — the Situation Report: Vite + React + TypeScript, on Render
+│   ├── src/lib/desk/      — the desk logic and copy templates, pure and tested
+│   ├── src/hooks/         — every Supabase read
+│   ├── src/pages/         — Desk, Item, Map, Archive, Date, Sources, About
+│   └── src/components/paper/ — the newspaper parts and the map
 └── docs/
-    ├── severity-pipeline.md — severity desk spec, decisions, status, follow-ups
-    └── design/              — mock-ups for the desk frontend
+    ├── severity-pipeline.md      — the pipeline's spec, decisions, status, follow-ups
+    ├── situation-report-plan.md  — the site's plan, decisions and status
+    ├── style-guide.md            — how every generated line is written
+    └── design/                   — design mock-ups (visual and copy spec)
 ```
-
----
-
-## Architecture
-
-```
-┌──────────────────────────────────────────────────────────────┐
-│  Raspberry Pi systemd timer: 09:00 / 15:00 / 21:00 UTC       │
-│                             = 14:30 / 20:30 / 02:30 IST      │
-└──────────────────────────────┬───────────────────────────────┘
-                               ▼
-                       ┌───────────────┐
-                       │  pipeline.py  │ ──► pipeline_runs (edition), sources (freshness)
-                       └───────┬───────┘
-        ┌───────────┬──────────┼───────────┬───────────┐
-        ▼           ▼          ▼           ▼           ▼
-   NASA FIRMS   NASA EONET   GDACS       USGS       OpenAQ
-        └───────────┴────┬─────┴───────────┘           │
-                         ▼                             ▼
-                 ┌──────────────┐             ┌──────────────────┐
-                 │    events    │             │   aqi_readings   │
-                 └──────┬───────┘             └────────┬─────────┘
-                        └──────────────┬───────────────┘
-                                       ▼
-                     Live site: map + AQI panel (Render static)
-
-  Severity stages, on the same fetch results (+ CPCB AQI from data.gov.in):
-     fire.py → fire_desk.py → desk.py → air.py → watch.py
-                                       │
-                                       ▼
-     fire_events · desk_items · desk_item_snapshots · desk_watch · category_status
-                                       ▼
-                         Desk frontend (next phase, not live)
-
-  Then: archive.py (old rows → local SQLite) → cleanup → staleness check
-```
-
----
-
-## Data Sources
-
-| Source | What it provides | Auth | Update frequency |
-|--------|-----------------|------|-----------------|
-| [NASA FIRMS](https://firms.modaps.eosdis.nasa.gov/) | Fire hotspots (VIIRS NOAA-20), clustered into fire events; the 2024–2025 archive sets the seasonal norm | API key | Near real-time |
-| [NASA EONET](https://eonet.gsfc.nasa.gov/) | Wildfires, severe storms | None | Real-time |
-| [GDACS](https://www.gdacs.org/) | Floods, cyclones, earthquakes; wildfire alerts (used only to lift a state's fire item) | None | Event-driven |
-| [USGS Earthquake Hazards](https://earthquake.usgs.gov/fdsnws/event/1/) | Earthquakes (M4.0+) | None | Real-time |
-| [OpenAQ v3](https://api.openaq.org/) | PM2.5, PM10, NO2, SO2, O3 for the map; fallback for the air item | API key | Hourly |
-| [CPCB real-time AQI on data.gov.in](https://data.gov.in/resource/real-time-air-quality-index-various-locations) | Station AQI sub-indices; the air item's primary source (read each run, not stored) | API key | Hourly |
 
 ---
 
 ## Tech Stack
 
-- **Python 3.13** on the Pi (3.11 or later)
-- **supabase-py** — database client
-- **requests** — HTTP
-- **python-dotenv** — environment variables
-- **shapely** — district and India-outline geometry for the severity desk
-- **Supabase** — Postgres database + REST API
-- **Raspberry Pi (jobpi)**: pipeline runs via a systemd timer pair, three times daily
-- **Render** — frontend static site host
-- **Vite + React 19 + TypeScript** — frontend
-- **Tailwind CSS + Leaflet + Recharts** — styling, map, charts
-- **React Query + Supabase client** — frontend data layer
-- **React Router** — Home / Live Map / Insights / Event detail / About
+- **Pipeline:** Python 3.13 (3.11+) on a Raspberry Pi, supabase-py, requests, shapely
+  (district and India-outline geometry), python-dotenv; a systemd timer, three runs a day
+- **Database:** Supabase (Postgres + REST API); the pipeline writes with the service role,
+  the site reads with the anon key
+- **Site:** React 19, TypeScript, Vite 8, Tailwind CSS 3, Leaflet (react-leaflet, raster
+  tiles, no WebGL), React Query, React Router 7, Vitest; a static site on Render
 
 ---
 
 ## Getting Started
 
-### 1. Clone and set up environment
+### Pipeline
 
 ```bash
 git clone https://github.com/Jcube101/sentinel.git
@@ -135,135 +160,88 @@ cd sentinel/pipeline
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+cp .env.example .env        # then fill in your keys
 ```
 
-### 2. Configure environment variables
-
-```bash
-cp .env.example .env
-```
-
-Edit `.env` with your credentials.
-
-### 3. Run the pipeline
-
-```bash
-cd sentinel/pipeline
-python pipeline.py
-```
-
-Add `--dry-run` to run the fetchers and log what would happen, without writing
-to Supabase or running cleanup (no edition is recorded):
-
-```bash
-python pipeline.py --dry-run
-```
-
-### 4. Run the tests
-
-Offline, with no network or credentials needed:
+Tests (offline, no network or credentials needed):
 
 ```bash
 pip install -r requirements-dev.txt
 python -m pytest
 ```
 
-### 5. Run a single fetcher
+A dry run fetches everything and logs what would happen, without writing to Supabase,
+creating an edition or running cleanup:
 
 ```bash
-python -m fetchers.firms
-python -m fetchers.eonet
-python -m fetchers.gdacs
-python -m fetchers.usgs
-python -m fetchers.openaq
+PYTHONPATH=. python pipeline.py --dry-run
 ```
 
-### 6. Backfill historical data
+`PYTHONPATH=. python pipeline.py` is a real run: it creates an edition. On the Pi only the
+timer does that.
+
+A single fetcher: `PYTHONPATH=. python -m fetchers.usgs` (also `firms`, `eonet`, `gdacs`,
+`openaq`).
+
+Backfill `events` (FIRMS isn't backfilled: its hotspots no longer go to Supabase):
 
 ```bash
-python backfill.py --source all --days 90
-python backfill.py --source firms --days 30
-python backfill.py --source usgs --days 365
+PYTHONPATH=. python backfill.py --source all --days 90
+PYTHONPATH=. python backfill.py --source usgs --days 365
 ```
 
-### 7. Archive old data to local SQLite
+The database schema is the numbered SQL files in `pipeline/migrations/`, pasted into the
+Supabase SQL editor in order. The pipeline needs migrations 001–009.
 
-`pipeline.py` runs `archive.py` automatically, immediately before cleanup, on
-every invocation, so this is not something you need to schedule separately. To
-run it on its own (for example to inspect `sentinel_archive.db` without
-running the full pipeline):
+### Site
 
 ```bash
-python archive.py
+cd frontend
+npm install
+cp .env.example .env.local   # Supabase URL and anon key
+npm run dev
+npm test
 ```
 
-Archives events older than 30 days and AQI readings older than 7 days to
-`sentinel_archive.db`. Safe to run any number of times: uses `INSERT OR
-REPLACE`, and never deletes anything from Supabase.
-
-Windows Task Scheduler archival is fully retired: `setup_task_scheduler.ps1`
-has been removed from the repo and the Windows scheduled task itself has
-been disabled. Archival runs only on the Pi, inside `pipeline.py`, before
-every cleanup; it has no Windows or Render component.
+More in [frontend/README.md](frontend/README.md).
 
 ---
 
 ## Data Retention
 
-`pipeline.py` runs `archive.py` and then cleanup at the end of every execution:
+| Data | Where | Kept |
+|------|-------|------|
+| Editions, desk items and their per-edition snapshots, watching lists, category status, fire map points per day, fire baseline | Supabase | For good: past editions are read from them |
+| Fire events (`fire_events`) | Supabase | 14 days |
+| Watch subjects (`desk_watch`) | Supabase | Until not updated for 14 days |
+| GDACS events | Supabase | 60 days |
+| EONET and USGS events | Supabase | 365 days |
+| OpenAQ readings (`aqi_readings`) | Supabase | 7 days |
+| FIRMS hotspots | Local SQLite archive on the Pi | For good (they never go to Supabase) |
 
-| Data | Retention in Supabase |
-|------|-----------|
-| FIRMS / GDACS events | 60 days |
-| EONET / USGS events | 365 days |
-| AQI readings | 7 days |
-| Fire events (`fire_events`) | 14 days |
-
-Old data is archived locally via `archive.py` before deletion. If archiving
-fails for any reason, that run skips cleanup entirely rather than deleting
-un-archived data, and the pipeline exits non-zero.
+`archive.py` copies `events` older than 30 days and `aqi_readings` older than 7 days to
+`sentinel_archive.db` on the Pi, and each run's FIRMS hotspots go there directly. Cleanup
+runs only after a successful archive. If archiving fails, that run skips cleanup rather than
+delete un-archived data, and exits non-zero.
 
 ---
 
 ## Environment Variables
 
+Pipeline (`pipeline/.env`, see `pipeline/.env.example`):
+
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `SUPABASE_URL` | Yes | Your Supabase project URL |
+| `SUPABASE_URL` | Yes | Supabase project URL |
 | `SUPABASE_SERVICE_KEY` | Yes | Supabase service role key |
 | `FIRMS_MAP_KEY` | Yes | NASA FIRMS MAP key |
 | `OPENAQ_API_KEY` | Yes | OpenAQ API key |
 | `DATA_GOV_IN_API_KEY` | No | data.gov.in key for CPCB's real-time AQI; without it the air item uses OpenAQ |
-| `NOTIFY_WEBHOOK_URL` | No | Webhook that receives failure/staleness alerts; see Alerting below |
+| `NOTIFY_WEBHOOK_URL` | No | Webhook that receives failure and staleness alerts (see Alerting) |
 
-See `pipeline/.env.example` for the pipeline and `frontend/.env.example` for the frontend.
-
----
-
-## Frontend Dev
-
-```bash
-cd frontend
-npm install
-cp .env.example .env.local
-# fill in Supabase anon key in .env.local
-npm run dev
-```
-
----
-
-## How It Works
-
-1. **Edition**: each run opens a `pipeline_runs` row; its id is the edition number
-2. **Fetch**: each fetcher calls its API and returns `List[dict]` matching the Supabase schema exactly. A failed request or a malformed response propagates and fails that source; an empty result from a healthy API does not. Every fetcher retries timeouts and connection errors (3 tries). A GDACS timeout never fails the run; a FIRMS timeout fails it only if FIRMS also timed out in the previous run
-3. **Transform** — event severity labels, categories, and deterministic IDs computed during fetch
-4. **Upsert** — `pipeline.py` bulk-upserts to Supabase in batches of 500 using deterministic `id` as conflict key, then records each source's freshness on `sources`
-5. **Severity stages**: fire events, fire desk, desk (quakes, floods, cyclones), air and the quiet-day desk, with every threshold in `pipeline/severity.toml`. Each stage is isolated: one that fails marks the run failed, but the others still run
-6. **Archive**: `archive.py` copies old data to local SQLite before cleanup can age it out of Supabase; if archiving fails, cleanup is skipped for that run
-7. **Cleanup**: deletes stale rows at the end of every run, gated on a successful archive
-8. **Staleness check**: logs the newest row's age per source, and alerts (see Alerting below) if a source expected to be fresh has gone quiet. FIRMS/USGS/OpenAQ are checked this way; EONET/GDACS are event-driven and are only alerted on if the fetch itself fails, not on row age, since a real quiet month and a broken fetcher look identical from row age alone
-9. **Alert on failure**: if the run fails outright, a separate systemd unit fires via `OnFailure=` and sends the same kind of alert, so a crash the process can't self-report still reaches you
-10. **Schedule**: a systemd timer on the Raspberry Pi (jobpi) runs `pipeline.py` three times daily, at 09:00, 15:00 and 21:00 UTC (14:30, 20:30 and 02:30 IST)
+Site (`frontend/.env.local`, see `frontend/.env.example`): `VITE_SUPABASE_URL`,
+`VITE_SUPABASE_ANON_KEY`, and optionally `VITE_DEV_PAGES=1` to include the `/dev/symbols`
+page in a build.
 
 ---
 
@@ -340,7 +318,7 @@ systemctl list-timers sentinel-pipeline.timer
 systemctl status sentinel-pipeline.timer
 systemctl status sentinel-pipeline.service
 
-# Trigger a run right now (blocks until it finishes, Type=oneshot)
+# Trigger a run right now (blocks until it finishes, Type=oneshot). This creates an edition.
 sudo systemctl start sentinel-pipeline.service
 
 # Recent output via journald (short-lived on this host, see below)
@@ -349,14 +327,15 @@ journalctl -u sentinel-pipeline.service -n 100
 
 ### Deploying a change
 
-There is no build or deploy step: the next timer firing (or `systemctl
-start sentinel-pipeline.service`) runs the main checkout's current working
-tree, since `ExecStart` points at the venv interpreter and the script path
-directly rather than a packaged build. So the main checkout stays on `main`.
-Changes are built and tested in a separate git worktree and fast-forward
-merged into `main` only once tested (pipeline/CLAUDE.md, *Working on the
-pipeline*). Schema changes are SQL files in `pipeline/migrations/`, pasted
-into the Supabase SQL editor before the code that needs them is merged.
+There is no build or deploy step for the pipeline: the next timer firing runs the main
+checkout's current working tree, since `ExecStart` points at the venv interpreter and the
+script path directly. So the main checkout stays on `main`, and every change is built and
+tested in its own git worktree, then fast-forward merged into `main` once tested. Schema
+changes are SQL files in `pipeline/migrations/`, pasted into the Supabase SQL editor before
+the code that needs them is merged. The working rules are in [CLAUDE.md](CLAUDE.md).
+
+The site deploys itself: Render builds `main` (`npm install && npm run build` in
+`frontend/`) about a minute after a push.
 
 If you change either unit file under `/etc/systemd/system/`:
 ```bash
@@ -384,13 +363,13 @@ Each run ends with a per-source staleness check. A `WARNING` line like:
 ```
 staleness: FIRMS newest row is 35 days, 10:18:27 old (threshold 2 days, 0:00:00)
 ```
-means that source's newest row in Supabase is older than expected for how
-often that API updates, and also fires an alert (see Alerting below). This
-only applies to FIRMS, USGS, and OpenAQ: `EONET`/`GDACS` log their row age at
-`INFO` regardless of how old it is and never alert on it, because both are
-event-driven and a real quiet month looks identical to a broken fetcher from
-row age alone; see LEARNINGS.md for the reasoning and the real historical
-gaps that set these thresholds.
+means that source's newest data is older than expected for how often that API updates, and
+also fires an alert (see Alerting below). This applies to FIRMS (its newest observation, as
+recorded on its `sources` row), USGS (its newest row in `events`) and OpenAQ (its newest
+`aqi_readings` row). EONET and GDACS log their row age at `INFO` and never alert on it,
+because both are event-driven and a real quiet month looks identical to a broken fetcher
+from row age alone; see LEARNINGS.md for the reasoning and the real gaps that set these
+thresholds.
 
 ---
 
@@ -472,7 +451,7 @@ NOTIFY_WEBHOOK_URL=http://127.0.0.1:8199/ PYTHONPATH=. python3 notify_failure.py
 
 ## Roadmap
 
-See [ROADMAP.md](ROADMAP.md).
+See [ROADMAP.md](ROADMAP.md). Lessons learned along the way: [LEARNINGS.md](LEARNINGS.md).
 
 ---
 
