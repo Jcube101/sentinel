@@ -51,7 +51,20 @@ class FakeResponse:
         return {"features": self._features}
 
 
+class JsonResponse:
+    def __init__(self, body, status_code=200):
+        self.status_code, self._body = status_code, body
+
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            raise RuntimeError(f"HTTP {self.status_code}")
+
+    def json(self):
+        return self._body
+
+
 FC, WF, EQ = "TC;FL", "WF", "EQ"   # the three queries' eventlist values
+TIMELINE_URL = "https://www.gdacs.org/gdacsapi/api/export/gettimeline?id=816527"
 
 
 @pytest.fixture
@@ -62,9 +75,15 @@ def fake_api(monkeypatch):
     types, as with an API that ignores the filter), or {eventlist: [pages]}.
     A page past the end is a 204; an exception in the list is raised.
     """
-    state = {"pages": [], "requested": [], "calls": []}
+    state = {"pages": [], "requested": [], "calls": [], "storms": [], "event_data": None, "timeline": None}
 
     def fake_get(source, url, params=None, **kwargs):
+        if url != gdacs.ENDPOINT:   # a cyclone's record, then its timeline
+            state["storms"].append((url, params))
+            body = state["event_data"] if url == gdacs.EVENT_DATA_URL else state["timeline"]
+            if isinstance(body, Exception):
+                raise body
+            return JsonResponse(body if body is not None else {})
         page, query = params["pageNumber"], params["eventlist"]
         state["requested"].append((query, page))
         state["calls"].append({"params": params, **kwargs})
@@ -155,7 +174,7 @@ def test_each_query_keeps_only_its_own_types(fake_api):
     rows, extras = gdacs.fetch_detailed()
     assert sorted(a["id"] for a in extras["alerts"]) == ["GDACS-TC-1", "GDACS-WF-2"]
     assert sorted(r["id"] for r in rows) == ["GDACS-EQ-3", "GDACS-TC-1"]
-    assert {n: p["features"] for n, p in extras["parts"].items()} == {
+    assert {n: p["features"] for n, p in extras["parts"].items() if n != "tracks"} == {
         "floods_cyclones": 1, "wildfires": 1, "earthquakes": 1}
 
 
@@ -266,3 +285,56 @@ def test_unparseable_start_date_is_not_skipped(fake_api):
     feature["properties"]["fromdate"] = "not a date"
     fake_api["pages"] = [FakeResponse(200, [feature])]
     assert [e["id"] for e in gdacs.fetch()] == ["GDACS-FL-1"]
+
+
+# --- a cyclone's track (the event record's timeline) ---------------------------------
+
+def _timeline_item(advisory, when, lat, lon, wind_ms, status, actual=True):
+    return {"advisory_number": str(advisory), "advisory_datetime": when, "actual": str(actual),
+            "latitude": str(lat), "longitude": str(lon), "wind_speed": str(wind_ms),
+            "storm_status": [status, status]}
+
+
+def _serve_track(fake_api):
+    fake_api["event_data"] = {"properties": {"impacts": [{"source": "JTWC", "resource": {
+        "timeline": TIMELINE_URL, "buffer39": "https://www.gdacs.org/gdacsapi/api/export/getimpact?id=1"}}]}}
+    fake_api["timeline"] = {"channel": {"item": [   # ARNAB-26's last advisories, out of order
+        _timeline_item(10, "28 Oct 2026 06:00", 16.4, 81.8, 28.292, "Tropical Storm"),
+        _timeline_item(7, "27 Oct 2026 12:00", 16.3, 82.7, 61.728, "Hurricane/Typhoon > 74 mph"),
+        _timeline_item(10, "28 Oct 2026 18:00", 17.8, 81.9, 23.148, "Tropical Storm", actual=False),
+    ]}}
+
+
+def test_current_cyclone_gets_its_observed_track_from_the_timeline(fake_api):
+    _serve_track(fake_api)
+    fake_api["pages"] = {FC: [FakeResponse(200, [_india(1, "TC")])]}
+    _, extras = gdacs.fetch_detailed()
+    (alert,) = extras["alerts"]
+    assert alert["track"] == [   # oldest first, forecast points left out, m/s -> km/h
+        {"at": "2026-10-27T12:00:00+00:00", "latitude": 16.3, "longitude": 82.7, "wind_kmh": 222,
+         "storm_status": "Hurricane/Typhoon > 74 mph"},
+        {"at": "2026-10-28T06:00:00+00:00", "latitude": 16.4, "longitude": 81.8, "wind_kmh": 102,
+         "storm_status": "Tropical Storm"},
+    ]
+    assert fake_api["storms"] == [(gdacs.EVENT_DATA_URL, {"eventtype": "TC", "eventid": 1}), (TIMELINE_URL, None)]
+    assert {k: extras["parts"]["tracks"][k] for k in ("status", "features")} == {"status": "ok", "features": 1}
+
+
+def test_track_failure_keeps_the_alert_and_never_fails_the_fetch(fake_api):
+    fake_api["event_data"] = requests.exceptions.Timeout("slow")
+    fake_api["pages"] = {FC: [FakeResponse(200, [_india(1, "TC")])]}
+    rows, extras = gdacs.fetch_detailed()
+    (alert,) = extras["alerts"]
+    assert "track" not in alert and [r["id"] for r in rows] == ["GDACS-TC-1"]
+    assert extras["parts"]["tracks"]["status"] == "error" and "slow" in extras["parts"]["tracks"]["error"]
+    fake_api["event_data"] = {"properties": {"impacts": []}}   # a record without a timeline
+    assert gdacs.fetch_detailed()[1]["parts"]["tracks"]["status"] == "error"
+
+
+def test_no_track_request_for_floods_or_finished_cyclones(fake_api):
+    _serve_track(fake_api)
+    finished = _india(2, "TC")
+    finished["properties"]["iscurrent"] = "false"
+    fake_api["pages"] = {FC: [FakeResponse(200, [_india(1, "FL"), finished])]}
+    _, extras = gdacs.fetch_detailed()
+    assert fake_api["storms"] == [] and "tracks" not in extras["parts"]

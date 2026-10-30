@@ -243,6 +243,26 @@ GDACS is the only source for floods and cyclones (cyclone ARNAB-26 was live). In
    Each query keeps only its own event types, in case the filter is ignored again. Each
    query's status, feature count, time and error go into `pipeline_runs.sources.GDACS.parts`.
 
+## Decisions (30 Oct 2026): cyclones
+
+ARNAB-26 crossed the Andhra Pradesh coast (West Godavari) at about 27 Oct 18:00 UTC.
+JTWC's last advisory, at 28 Oct 06:00 UTC, had it over land at 102 km/h, down from 222
+km/h at 27 Oct 12:00. Two days later GDACS still listed it as current, so the desk kept
+it open at Level 3, and the reason gave GDACS's `severitydata` (the storm's peak) as its
+wind. Job, 30 Oct:
+1. **Close rule.** A cyclone is finished once its latest advisory is more than 24 h old
+   (`gdacs.lifecycle.cyclone_finished_after_hours`), cyclones only; a new advisory reopens
+   it. GDACS marked the last eight storms finished 21 h to 45 days after their last
+   advisory, and the India storm before ARNAB (ONE-26, Sep) after 6.4 days.
+2. **Wind.** One more request pair per current cyclone (the event record, then its
+   advisory timeline) gives each advisory's wind. The figures keep the latest wind and its
+   time next to the peak, plus the observed track, each point placed in a state or at sea,
+   and the landfall point. Reason: "GDACS Orange alert, 102 km/h winds (peaked at 222
+   km/h)".
+3. The design session gets the field names. A closed cyclone's "Since yesterday" line
+   should read as news ("Cyclone Arnab weakens after crossing the Andhra coast"), but only
+   when the stored track and winds support it.
+
 ## Build plan
 Rules: one work item at a time, each tested and committed separately; the existing
 `events` / `aqi_readings` output keeps working until the new output is verified (new

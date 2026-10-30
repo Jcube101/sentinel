@@ -120,14 +120,90 @@ def test_level_follows_current_episode_and_notes_peak():
     assert c.level == 1 and c.reason == "GDACS Green alert (event peaked Orange)"
 
 
-def test_cyclone_reason_gives_wind_speed():
-    # ARNAB-26, No. 27: GDACS's "Tropical Storm (maximum wind speed of 222 km/h)".
+def test_cyclone_without_a_track_gives_the_peak_wind_as_the_peak():
+    # ARNAB-26: the search API's "Tropical Storm (maximum wind speed of 222 km/h)" is the
+    # storm's peak; without the timeline there is no wind for now.
     alert = {**_alert(kind="TC", level="Orange", score=2.0), "alertlevel": "Red", "severity": 222.2208,
              "severity_unit": "km/h", "severity_text": "Tropical Storm (maximum wind speed of 222 km/h)"}
     (c,) = desk.gdacs_candidates([alert], {}, CFG)
-    assert c.reason == "GDACS Orange alert, 222 km/h winds (event peaked Red)"
+    assert c.reason == "GDACS Orange alert, 222 km/h peak winds (event peaked Red)"
+    assert (c.figures["wind_kmh"], c.figures["peak_wind_kmh"], c.figures["track"]) == (None, 222, [])
     flood = {**_alert(), "severity": 120.0, "severity_unit": "km/h"}   # only cyclones carry a wind speed
-    assert desk.gdacs_candidates([flood], {}, CFG)[0].reason == "GDACS Green alert"
+    (f,) = desk.gdacs_candidates([flood], {}, CFG)
+    assert f.reason == "GDACS Green alert" and "wind_kmh" not in f.figures and "track" not in f.figures
+
+
+# ARNAB-26's observed track as GDACS's timeline gave it on 30 Oct 2026 (UTC; wind m/s -> km/h).
+ARNAB_TRACK = [
+    {"at": f"2026-{t}:00:00+00:00", "latitude": lat, "longitude": lon, "wind_kmh": w,
+     "storm_status": st}
+    for t, lat, lon, w, st in [
+        ("10-26T00", 16, 89.1, 65, "Tropical Storm"),
+        ("10-26T06", 15.3, 88.4, 120, "Hurricane/Typhoon > 74 mph"),
+        ("10-26T12", 15.9, 87.2, 148, "Hurricane/Typhoon > 74 mph"),
+        ("10-26T18", 16, 85.8, 148, "Hurricane/Typhoon > 74 mph"),
+        ("10-27T00", 16, 84.8, 167, "Hurricane/Typhoon > 74 mph"),
+        ("10-27T06", 16.2, 83.8, 213, "Hurricane/Typhoon > 74 mph"),
+        ("10-27T12", 16.3, 82.7, 222, "Hurricane/Typhoon > 74 mph"),
+        ("10-27T18", 16.4, 81.6, 185, "Hurricane/Typhoon > 74 mph"),
+        ("10-28T00", 16.2, 81.6, 120, "Hurricane/Typhoon > 74 mph"),
+        ("10-28T06", 16.4, 81.8, 102, "Tropical Storm"),
+    ]
+]
+ARNAB_LAST = datetime(2026, 10, 28, 6, 0, tzinfo=timezone.utc)
+
+
+def _arnab(track=ARNAB_TRACK, episode=10, todate=ARNAB_LAST):
+    alert = {**_alert(eid=1001345, kind="TC", level="Orange", score=2.0, episode=episode), "alertlevel": "Red",
+             "name": "Tropical Cyclone ARNAB-26", "severity": 222.2208, "severity_unit": "km/h",
+             "fromdate": "2026-10-26T00:00:00+00:00", "todate": todate.isoformat(),
+             "latitude": 16.4, "longitude": 81.8}
+    if track is not None:
+        alert["track"] = [dict(p) for p in track]
+    return alert
+
+
+def test_cyclone_reason_gives_the_latest_wind_and_the_peak():
+    (c,) = desk.gdacs_candidates([_arnab()], {}, CFG, ARNAB_LAST + timedelta(hours=3))
+    assert c.reason == "GDACS Orange alert, 102 km/h winds (peaked at 222 km/h)"
+    f = c.figures
+    assert (f["wind_kmh"], f["wind_at"]) == (102, "2026-10-28T06:00:00+00:00")
+    assert (f["peak_wind_kmh"], f["peak_wind_at"]) == (222, "2026-10-27T12:00:00+00:00")
+    assert f["advisories_stopped"] is False
+
+
+def test_cyclone_at_its_peak_has_no_peak_note_but_keeps_the_colour_note():
+    rising = _arnab(track=ARNAB_TRACK[:7], todate=datetime(2026, 10, 27, 12, tzinfo=timezone.utc))
+    (c,) = desk.gdacs_candidates([rising], {}, CFG, datetime(2026, 10, 27, 15, tzinfo=timezone.utc))
+    assert c.reason == "GDACS Orange alert, 222 km/h winds (event peaked Red)"
+
+
+def test_cyclone_track_is_placed_and_gives_the_landfall():
+    (c,) = desk.gdacs_candidates([_arnab()], {}, CFG, ARNAB_LAST)
+    track = c.figures["track"]
+    assert [p["state"] for p in track] == [None] * 7 + ["Andhra Pradesh", None, "Andhra Pradesh"]
+    assert track[-1]["district"] == "East Godavari" and track[-1]["wind_kmh"] == 102
+    assert c.figures["landfall"] == {"at": "2026-10-27T18:00:00+00:00", "latitude": 16.4, "longitude": 81.6,
+                                     "state": "Andhra Pradesh", "district": "West Godavari"}
+    at_sea = desk.gdacs_candidates([_arnab(track=ARNAB_TRACK[:7])], {}, CFG, ARNAB_LAST)[0]
+    assert at_sea.figures["landfall"] is None
+
+
+def test_cyclone_keeps_its_stored_track_when_this_run_has_none_for_the_same_episode():
+    (first,) = desk.gdacs_candidates([_arnab()], {}, CFG, ARNAB_LAST)
+    (again,) = desk.gdacs_candidates([_arnab(track=None)], {first.id: _stored(first)}, CFG, ARNAB_LAST)
+    assert again.figures["track"] == first.figures["track"] and again.figures["wind_kmh"] == 102
+    (newer,) = desk.gdacs_candidates([_arnab(track=None, episode=11)], {first.id: _stored(first)}, CFG, ARNAB_LAST)
+    assert newer.figures["wind_kmh"] is None and newer.reason.startswith("GDACS Orange alert, 222 km/h peak winds")
+
+
+def test_cyclone_advisories_stop_after_the_configured_hours():
+    hours = CFG["gdacs"]["lifecycle"]["cyclone_finished_after_hours"]
+    at = lambda h: desk.gdacs_candidates([_arnab()], {}, CFG, ARNAB_LAST + timedelta(hours=h))[0]
+    assert at(hours).figures["advisories_stopped"] is False
+    assert at(hours + 1).figures["advisories_stopped"] is True
+    flood = {**_alert(), "todate": "2026-09-01T00:00:00+00:00"}   # floods aren't closed on age
+    assert "advisories_stopped" not in desk.gdacs_candidates([flood], {}, CFG, NOW)[0].figures
 
 
 def test_cyclone_position_is_the_storm_at_the_episode_time():
@@ -285,6 +361,20 @@ def test_rows_have_every_column():
     assert tuple(row) == desk.ITEM_COLUMNS
 
 
+def test_ended_candidate_closes_an_open_item_but_never_opens_or_reopens_one():
+    args = dict(categories={"earthquake"}, source_good=True, open_min_level=1, expired=lambda item: False,
+                now=NOW, run_id=2, ended=lambda c: c.reason == "ended")
+    ended = desk.Candidate(**{**_cand().__dict__, "reason": "ended"})
+    old = _stored_item()
+    (row,), (snap,) = desk.reconcile({old["id"]: old}, [ended], **args)
+    assert row["status"] == "closed" and snap["change"] == "closed" and row["severity_reason"] == "ended"
+    assert desk.reconcile({}, [ended], **args) == ([], [])
+    closed = _stored_item(status="closed", closed_at=(NOW - timedelta(hours=2)).isoformat())
+    assert desk.reconcile({closed["id"]: closed}, [ended], **args) == ([], [])
+    (row,), (snap,) = desk.reconcile({closed["id"]: closed}, [_cand()], **args)
+    assert row["status"] == "open" and snap["change"] == "reopened"
+
+
 # --- run_desk end to end (fake Supabase) -------------------------------------------
 
 def _results(usgs_rows=(), alerts=(), usgs_status="ok", gdacs_status="ok"):
@@ -329,6 +419,32 @@ def test_run_desk_lifecycle_across_runs():
     s4 = desk.run_desk(db, 4, _results(), later + timedelta(hours=6), cfg=CFG, km_from_india=_distance(0))
     assert {k: s4[k] for k in ("open", "max_level", "last_known", "changes")} == {
         "open": 0, "max_level": None, "last_known": 0, "changes": {}}
+
+
+def test_run_desk_closes_a_cyclone_whose_advisories_stopped_and_reopens_on_a_new_one():
+    db = FakeSupabase()
+    item = "cyclone:GDACS-TC-1001345"
+    s1 = desk.run_desk(db, 1, _results(alerts=[_arnab()]), ARNAB_LAST + timedelta(hours=3), cfg=CFG)
+    assert s1["changes"] == {item: "opened"} and s1["max_level"] == 3
+
+    # Two days on, GDACS still lists ARNAB-26 as current with no new advisory.
+    s2 = desk.run_desk(db, 2, _results(alerts=[_arnab()]), ARNAB_LAST + timedelta(hours=48), cfg=CFG)
+    assert s2["open"] == 0 and s2["changes"] == {item: "closed"}
+    (row,) = db.rows("desk_items")
+    assert row["status"] == "closed" and row["figures"]["advisories_stopped"] is True
+    assert row["severity_reason"] == "GDACS Orange alert, 102 km/h winds (peaked at 222 km/h)"
+
+    # Still listed, still no advisory: stays closed, no new snapshot.
+    s3 = desk.run_desk(db, 3, _results(alerts=[_arnab()]), ARNAB_LAST + timedelta(hours=54), cfg=CFG)
+    assert s3["changes"] == {} and len(db.rows("desk_item_snapshots")) == 2
+
+    # A new advisory reopens it.
+    fresh = ARNAB_LAST + timedelta(hours=60)
+    newer = _arnab(episode=11, todate=fresh,
+                   track=ARNAB_TRACK + [{**ARNAB_TRACK[-1], "at": fresh.isoformat(), "wind_kmh": 90}])
+    s4 = desk.run_desk(db, 4, _results(alerts=[newer]), fresh + timedelta(hours=3), cfg=CFG)
+    assert s4["changes"] == {item: "reopened"}
+    assert db.rows("desk_items")[0]["severity_reason"] == "GDACS Orange alert, 90 km/h winds (peaked at 222 km/h)"
 
 
 def test_dry_run_reads_but_never_writes_and_tolerates_missing_tables():

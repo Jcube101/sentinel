@@ -185,14 +185,22 @@ def gdacs_item_id(alert: dict) -> str | None:
     return f"{category}:{alert['id']}" if category else None
 
 
-def gdacs_candidates(alerts: list[dict], existing: dict[str, dict], cfg: dict) -> list[Candidate]:
+def gdacs_candidates(alerts: list[dict], existing: dict[str, dict], cfg: dict,
+                     now: datetime | None = None) -> list[Candidate]:
     """Current India flood and cyclone alerts.
 
     "Rising" = the episode alert score went up when GDACS published a new
     episode, compared with the episode before it (kept in the item's figures).
     The level follows the current episode, so an item can de-escalate; when
     the event as a whole peaked higher, the reason says so.
+
+    A cyclone whose latest advisory (the episode's todate) is older than
+    gdacs.lifecycle.cyclone_finished_after_hours gets figures.advisories_stopped:
+    GDACS can list a storm as current for days or weeks after its last advisory,
+    so the desk closes it on the advisories (see reconcile's `ended`).
     """
+    now = now or datetime.now(timezone.utc)
+    finished_after = timedelta(hours=cfg["gdacs"]["lifecycle"]["cyclone_finished_after_hours"])
     out = []
     for alert in alerts:
         item_id = gdacs_item_id(alert)
@@ -208,10 +216,19 @@ def gdacs_candidates(alerts: list[dict], existing: dict[str, dict], cfg: dict) -
 
         colour = (alert["episodealertlevel"] or "Green").strip().capitalize()
         peak = (alert["alertlevel"] or "").strip().capitalize()
+        storm = _storm_figures(alert, previous, now, finished_after) if alert["eventtype"] == "TC" else {}
         reason = f"GDACS {colour} alert"
-        if alert["eventtype"] == "TC" and alert["severity"] is not None and alert["severity_unit"] == "km/h":
-            reason += f", {alert['severity']:.0f} km/h winds"   # GDACS: "maximum wind speed of 222 km/h"
-        if GDACS_COLOUR_RANK.get(peak, 0) > GDACS_COLOUR_RANK.get(colour, 0):
+        wind_peak_noted = False
+        if storm.get("wind_kmh") is not None:
+            reason += f", {storm['wind_kmh']} km/h winds"
+            if storm["peak_wind_kmh"] is not None and storm["peak_wind_kmh"] > storm["wind_kmh"]:
+                reason += f" (peaked at {storm['peak_wind_kmh']} km/h)"
+                wind_peak_noted = True
+        elif storm.get("peak_wind_kmh") is not None:
+            # No track this run: the search API's figure is the storm's peak
+            # ("maximum wind speed of 222 km/h"), not its wind now.
+            reason += f", {storm['peak_wind_kmh']} km/h peak winds"
+        if not wind_peak_noted and GDACS_COLOUR_RANK.get(peak, 0) > GDACS_COLOUR_RANK.get(colour, 0):
             reason += f" (event peaked {peak})"
         if rising:
             reason += f", rising (alert score {prev_score:g} → {score:g})"
@@ -242,10 +259,66 @@ def gdacs_candidates(alerts: list[dict], existing: dict[str, dict], cfg: dict) -
                 "countries": alert["countries"],
                 "gdacs_url": alert["url"],
                 "ends_at": alert["todate"],
-                **({"position": _storm_position(alert)} if alert["eventtype"] == "TC" else {}),
+                **storm,
             },
         ))
     return out
+
+
+def _storm_figures(alert: dict, previous: dict, now: datetime, finished_after: timedelta) -> dict:
+    """A cyclone's position, winds, observed track and whether its advisories
+    have stopped (figures; field list in pipeline/CLAUDE.md, *Severity desk*).
+
+    The track comes from the fetcher (alert["track"]); if this run couldn't read
+    it, the stored one is kept while the episode is the same. Without a track
+    the only wind is GDACS's peak."""
+    track = alert.get("track")
+    if track is None and previous.get("episode_id") == alert["episodeid"]:
+        track = previous.get("track")
+    track = _place_track(track or [])
+    winds = [p for p in track if p.get("wind_kmh") is not None]
+    latest = winds[-1] if winds else None
+    peak = max(winds, key=lambda p: p["wind_kmh"]) if winds else None
+    if peak is None and alert["severity"] is not None and alert["severity_unit"] == "km/h":
+        peak_kmh = round(alert["severity"])
+    else:
+        peak_kmh = peak["wind_kmh"] if peak else None
+    last_advisory = _dt(alert["todate"])
+    return {
+        "position": _storm_position(alert),
+        "wind_kmh": latest["wind_kmh"] if latest else None,
+        "wind_at": latest["at"] if latest else None,
+        "peak_wind_kmh": peak_kmh,
+        "peak_wind_at": peak["at"] if peak else None,
+        "track": track,
+        "landfall": _landfall(track),
+        "advisories_stopped": last_advisory is not None and now - last_advisory > finished_after,
+    }
+
+
+def _place_track(track: list[dict]) -> list[dict]:
+    """Each track point with the state and district it is over (None at sea),
+    from the same district boundaries the fire stage uses."""
+    if not track:
+        return []
+    import fire   # fire imports desk; imported here, not at the top
+    spots = [(p["latitude"], p["longitude"]) for p in track]
+    places = iter(fire.Districts.india().locate([s for s in spots if None not in s]))
+    out = []
+    for point, spot in zip(track, spots):
+        place = next(places) if None not in spot else None
+        out.append({**point, "state": (place or {}).get("state"), "district": (place or {}).get("name")})
+    return out
+
+
+def _landfall(track: list[dict]) -> dict | None:
+    """The first observed point over land that follows one at sea, or None:
+    where and when the storm crossed the coast, as far as 6-hourly points at
+    0.1 degree tell."""
+    for before, point in zip(track, track[1:]):
+        if before.get("state") is None and point.get("state") is not None:
+            return {k: point.get(k) for k in ("at", "latitude", "longitude", "state", "district")}
+    return None
 
 
 def _storm_position(alert: dict) -> dict:
@@ -322,7 +395,7 @@ def _snapshot(row: dict, run_id: int, now: datetime, change: str | None, new_dat
 def reconcile(existing: dict[str, dict], candidates: list[Candidate], *, categories: set[str],
               source_good: bool, open_min_level: int, expired, now: datetime,
               run_id: int, last_known_note: str | None = None,
-              closes=None) -> tuple[list[dict], list[dict]]:
+              closes=None, ended=None) -> tuple[list[dict], list[dict]]:
     """Apply the open / escalate / close rules for one source's categories.
 
     existing:    stored items by id (open ones, plus any candidate ids)
@@ -335,6 +408,10 @@ def reconcile(existing: dict[str, dict], candidates: list[Candidate], *, categor
     closes:      (candidate, stored item) -> True to close an open item that
                  still has a candidate (fire: quiet for long enough). By
                  default an open item closes only when its candidate is gone.
+    ended:       candidate -> True when its event is over although the source
+                 still lists it (a cyclone with no advisory for a day): it
+                 closes an open item with this run's data, and never opens or
+                 reopens one. A later candidate that isn't ended reopens it.
 
     Returns (desk_items rows to upsert, snapshot rows).
     """
@@ -356,8 +433,9 @@ def reconcile(existing: dict[str, dict], candidates: list[Candidate], *, categor
             "source_updated_at": _iso(c.source_updated_at), "figures": c.figures,
             "last_run_id": run_id, "updated_at": now_iso,
         }
+        is_ended = ended is not None and ended(c)
         if old is None:
-            if c.level < open_min_level:
+            if c.level < open_min_level or is_ended:
                 continue
             row = _row({
                 "id": c.id, "category": c.category, "source": c.source, "source_ref": c.source_ref,
@@ -366,14 +444,14 @@ def reconcile(existing: dict[str, dict], candidates: list[Candidate], *, categor
             })
             change = "opened"
         else:
-            if old["status"] == "closed" and c.level < open_min_level:
+            if old["status"] == "closed" and (c.level < open_min_level or is_ended):
                 continue
             row = _row({**old, **fresh, "peak_level": max(old.get("peak_level") or c.level, c.level)})
             old_level = old["severity_level"]
             if old["status"] == "closed":
                 row.update(status="open", closed_at=None)
                 change = "reopened"
-            elif closes is not None and closes(c, old):
+            elif is_ended or (closes is not None and closes(c, old)):
                 row.update(status="closed", closed_at=now_iso)
                 change = "closed"
             elif c.level > old_level:
@@ -453,7 +531,7 @@ def run_desk(supabase, run_id: int | None, results: dict, now: datetime, *,
             raise
         logger.warning("dry-run: could not read desk items (is migration 002 applied?) — %s", exc)
         existing = {}
-    floods_cyclones = gdacs_candidates(alerts, existing, cfg)
+    floods_cyclones = gdacs_candidates(alerts, existing, cfg, now)
 
     window = timedelta(hours=cfg["quake"]["lifecycle"]["close_after_hours"])
 
@@ -468,7 +546,8 @@ def run_desk(supabase, run_id: int | None, results: dict, now: datetime, *,
     g_items, g_snaps = reconcile(
         existing, floods_cyclones, categories={FLOOD, CYCLONE}, source_good=gdacs_good,
         open_min_level=cfg["gdacs"]["lifecycle"]["open_min_level"],
-        expired=lambda item: False, now=now, run_id=run_id)
+        expired=lambda item: False, now=now, run_id=run_id,
+        ended=lambda c: bool(c.figures.get("advisories_stopped")))
     items, snapshots = q_items + g_items, q_snaps + g_snaps
 
     if write:

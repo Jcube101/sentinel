@@ -494,6 +494,35 @@ writes the field; older rows have it null or missing, so keep the fallbacks for 
   `figures.severity`. The air all-clear names the source that assessed it: "No city Poor
   or worse (CPCB AQI, real-time, unvalidated)" or "(approx. CPCB band)", and neither
   when last-known.
+- **Cyclone winds, track and close rule** (Job, 30 Oct; merged 30 Oct, from edition 32,
+  14:30 IST): `figures.severity` is GDACS's peak wind, not the wind now ("maximum wind
+  speed of 222 km/h"). ARNAB-26 printed 222 km/h two days after it crossed the coast at
+  102 km/h. On a cyclone item, new:
+  - `wind_kmh`, `wind_at`: the latest advisory's wind (km/h, integer) and its time (UTC).
+  - `peak_wind_kmh`, `peak_wind_at`: the storm's peak so far. `peak_wind_at` is null
+    when the track couldn't be read; `peak_wind_kmh` then falls back to GDACS's peak.
+  - `track`: the observed advisories, oldest first, about one every 6 h:
+    `{at, latitude, longitude, wind_kmh, storm_status, state, district}`. `state` and
+    `district` are where the point is over land, null at sea. `storm_status` is JTWC's
+    class: "Tropical Depression", "Tropical Storm" or "Hurricane/Typhoon > 74 mph".
+  - `landfall`: `{at, latitude, longitude, state, district}`, the first point over land
+    after one at sea, or null. Points are 6-hourly at 0.1 degrees, so a storm on the coast
+    can wobble (ARNAB: sea, land, sea, land); `landfall` is the first crossing.
+  - `advisories_stopped`: true when the latest advisory is over 24 h old
+    (`severity_config.gdacs.lifecycle.cyclone_finished_after_hours`). The item then closes
+    in that run (change `closed`), with this run's figures. It reopens on a new advisory.
+  - The reason now has the latest wind and the peak: "GDACS Orange alert, 102 km/h winds
+    (peaked at 222 km/h)", or "222 km/h peak winds" when the run had no track. So wind
+    in the copy, cards and item page should come from `wind_kmh` (fall back to
+    `figures.severity` as the peak for editions before 32). The map spiral can be sized by
+    `wind_kmh` too.
+  - ARNAB-26 is expected to close in edition 32 with `wind_kmh` 102 (28 Oct 06:00 UTC),
+    `peak_wind_kmh` 222 (27 Oct 12:00), `landfall` 27 Oct 18:00 UTC in West Godavari,
+    Andhra Pradesh, and the last point in East Godavari. Job asks that the closed item's
+    "Since yesterday" line read as news, e.g. "Cyclone Arnab weakens after crossing the
+    Andhra coast", but only when the data supports it: weakens = `wind_kmh` below
+    `peak_wind_kmh`; crossed the coast = `landfall` not null, with the state from
+    `landfall.state`. Otherwise use a plain closing line.
 
 ### Used by the frontend (29 Oct 2026)
 

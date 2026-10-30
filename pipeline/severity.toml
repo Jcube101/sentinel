@@ -51,6 +51,12 @@ red = 4
 # Items close when GDACS marks the event finished (iscurrent = false) or
 # stops listing it; if the GDACS fetch fails they stay open as last-known.
 open_min_level = 1
+# Cyclones only: one is finished once GDACS's latest advisory for it is this
+# many hours old (JTWC advises every 6 h while it tracks a storm), even while
+# GDACS still lists it as current. GDACS marked the last eight storms finished
+# 21 h to 45 days after their last advisory (checked 30 Oct 2026). The item
+# closes; a new advisory reopens it.
+cyclone_finished_after_hours = 24
 
 [air]
 # National air-quality item (air.py). Primary source: CPCB's real-time AQI

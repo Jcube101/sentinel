@@ -267,10 +267,25 @@ fire_baseline table (migration 004). Rerun only to change years or parameters.
 100 km of India or M6+ in the box), floods and cyclones (GDACS India alerts
 from `gdacs.fetch_detailed()`) become desk items with a level, a reason and
 open / escalate / close rules; a failed source leaves its items "last-known".
-A cyclone's reason gives its wind speed ("GDACS Orange alert, 222 km/h winds"), and
-its position is the storm's: GDACS's point for a cyclone is the latest observed
+A cyclone's position is the storm's: GDACS's point for a cyclone is the latest observed
 track point, at the episode's `todate` (checked on six storms, 29 Oct 2026), so the
 item moves with each episode; `figures.position` = {latitude, longitude, at}.
+Cyclone winds and track (from 30 Oct 2026): the search API gives only a storm's peak
+wind (`severitydata`, kept as `figures.severity`), so for each current India cyclone
+the fetcher reads the event's record and then its advisory timeline (2 requests,
+~2-4 s; best effort, recorded in `pipeline_runs.sources.GDACS.parts.tracks`, never
+fails the run). Observed advisories only, wind m/s -> km/h. Figures: `wind_kmh`,
+`wind_at` (the latest advisory's), `peak_wind_kmh`, `peak_wind_at`, `track` (oldest
+first: `at`, `latitude`, `longitude`, `wind_kmh`, `storm_status`, `state`, `district`;
+state/district from the fire stage's district boundaries, null at sea), `landfall`
+(the first point over land after one at sea, same fields, or null) and
+`advisories_stopped`. Reason: "GDACS Orange alert, 102 km/h winds (peaked at 222
+km/h)"; without a track, "222 km/h peak winds". A run without a track keeps the
+stored one while the episode is the same. Close rule: a cyclone whose latest advisory
+(`todate`) is older than `gdacs.lifecycle.cyclone_finished_after_hours` (24) is
+finished even while GDACS lists it as current (`advisories_stopped`; reconcile's
+`ended`): the open item closes with that run's data, and it reopens only on a new
+advisory.
 India's outline is `data/india_outline.geojson` (see data/README.md).
 `air.py` adds one national air-quality item (`air:IN`). Primary source: CPCB's
 real-time AQI on data.gov.in (`datagov.py`, 4 requests): CPCB's own sub-indices,

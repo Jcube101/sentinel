@@ -11,6 +11,8 @@ from config import GDACS_READ_TIMEOUT_S, INDIA_BBOX, SHORT_RETENTION_DAYS
 logger = logging.getLogger(__name__)
 
 ENDPOINT = "https://www.gdacs.org/gdacsapi/api/events/geteventlist/SEARCH"
+# One event's full record: its impacts link to the storm's advisory timeline.
+EVENT_DATA_URL = "https://www.gdacs.org/gdacsapi/api/events/geteventdata"
 
 # The API returns at most 100 features per page, whatever pageSize asks for,
 # and `country=IND` also matches Indonesia. Each query pages until a short
@@ -208,6 +210,66 @@ def _to_alert(feature: dict) -> dict | None:
     }
 
 
+def _storm_track(eventid) -> list[dict]:
+    """A cyclone's observed track, oldest first: one point per advisory (JTWC's,
+    every 6 h while the storm is tracked), with its wind in km/h. The search API
+    gives only the storm's peak wind; the per-advisory winds are in the
+    timeline that the event's record links to (two requests). Forecast points
+    are left out. The timeline's wind_speed is in m/s: ARNAB-26's peak, 61.728,
+    is GDACS's "maximum wind speed of 222 km/h" (checked 30 Oct 2026)."""
+    resp = get_with_retry("GDACS", EVENT_DATA_URL, params={"eventtype": "TC", "eventid": eventid})
+    resp.raise_for_status()
+    impacts = (resp.json().get("properties") or {}).get("impacts") or []
+    url = next((r["timeline"] for i in impacts if (r := (i or {}).get("resource") or {}).get("timeline")), None)
+    if not url:
+        raise ValueError("the event record links no timeline")
+    resp = get_with_retry("GDACS", url)
+    resp.raise_for_status()
+    items = (resp.json().get("channel") or {}).get("item") or []
+    if isinstance(items, dict):
+        items = [items]
+    points = {}
+    for it in items:
+        if str(it.get("actual")).strip().lower() != "true":
+            continue
+        at = datetime.strptime(str(it["advisory_datetime"]).strip(), "%d %b %Y %H:%M").replace(tzinfo=timezone.utc)
+        wind = _float(it.get("wind_speed"))
+        status = it.get("storm_status")
+        if isinstance(status, list):
+            status = next((x for x in status if x), None)
+        points[at] = {
+            "at": at.isoformat(),
+            "latitude": _float(it.get("latitude")),
+            "longitude": _float(it.get("longitude")),
+            "wind_kmh": round(wind * 3.6) if wind is not None else None,
+            "storm_status": status or None,
+        }
+    return [points[at] for at in sorted(points)]
+
+
+def _add_tracks(alerts: list[dict], parts: dict) -> None:
+    """Each current India cyclone's track into its alert["track"]. Best effort:
+    a storm whose track can't be read keeps only the search API's peak wind,
+    and the failure is recorded in parts["tracks"], never failing the run."""
+    storms = [a for a in alerts if a["eventtype"] == "TC" and a["iscurrent"]]
+    if not storms:
+        return
+    t0 = time.monotonic()
+    errors = []
+    for alert in storms:
+        try:
+            alert["track"] = _storm_track(alert["eventid"])
+        except Exception as exc:
+            errors.append(f"{alert['id']}: {exc}")
+            logger.warning("GDACS: no track for %s, its wind stays the storm's peak — %s", alert["id"], exc)
+    parts["tracks"] = {"status": "error" if errors else "ok", "features": len(storms) - len(errors),
+                       "duration_s": round(time.monotonic() - t0, 1)}
+    if errors:
+        parts["tracks"]["error"] = "; ".join(errors)[:300]
+    logger.info("GDACS: tracks for %d of %d current cyclones, %.1f s", len(storms) - len(errors), len(storms),
+                parts["tracks"]["duration_s"])
+
+
 def fetch(start_date: str | None = None, end_date: str | None = None) -> list[dict]:
     """Rows for the events table."""
     return fetch_detailed(start_date, end_date)[0]
@@ -218,7 +280,8 @@ def fetch_detailed(start_date: str | None = None, end_date: str | None = None) -
 
     Raises only when the floods/cyclones query fails (GDACS failed for the
     run). alerts holds every India-affecting FL/TC event and, when
-    wildfires_ok, every WF event (see _to_alert). The events rows come from
+    wildfires_ok, every WF event (see _to_alert); a current cyclone's alert
+    also has its observed "track" (_storm_track) when GDACS gave it. The events rows come from
     the floods/cyclones query plus whatever the earthquake query got. parts:
     each query's status, feature count, time and error, for pipeline_runs.
     """
@@ -250,6 +313,7 @@ def fetch_detailed(start_date: str | None = None, end_date: str | None = None) -
             continue
         if alert is not None:
             alerts[alert["id"]] = alert
+    _add_tracks(list(alerts.values()), parts)
 
     # The 90-day query returns events that started before the retention
     # window; _cleanup() would delete them right after they were written.

@@ -75,6 +75,7 @@ def validate(cfg: dict) -> None:
         _number(cfg, key, minimum=1, maximum=4, integer=True)
     _ascending(cfg, *gdacs_levels, strict=False)
     _number(cfg, "gdacs.lifecycle.open_min_level", minimum=1, maximum=4, integer=True)
+    _number(cfg, "gdacs.lifecycle.cyclone_finished_after_hours", minimum=1)
 
     for pollutant in ("pm25", "pm10"):
         bands = [f"air.{pollutant}.{b}_above" for b in ("poor", "very_poor", "severe")]
