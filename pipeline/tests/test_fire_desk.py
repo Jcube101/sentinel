@@ -16,7 +16,7 @@ from tests.test_fire import DISTRICTS, _row as _hotspot_row
 # Thresholds pinned here, so retuning severity.toml doesn't break these
 # mechanics tests (test_severity_config checks the repo's values).
 CFG = load()
-CFG["fire"].update(min_fire_events=10, level_2_min_ratio=1.25, level_3_min_ratio=2.0, calibration_cap=2,
+CFG["fire"].update(min_fire_events=10, level_2_min_ratio=1.25, level_3_min_ratio=2.0, ratio_level_cap=2, near_people_cap=2,
                    level_4_min_frp_mw=100, level_4_near_km=10, level_4_min_population=100_000)
 CFG["fire"]["lifecycle"].update(open_min_level=2, close_after_hours=48)
 NOW = datetime(2026, 10, 21, 9, 0, tzinfo=timezone.utc)   # first run of 21 Oct: complete day = 20 Oct
@@ -122,7 +122,7 @@ def test_cap_holds_firms_levels_at_2_and_says_so():
                         " · capped at Level 2 pending calibration (would be Level 3)")
     assert (c.figures["ratio_level"], c.figures["firms_level"], c.figures["capped"]) == (3, 3, True)
 
-    uncapped = _candidate(_events(30), cfg=_cfg(calibration_cap=4))
+    uncapped = _candidate(_events(30), cfg=_cfg(ratio_level_cap=4, near_people_cap=4))
     assert uncapped.level == 3 and "capped" not in uncapped.reason and uncapped.figures["capped"] is False
 
 
@@ -146,7 +146,26 @@ def test_large_fire_near_a_city_is_level_4_but_capped():
     assert "large fire (150 MW) 3.8 km from Amritsar" in c.reason and c.reason.endswith("(would be Level 4)")
     (fire,) = c.figures["large_fires_near_people"]
     assert (fire["place"], fire["latitude"], fire["longitude"]) == ("Amritsar", 31.60, 74.85)   # for the map
-    assert _candidate([big], cfg=_cfg(calibration_cap=4)).level == 4
+    assert _candidate([big], cfg=_cfg(ratio_level_cap=4, near_people_cap=4)).level == 4
+
+
+def test_the_two_caps_are_independent():
+    """15 Nov 2026: the ratio level and the large-fire-near-people level each have their own cap."""
+    big = _event(99, lat=31.60, lon=74.85, frp=150.0)
+    # Level 4 lifted, ratio levels still capped at 2: a large fire shows as Level 4, a 3x day stays 2.
+    near_only = _cfg(ratio_level_cap=2, near_people_cap=4)
+    assert _candidate([big], cfg=near_only).level == 4
+    heavy = _candidate(_events(30), cfg=near_only)
+    assert heavy.level == 2 and heavy.figures["capped"] is True and heavy.figures["ratio_level_cap"] == 2
+    assert heavy.reason.endswith("capped at Level 2 pending calibration (would be Level 3)")
+    # Ratio levels lifted, Level 4 still capped: the 3x day is Level 3, the large fire is held at 2 (and says so).
+    ratio_only = _cfg(ratio_level_cap=4, near_people_cap=2)
+    assert _candidate(_events(30), cfg=ratio_only).level == 3
+    held = _candidate([big], cfg=ratio_only)
+    assert held.level == 2 and held.reason.endswith("capped at Level 2 pending calibration (would be Level 4)")
+    # A large fire on a 3x day under ratio cap 3 / near cap 2: the day's Level 3 stands, Level 4 is not shown.
+    both = _candidate(_events(30) + [big], cfg=_cfg(ratio_level_cap=3, near_people_cap=2))
+    assert both.level == 3 and both.figures["firms_level"] == 4 and both.figures["capped"] is True
 
 
 @pytest.mark.parametrize("event", [
@@ -155,7 +174,7 @@ def test_large_fire_near_a_city_is_level_4_but_capped():
     _event(3, lat=31.40, lon=74.20, frp=300.0),   # big, but 60+ km from Amritsar
 ])
 def test_no_level_4(event):
-    assert _candidate([event], cfg=_cfg(calibration_cap=4)).figures["firms_level"] == 1
+    assert _candidate([event], cfg=_cfg(ratio_level_cap=4, near_people_cap=4)).figures["firms_level"] == 1
 
 
 def test_gdacs_wildfire_lifts_past_the_cap():
@@ -528,7 +547,7 @@ def test_watch_subjects_cover_every_state_with_a_norm():
     assert (h.level, h.next_level, h.threshold, h.item_id) == (2, None, None, "fire:haryana")  # cap 2: no FIRMS route up
     k = subjects["Kerala"]
     assert (k.value, k.threshold) == (0, 10)                                       # the minimum count binds
-    uncapped = {s.title: s for s in fire_desk.watch_subjects([haryana], [], norms, cfg=_cfg(calibration_cap=4),
+    uncapped = {s.title: s for s in fire_desk.watch_subjects([haryana], [], norms, cfg=_cfg(ratio_level_cap=4, near_people_cap=4),
                                                             day=DAY, data_to=NOW)}
     assert (uncapped["Haryana"].next_level, uncapped["Haryana"].threshold) == (3, 16)   # 2x the norm of 8
 

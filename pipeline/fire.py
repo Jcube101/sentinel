@@ -36,6 +36,7 @@ BATCH_SIZE = 500
 DATA_DIR = Path(__file__).resolve().parent / "data"
 DISTRICTS_PATH = DATA_DIR / "india_districts.geojson"
 STATIC_MASK_PATH = DATA_DIR / "static_heat_cells.json"
+STATIC_MASK_EXCLUSIONS_PATH = DATA_DIR / "static_mask_exclusions.toml"
 EARTH_RADIUS_KM = 6371.0
 KM_PER_DEG_LAT = math.pi / 180 * EARTH_RADIUS_KM
 

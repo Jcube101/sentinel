@@ -92,7 +92,7 @@ writes: [docs/style-guide.md](docs/style-guide.md).
 
 | Source | What Sentinel uses it for | Auth | Update frequency |
 |--------|---------------------------|------|------------------|
-| [NASA FIRMS](https://firms.modaps.eosdis.nasa.gov/) | Fire hotspots (VIIRS NOAA-20), clustered into fire events; its 2024–2025 archive sets each state's seasonal norm | API key | Near real-time, two passes a day |
+| [NASA FIRMS](https://firms.modaps.eosdis.nasa.gov/) | Fire hotspots (VIIRS NOAA-20), clustered into fire events; its 2020–2025 archive sets each state's seasonal norm | API key | Near real-time, two passes a day |
 | [GDACS](https://www.gdacs.org/) | Flood and cyclone alerts (with each storm's advisories: wind, track, landfall); forest-fire alerts lift a state's fire level | None | Event-driven |
 | [USGS Earthquake Hazards](https://earthquake.usgs.gov/fdsnws/event/1/) | Earthquakes, M4.0+ | None | Real-time |
 | [CPCB real-time AQI on data.gov.in](https://data.gov.in/resource/real-time-air-quality-index-various-locations) | The air item's primary source: station AQI sub-indices (read each run, not stored) | API key | Hourly |

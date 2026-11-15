@@ -99,7 +99,8 @@ def test_csv_round_trip(tmp_path):
 def test_config_build_parameters():
     m = CFG["fire"]["static_mask"]
     assert (m["mask_types"], m["cell_deg"], m["min_detections"]) == ([1, 2, 3], 0.004, 2)
-    assert CFG["fire"]["baseline"] == {"years": [2024, 2025], "smooth_weeks": 1}
+    assert (m["persistent_days"], m["persistent_years"]) == (10, 2)
+    assert CFG["fire"]["baseline"] == {"years": [2020, 2021, 2022, 2023, 2024, 2025], "smooth_weeks": 1}
 
 
 def test_days_missing_from_the_archive_are_not_counted_as_zero():
@@ -108,3 +109,44 @@ def test_days_missing_from_the_archive_are_not_counted_as_zero():
     covered = {start + timedelta(days=i) for i in range(365)} - {date(2025, 1, 5)}
     rows = {(r["state"], r["week"]): r for r in baseline.aggregate(daily, ["Punjab"], start, end, 0, "2025", covered)}
     assert rows[("Punjab", 1)]["days"] == 6 and rows[("Punjab", 1)]["mean_daily_events"] == 2.0   # 12 / 6
+
+
+# --- the persistence rule and the hand-checked exclusions (15 Nov 2026) ---------------------------------
+
+def _rows_on(lat, lon, n, ftype="0", conf="n", year=2024):
+    return [{**_csv_row(lat, lon, ftype=ftype), "acq_date": f"{year}-03-{d + 1:02d}", "confidence": conf} for d in range(n)]
+
+
+def test_days_per_cell_count_distinct_days_of_any_type_at_the_kept_confidence():
+    cell = 0.004
+    rows = _rows_on(23.7, 86.4, 12, ftype="0") + _rows_on(23.7, 86.4, 12, ftype="2") + _rows_on(22.0, 88.0, 20, conf="l")
+    days = baseline.count_days_by_cell(rows, {"n", "h"}, cell)
+    assert {c: len(d) for c, d in days.items()} == {(math.floor(23.7 / cell), math.floor(86.4 / cell)): 12}   # not the low-confidence cell
+
+
+def test_persistent_cells_need_the_days_in_each_of_the_years():
+    a, b, c = (1, 1), (2, 2), (3, 3)
+    per_year = {2020: {a: 12, b: 12, c: 3}, 2021: {a: 10, b: 4}, 2022: {c: 30}}
+    assert baseline.persistent_cells(per_year, 10, 2) == {a}                     # b has one good year, c one
+    assert baseline.persistent_cells(per_year, 10, 1) == {a, b, c}
+    assert baseline.persistent_cells({2020: {a: {"d1", "d2"}}, 2021: {a: {"d1", "d2"}}}, 2, 2) == {a}   # day sets work too
+
+
+def test_exclusions_leave_checked_sites_unmasked(tmp_path):
+    cell = 0.004
+    kept_cell = (math.floor(21.794 / cell), math.floor(80.014 / cell))
+    far = (math.floor(24.0 / cell), math.floor(82.0 / cell))
+    path = tmp_path / "x.toml"
+    path.write_text('[[exclude]]\nname = "Balaghat"\nlat = 21.794\nlon = 80.014\nradius_km = 0.8\n')
+    exclusions = baseline.load_exclusions(path)
+    cells, removed = baseline.apply_exclusions({kept_cell, far}, exclusions, cell)
+    assert cells == {far} and removed == {"Balaghat": [kept_cell]}
+    assert baseline.load_exclusions(tmp_path / "missing.toml") == []
+    path.write_text('[[exclude]]\nname = "no place"\n')
+    with pytest.raises(ValueError, match="missing 'lat'"):
+        baseline.load_exclusions(path)
+
+
+def test_the_shipped_exclusion_file_names_the_five_checked_sites():
+    names = [e["name"] for e in baseline.load_exclusions(fire.STATIC_MASK_EXCLUSIONS_PATH)]
+    assert len(names) == 5 and names[0].startswith("Balaghat")

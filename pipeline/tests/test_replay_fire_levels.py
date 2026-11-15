@@ -27,3 +27,7 @@ def test_replay_counts_open_items_and_episodes():
     assert r["days"] == 4 and r["open_per_day"] == [1, 1, 0, 1]
     assert r["opened"]["Punjab"] == 2 and r["episodes"] == [2] and r["days_open"]["Punjab"] == 3
     assert r["firms_days"]["Punjab"] == {2: 1, 3: 1}
+    # 15 Nov 2026: uncapped level-3 state-days, and the days between a close and the reopening
+    assert (r["l3_days"], r["l4_days"], r["reopen_gaps"]) == (1, 0, [1])
+    s = replay.summary(r, "t")
+    assert (s["l3_per_day"], s["reopens"], s["reopen_within_3d"], s["open_per_day"]) == (0.25, 1, 1, 0.75)

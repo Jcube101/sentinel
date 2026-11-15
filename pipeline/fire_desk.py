@@ -17,8 +17,9 @@ Step 6 of docs/severity-pipeline.md. Each run:
        or more: >= level_2_min_ratio -> 2, >= level_3_min_ratio -> 3;
        a fire event with max FRP >= level_4_min_frp_mw within
        level_4_near_km of a place of level_4_min_population people -> 4.
-     It is capped at calibration_cap until live counts are calibrated
-     against the archive; the reason says when the cap lowers a level.
+     The ratio-derived level is capped at ratio_level_cap and the "large fire
+     near people" level at near_people_cap, until live counts are calibrated
+     against the archive; the reason says when a cap lowers a level.
   3. A current GDACS wildfire alert located in the state, at an alert colour
      in gdacs_wildfire_alert_levels (Orange, Red; never Green), lifts the item
      to gdacs_wildfire_level ("forest fire"), whatever the cap. Other alerts
@@ -246,10 +247,12 @@ def state_candidate(state: str, events: list[dict], today_events: list[dict], no
     mean = norm["mean_daily_events"] if norm else None
     r_level, ratio, counted = ratio_level(n, mean, cfg)
     near = large_fires_near_people(events, places, cfg)
-    firms_level = max(r_level, 4 if near else 1)
-    cap = f["calibration_cap"]
+    near_level = 4 if near else 1
+    firms_level = max(r_level, near_level)
+    ratio_cap, near_cap = f["ratio_level_cap"], f["near_people_cap"]
+    held_at = max(min(r_level, ratio_cap), min(near_level, near_cap))   # each kind of level under its own cap
     gdacs_level = f["gdacs_wildfire_level"] if alerts else None
-    level = max(min(firms_level, cap), gdacs_level or 1)
+    level = max(held_at, gdacs_level or 1)
     capped = firms_level > level
 
     when = _day_text(day)
@@ -274,7 +277,7 @@ def state_candidate(state: str, events: list[dict], today_events: list[dict], no
     reason = "; ".join(parts)
     reason = reason[0].upper() + reason[1:]
     if capped:
-        reason += f" · capped at Level {cap} pending calibration (would be Level {firms_level})"
+        reason += f" · capped at Level {held_at} pending calibration (would be Level {firms_level})"
 
     districts = defaultdict(lambda: {"fire_events": 0, "hotspots": 0, "frp_max": 0.0})
     for e in events:
@@ -315,7 +318,9 @@ def state_candidate(state: str, events: list[dict], today_events: list[dict], no
             "ratio_level": r_level,
             "large_fires_near_people": near[:5],
             "firms_level": firms_level,
-            "calibration_cap": cap,
+            "ratio_level_cap": ratio_cap,
+            "near_people_cap": near_cap,
+            "calibration_cap": ratio_cap,   # the old single key, for readers of earlier editions
             "capped": capped,
             "gdacs_wildfire": alerts,
             "gdacs_level": gdacs_level,
@@ -418,13 +423,13 @@ def watch_subjects(candidates: list[desk.Candidate], items: list[dict], norms: d
     """Every state with a norm for the week, measured as fire events on the
     complete day against the count its next level needs:
     max(min_fire_events, that level's ratio x the norm). Only ratio levels
-    are measured (Level 4 has no distance), up to calibration_cap. Trend
+    are measured (Level 4 has no distance), up to ratio_level_cap. Trend
     points from an incomplete day (stored by editions 26-27) are dropped."""
     f = cfg["fire"]
     week = baseline.week_of(day)
     by_state = {c.place_name: c for c in candidates}
     open_ids = {i["id"] for i in items if i["status"] == "open"}
-    reachable = min(f["calibration_cap"], 3)
+    reachable = min(f["ratio_level_cap"], 3)
     keep_point = lambda point: not _before_night_pass(point.get("at"), cfg)  # noqa: E731
     out = []
     for (state, w), norm in sorted(norms.items()):

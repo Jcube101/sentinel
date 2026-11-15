@@ -1,0 +1,38 @@
+# Sites the persistence rule must NOT mask (fire.static_mask.persistent_days / persistent_years).
+# The rule flags any ~450 m cell that has 10 or more detection days in each of two separate years;
+# these were flagged but are not static heat: checked on satellite imagery, 15 Nov 2026: fields/forest.
+# Add a [[exclude]] block (name, lat, lon, radius_km) to stop another site being masked, or delete one
+# to let the rule mask it, then rebuild:
+#   PYTHONPATH=. .venv/bin/python tools/build_fire_baseline.py --cache-dir <firms-archive-dir>
+# A cell whose centre is within radius_km of the point is left out of the persistence mask. It does
+# not remove a cell SP itself labelled static (type 1, 2 or 3).
+
+[[exclude]]
+name = "Balaghat, Madhya Pradesh"
+lat = 21.794
+lon = 80.014
+radius_km = 0.8
+
+[[exclude]]
+name = "Yavatmal, Maharashtra"
+lat = 20.094
+lon = 79.026
+radius_km = 0.8
+
+[[exclude]]
+name = "Birbhum, West Bengal"
+lat = 23.822
+lon = 87.208
+radius_km = 0.8
+
+[[exclude]]
+name = "Barmer, Rajasthan (25.3, 71.766)"
+lat = 25.3
+lon = 71.766
+radius_km = 0.8
+
+[[exclude]]
+name = "Dibrugarh, Assam (27.222, 95.346)"
+lat = 27.222
+lon = 95.346
+radius_km = 0.8

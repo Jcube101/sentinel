@@ -78,6 +78,60 @@ def mask_cells(counts: dict, min_detections: int) -> set[tuple[int, int]]:
     return {cell for cell, n in counts.items() if n >= min_detections}
 
 
+def count_days_by_cell(rows, keep: set[str], cell_deg: float, days: dict | None = None) -> dict:
+    """Add the distinct detection days per cell, any archive type, at the confidence codes in `keep`
+    (the persistence rule: a heat source that recurs on many days of a year, whatever SP labelled it)."""
+    days = days if days is not None else defaultdict(set)
+    for row in rows:
+        if (row.get("confidence") or "").strip().lower() not in keep:
+            continue
+        try:
+            lat, lon = float(row["latitude"]), float(row["longitude"])
+        except (KeyError, ValueError):
+            continue
+        days[(math.floor(lat / cell_deg), math.floor(lon / cell_deg))].add(row["acq_date"])
+    return days
+
+
+def persistent_cells(days_per_year: dict[int, dict], min_days: int, min_years: int) -> set[tuple[int, int]]:
+    """Cells with at least min_days distinct detection days in each of at least min_years separate years.
+
+    days_per_year: {year: {cell: number of days, or the set of days}}."""
+    years_seen = defaultdict(int)
+    for per_cell in days_per_year.values():
+        for cell, d in per_cell.items():
+            if (d if isinstance(d, int) else len(d)) >= min_days:
+                years_seen[cell] += 1
+    return {cell for cell, n in years_seen.items() if n >= min_years}
+
+
+def load_exclusions(path: Path) -> list[dict]:
+    """The sites a persistence rule must not mask (data/static_mask_exclusions.toml): checked by hand."""
+    if not path.exists():
+        return []
+    import tomllib
+    with open(path, "rb") as f:
+        entries = tomllib.load(f).get("exclude", [])
+    for e in entries:
+        for key in ("name", "lat", "lon", "radius_km"):
+            if key not in e:
+                raise ValueError(f"{path.name}: an [[exclude]] entry is missing {key!r}: {e}")
+    return entries
+
+
+def apply_exclusions(cells: set[tuple[int, int]], exclusions: list[dict], cell_deg: float):
+    """(cells kept, {site name: cells removed}): a cell whose centre is within an exclusion's radius is dropped."""
+    kept, removed = set(), defaultdict(list)
+    for cell in cells:
+        lat, lon = (cell[0] + 0.5) * cell_deg, (cell[1] + 0.5) * cell_deg
+        site = next((e for e in exclusions if fire.haversine_km(lat, lon, e["lat"], e["lon"]) <= e["radius_km"]), None)
+        if site:
+            removed[site["name"]].append(cell)
+        else:
+            kept.add(cell)
+    return kept, dict(removed)
+
+
 # --- daily counts and the weekly norm ---------------------------------------------------------------
 
 def count_day(spots: list[fire.Hotspot], cfg: dict, districts, mask) -> dict[str, list[int]]:

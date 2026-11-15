@@ -35,14 +35,19 @@ India's 735 districts with their state, used to place fire events
 
 The static heat-source mask: ~450 m grid cells where the FIRMS archive saw
 volcano (type 1), static land-source (type 2: steel plants, refineries,
-gas flares, coal-seam fires) or offshore (type 3) detections. The live
+gas flares, coal-seam fires) or offshore (type 3) detections, plus cells
+that recur (10+ detection days in each of 2+ separate years, any type:
+coal and steel belts, power stations, cement works, landfills). The live
 NRT feed has no type column, so `fire.py` drops live hotspots in or next
 to these cells before clustering.
 
 - **Built by** `tools/build_fire_baseline.py` from the VIIRS NOAA-20
-  standard-processing archive (2024-2025) pulled by
+  standard-processing archive (2020-2025) pulled by
   `tools/pull_firms_archive.py`; parameters in severity.toml
   `[fire.static_mask]`.
+- **static_mask_exclusions.toml** lists persistent sites that were checked on
+  satellite imagery (15 Nov 2026) and are fields or forest, so the persistence
+  rule leaves them unmasked. Edit it and rebuild to change that.
 - **Source:** NASA FIRMS. Acknowledgement: "We acknowledge the use of data
   from NASA's Fire Information for Resource Management System (FIRMS),
   part of NASA's Earth Science Data and Information System (ESDIS)."

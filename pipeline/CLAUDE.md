@@ -288,17 +288,24 @@ latitude/longitude.
 
 ## Fire baseline (one-off)
 The static mask and the seasonal norm come from the FIRMS VIIRS NOAA-20 SP
-archive, 2024-2025 (~147 five-day requests, ~1,300 FIRMS transactions,
-paced on the key's transaction count; raw CSV kept outside the repo, in
-`<firms-archive-dir>`):
+archive, the years in `fire.baseline.years` (2020-2025 since 15 Nov 2026: ~293
+five-day requests per four years, ~2,600 FIRMS transactions, paced on the key's
+transaction count; raw CSV kept outside the repo, in `<firms-archive-dir>`):
 ```bash
-PYTHONPATH=. .venv/bin/python tools/pull_firms_archive.py --start 2024-01-01 \
+PYTHONPATH=. .venv/bin/python tools/pull_firms_archive.py --start 2020-01-01 \
     --end 2025-12-31 --cache-dir <firms-archive-dir>
 PYTHONPATH=. .venv/bin/python tools/build_fire_baseline.py \
     --cache-dir <firms-archive-dir> --upload
 ```
 Outputs data/static_heat_cells.json, data/fire_baseline.csv and the
 fire_baseline table (migration 004). Rerun only to change years or parameters.
+The mask has two parts: cells SP labelled static (type 1/2/3, `min_detections`), and
+**persistent** cells: at least `persistent_days` (10) distinct detection days, any type, in
+each of at least `persistent_years` (2) separate years. Persistent cells that a person has
+checked on satellite imagery and found to be fields or forest are listed in
+`data/static_mask_exclusions.toml` (name, lat, lon, radius_km; edit it and rebuild); the
+rule never masks a cell within radius_km of one. The build logs how many cells each part
+contributed and whether each excluded site ended up unmasked.
 
 ## Severity desk
 `desk.py` runs after the events / aqi_readings writes: quakes (USGS, within
@@ -366,7 +373,7 @@ complete-day snapshot (`restore_complete_levels`), and their fire trend points
 in `desk_watch` are dropped. The level: the day's fire events over the state's norm for
 that week (`data/fire_baseline.csv`), counted from `fire.min_fire_events`
 events; a large fire near a city (`data/india_places.csv`) is Level 4. These
-FIRMS-derived levels are capped at `fire.calibration_cap` (2) until live
+FIRMS-derived levels are capped at `fire.ratio_level_cap` / `fire.near_people_cap` (2 each) until live
 counts are calibrated against the archive; a current Orange or Red GDACS wildfire alert
 in the state (never Green) lifts the item to Level 3 regardless. Today's events so far are in
 `figures.today` (marked partial) and never set the level. `figures.state_rank` is the
@@ -376,7 +383,7 @@ state's national rank by fire events that day among every state with fires
 (`figures.quiet_since`). If FIRMS fails, has no rows for yesterday, or
 yesterday is incomplete, open items stay last-known; if GDACS fails, they keep
 their last known alerts.
-To test threshold changes against the 2024-2025 archive before editing
+To test threshold changes against the archive before editing
 severity.toml: `tools/replay_fire_levels.py --set fire.<key>=<value>` (usage in
 docs/severity-pipeline.md, *Tuning fire thresholds*).
 

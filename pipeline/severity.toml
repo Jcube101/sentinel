@@ -193,13 +193,17 @@ gdacs_wildfire_alert_levels = ["Orange", "Red"]
 level_4_min_frp_mw = 100
 level_4_near_km = 10
 level_4_min_population = 100000
-# Levels derived from FIRMS (ratio to norm, large fire near people) are
-# capped at this level until live (NRT) fire counts are compared with the
-# archive (SP) the norm comes from: see "Live vs archive fire counts" in the
-# spec's follow-ups. The reason says when the cap lowers a level. A current
-# GDACS wildfire alert can still lift an item to gdacs_wildfire_level.
-# 4 = no cap.
-calibration_cap = 2
+# Levels derived from FIRMS are capped until live (NRT) counts are calibrated against the
+# archive (SP) the norm comes from: see "Live vs archive fire counts" in the spec's follow-ups.
+# The reason says when a cap lowers a level. A current Orange or Red GDACS wildfire alert can
+# still lift an item to gdacs_wildfire_level. Two caps (15 Nov 2026; the old single
+# calibration_cap = 2 is gone, earlier editions keep it in their stored config):
+#   ratio_level_cap   the level from a state's fire events over its seasonal norm (2 / 3 above).
+#                     The 2020-2025 replay decides when to lift it.
+#   near_people_cap   the Level 4 "large fire near people" level, which does not depend on the
+#                     norm. 4 = no cap.
+ratio_level_cap = 2
+near_people_cap = 2
 
 [fire.complete_day]
 # Yesterday sets fire levels only once FIRMS holds its night pass. NOAA-20
@@ -230,12 +234,20 @@ neighbour_cells = 1
 mask_types = [1, 2, 3]
 cell_deg = 0.004       # ~450 m cells
 min_detections = 2     # static detections a cell needs over the archive years
+# Persistence rule (15 Nov 2026): SP's `type` is missing from the live feed and not stable (a coal
+# or steel site can be type 0 one year and type 2 the next), so a cell also counts as static when
+# it has at least persistent_days distinct detection days (nominal/high confidence, any type) in
+# each of at least persistent_years separate years of the baseline. Cells a person has checked and
+# found to be fields or forest are listed in data/static_mask_exclusions.toml and never masked
+# by this rule.
+persistent_days = 10
+persistent_years = 2
 
 [fire.baseline]
 # Seasonal norm: mean daily fire events per state per calendar week, from
 # the VIIRS NOAA-20 SP archive, counted exactly like live fire_events.
 # Week = (day of year - 1) // 7 + 1, days 358-366 fold into week 52.
-years = [2024, 2025]
+years = [2020, 2021, 2022, 2023, 2024, 2025]   # SP goes back to 2018; six years steady the norm (a 2024-25 norm swung 2-4x between years)
 smooth_weeks = 1       # norm for week w averages weeks w-1 .. w+1
 
 [fire.lifecycle]

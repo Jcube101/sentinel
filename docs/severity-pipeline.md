@@ -343,7 +343,7 @@ Notes that apply across steps:
 
 ## Tuning fire thresholds
 `pipeline/tools/replay_fire_levels.py` runs the live fire desk code over every day of the
-2024-2025 archive (one run per day, nothing written) and reports how many fire items the
+archive years (one run per day, nothing written) and reports how many fire items the
 desk would hold, how often each state reaches each level, and the Level 4 cases. From
 `pipeline/` (~1 min on the Pi; `<firms-archive-dir>` is the raw SP archive pulled by
 `tools/pull_firms_archive.py`, kept outside the repo):
@@ -354,11 +354,47 @@ PYTHONPATH=. .venv/bin/python tools/replay_fire_levels.py \
     --set fire.min_fire_events=30 --set fire.level_2_min_ratio=2.5
 ```
 
+Out-of-sample modes (15 Nov 2026): `--leave-one-out` replays each year with norms from the
+other years, `--trailing N` with norms from the N years before it (what the live desk can
+actually do), and `--nrt-archive <sentinel_archive.db>` replays the live NRT hotspots kept
+locally (add `--nrt-norm-years 2023 2024 2025` to build their norms from chosen years). They
+print open items per day, items opened a year, uncapped Level 3+ and Level 4 state-days and
+how many reopenings follow a close within 3 days.
+
 `--set` changes one `severity.toml` value for that replay only (repeatable; any key, e.g.
 `fire.lifecycle.close_after_hours=72`); without it the current file is replayed. When a
 result looks right, put the values in `severity.toml`. The replay is in-sample (the norms
 come from the same days), so live levels will be a little noisier; GDACS wildfire alerts
 are not replayed; mask, clustering or confidence changes need a baseline rebuild first.
+
+## Decisions (15 Nov 2026): baseline, mask and caps
+Built on branch `feat/baseline-2020-2025` (not merged until Job has reviewed it); numbers from
+`tools/replay_fire_levels.py`.
+1. **Six-year baseline.** SP 2020-2023 pulled (293 requests, ~2,600 FIRMS transactions) beside
+   2024-2025; `fire.baseline.years` = 2020-2025. A caveat found on the way: Punjab's events in
+   21 Oct - 14 Nov fell from 31,328 (2020) to 2,685 (2025) and the national total by 70%, so a
+   six-year average treats today's Punjab as permanently far below normal (its autumn norm is
+   4.7× the two-year one, Haryana's 3.2×). Whether the *norm* should use only recent years
+   (e.g. 2023-2025) while the *mask* keeps all six is open: see *Follow-ups*.
+2. **Persistence mask.** A ~450 m cell is static if SP labelled it type 1/2/3 at least twice, or
+   it has `persistent_days` (10) detection days in each of `persistent_years` (2) separate years
+   (any type; the live feed has no type and SP's labels drift). Six years of SP labels already
+   mask 4,800 cells (the two-year mask had 3,249); the persistence rule adds 119, and
+   `data/static_mask_exclusions.toml` keeps 7 more out (five sites checked on satellite imagery
+   on 15 Nov 2026: Balaghat, Yavatmal, Birbhum, Barmer, Dibrugarh are fields or forest). Raichur
+   (a thermal power plant) and four landfills (Delhi North, Faridabad, Ernakulam, Gautam Buddha
+   Nagar) are masked. The mask now takes 1.7% of vegetation hotspots.
+3. **Two caps.** `calibration_cap` is replaced by `ratio_level_cap` (the level from events over
+   the norm) and `near_people_cap` (the Level 4 large-fire level). Both stay 2 until decided;
+   figures keep `calibration_cap` (= the ratio cap) for readers of earlier editions.
+4. **Replay results** (25 events / 2× / 4×, close after 48 h; Level 3+ is the FIRMS level before
+   any cap): out of sample the Level 3+ rate is 0.41 a day leave-one-out (0.18-0.57 by year) and
+   0.54 with 3-year trailing norms, against the 0.17 the thresholds were meant to give. With
+   `min_fire_events=40` and `level_3_min_ratio=6` it is 0.15 (leave-one-out) and 0.18
+   (trailing 3). Open items per day 2.3 (1.8 with 40 events); a close is followed by a reopening
+   within 3 days 45% of the time whatever the thresholds. Level 4: 22 state-days in six years;
+   five are a single hotspot, at least three of them probably industrial (Bhusawal and Bathinda
+   power plants, a Dhanbad coal-belt point).
 
 ## Follow-ups (not scheduled)
 First listed 21 Oct 2026, when the spec was completed; reviewed 30 Oct 2026.
@@ -374,9 +410,14 @@ First listed 21 Oct 2026, when the spec was completed; reviewed 30 Oct 2026.
   `events`. Then decide whether to raise `fire.calibration_cap` from 2. Until then
   FIRMS-derived fire items never show above Level 2 (Level 4 "large fire near people"
   included); only a GDACS wildfire alert lifts a state to Level 3.
-- **Fire threshold tuning:** min 25 / 2× / 4× came from an in-sample replay; recheck with
+- **Baseline window and thresholds (decision pending, 15 Nov 2026):** see *Decisions (15 Nov
+  2026)*. Proposed: lift `near_people_cap` to 4 (with a 2-hotspot minimum for Level 4),
+  `min_fire_events` 25 → 40 and `level_3_min_ratio` 4 → 6, then lift `ratio_level_cap` to 3;
+  choose the norm's years (2020-2025 as built, or 2023-2025 with the mask on all six).
+- **Fire threshold tuning (superseded by the above):** min 25 / 2× / 4× came from an in-sample replay; recheck with
   `tools/replay_fire_levels.py` against a few weeks of live items.
-- **Static mask gaps:** a replayed Level 4 case near Dhanbad (Jharia coal field) is probably
+- **Static mask gaps (done 15 Nov 2026: persistence rule and exclusion file; the Dhanbad
+  point of 2 May 2024 is a single 125 MW hotspot that no persistence rule catches):** a replayed Level 4 case near Dhanbad (Jharia coal field) is probably
   a coal-seam fire the mask missed; check live Level 4 candidates near mining areas.
 - **data.gov.in reliability:** one afternoon of evidence when it went in. Watch the DATAGOV
   row in `sources` (`last_status`, `newest_observation_at`) and how often the air reason says

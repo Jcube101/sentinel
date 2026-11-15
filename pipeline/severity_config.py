@@ -131,6 +131,8 @@ def validate(cfg: dict) -> None:
         raise ConfigError(f"severity.toml: fire.static_mask.mask_types must be FIRMS types 0-3, got {types!r}")
     _number(cfg, "fire.static_mask.cell_deg", minimum=0.0005, maximum=0.05)
     _number(cfg, "fire.static_mask.min_detections", minimum=1, integer=True)
+    _number(cfg, "fire.static_mask.persistent_days", minimum=2, integer=True)
+    _number(cfg, "fire.static_mask.persistent_years", minimum=1, integer=True)
     years = _get(cfg, "fire.baseline.years")
     if not isinstance(years, list) or not years or not all(isinstance(y, int) for y in years):
         raise ConfigError(f"severity.toml: fire.baseline.years must be a list of years, got {years!r}")
@@ -148,7 +150,8 @@ def validate(cfg: dict) -> None:
     _number(cfg, "fire.level_4_min_frp_mw", minimum=0)
     _number(cfg, "fire.level_4_near_km", minimum=0)
     _number(cfg, "fire.level_4_min_population", minimum=0, integer=True)
-    _number(cfg, "fire.calibration_cap", minimum=1, maximum=4, integer=True)
+    _number(cfg, "fire.ratio_level_cap", minimum=1, maximum=4, integer=True)
+    _number(cfg, "fire.near_people_cap", minimum=1, maximum=4, integer=True)
     _number(cfg, "fire.complete_day.night_pass_from_hour_utc", minimum=10, maximum=18, integer=True)
     _number(cfg, "fire.complete_day.min_night_span_minutes", minimum=0, maximum=240, integer=True)
     _number(cfg, "fire.lifecycle.open_min_level", minimum=1, maximum=4, integer=True)

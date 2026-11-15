@@ -25,7 +25,7 @@ def test_matches_spec_drafts(cfg):
     assert (cfg["fire"]["level_2_min_ratio"], cfg["fire"]["level_3_min_ratio"]) == (2.0, 4.0)  # Job, 21 Oct 2026
     assert cfg["fire"]["confidence"] == ["n", "h"]
     assert cfg["fire"]["lifecycle"] == {"open_min_level": 2, "close_after_hours": 48}
-    assert (cfg["fire"]["min_fire_events"], cfg["fire"]["calibration_cap"]) == (25, 2)  # Job, 21 Oct 2026
+    assert (cfg["fire"]["min_fire_events"], cfg["fire"]["ratio_level_cap"], cfg["fire"]["near_people_cap"]) == (25, 2, 2)  # Job, 21 Oct 2026
     assert (cfg["air"]["level_3_min_severe_cities"], cfg["air"]["level_4_min_severe_cities"]) == (1, 3)
     assert cfg["watching"]["rising_updates"] == 3
     # data.gov.in feed (Job, 21 Oct 2026): fall back after 6 h, CPCB's 3-pollutant rule, Severe twice in a row
@@ -73,9 +73,10 @@ def _broken(cfg, dotted, value):
         ("quake.lifecycle", KeyError, "missing quake.lifecycle.open_min_level"),
         ("gdacs.lifecycle", KeyError, "missing gdacs.lifecycle.open_min_level"),
         ("fire.excluded_district_ids", "76128533B2782141712775", "fire.excluded_district_ids must be a list"),
-        ("fire.calibration_cap", 0, ">= 1"),
-        ("fire.calibration_cap", 5, "<= 4"),
-        ("fire.calibration_cap", KeyError, "missing fire.calibration_cap"),
+        ("fire.ratio_level_cap", 0, ">= 1"),
+        ("fire.near_people_cap", 5, "<= 4"),
+        ("fire.ratio_level_cap", KeyError, "missing fire.ratio_level_cap"),
+        ("fire.near_people_cap", KeyError, "missing fire.near_people_cap"),
         ("air.aqi.very_poor_above", 450, "air.aqi.very_poor_above < air.aqi.severe_above"),
         ("air.severe_confirm_runs", 0, ">= 1"),
         ("air.datagov.min_pollutants", 9, "<= 7"),
