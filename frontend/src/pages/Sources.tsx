@@ -40,6 +40,8 @@ const CELL_STYLE: Record<CellState, string> = {
   new: 'bg-ink',
   same: 'bg-fill-strong',
   empty: 'border border-dashed border-ink-muted',
+  stale: 'border border-ink-muted bg-fill',
+  incomplete: 'border border-ink-muted',
   failed: 'bg-accent',
   none: 'bg-fill opacity-50',
 }
@@ -133,7 +135,7 @@ function Grid({ runs, current, latestId }: { runs: Edition[]; current: number; l
         </table>
       </div>
       <ul className="m-0 p-0 list-none flex flex-wrap gap-x-5 gap-y-1.5 font-mono text-[11px] text-ink-muted">
-        {(['new', 'same', 'empty', 'failed', 'none'] as CellState[]).map((s) => (
+        {(['new', 'same', 'empty', 'stale', 'incomplete', 'failed', 'none'] as CellState[]).map((s) => (
           <li key={s} className="flex items-center gap-1.5">
             <span className={`inline-block w-3 h-3 box-border ${CELL_STYLE[s]}`} /> {CELL_WORDS[s]}
           </li>

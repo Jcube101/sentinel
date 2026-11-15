@@ -6,12 +6,16 @@ export type Change = 'opened' | 'reopened' | 'escalated' | 'deescalated' | 'clos
 
 /** One source's result in one run: pipeline_runs.sources[<sources.id>]. */
 export interface RunSourceResult {
-  status: string // ok | empty | timeout | error
+  status: string // ok | empty | timeout | error | stale | incomplete (the last two: the feed answered, its data wasn't used)
   rows?: number | null
   error?: string | null
   duration_s?: number | null
   newest_observation_at?: string | null
   new_data?: boolean | null
+  /** DATAGOV only, from edition 80: stations and cities in the snapshot, and re-reads after an incomplete one. */
+  stations?: number | null
+  cities?: number | null
+  retried?: number | null
 }
 
 /** A pipeline_runs row. Its id is the edition number. */

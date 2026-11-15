@@ -7,7 +7,7 @@ import type { DeskEntry } from './entries'
 import { istDay, istShortDate, istTime } from './ist'
 import { SCALE, type Scale } from './scale'
 import type { Level } from './types'
-import { listText, numberWord, relativeDay } from './words'
+import { feedWords, listText, numberWord, relativeDay } from './words'
 
 // FIRMS's night pass over India ends around 21:00 UTC. A day whose data stops
 // before this hour lacks it, so its counts are incomplete (No. 26: 27 Oct ran
@@ -28,6 +28,8 @@ const DAY = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', t
 function staleWords(e: DeskEntry): string {
   if (e.carriedFrom !== null) return `check failed; figures from No. ${e.carriedFrom}`
   if (e.lastKnownWhy && /assessment failed this run$/.test(e.lastKnownWhy)) return 'check failed this time'
+  if (e.lastKnownWhy && /data\.gov\.in snapshot is \d+ h old/.test(e.lastKnownWhy)) return 'CPCB data was old this time'
+  if (e.lastKnownWhy && feedWords(e.lastKnownWhy)) return 'CPCB data was partial this time'
   return "didn't answer this time"
 }
 

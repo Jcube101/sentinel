@@ -3,7 +3,7 @@ import { cityReading, fireDistricts, worstCities } from '@/lib/desk/cards'
 import { quakeMemberLine } from '@/lib/desk/copy'
 import { AIR_BAND_LABELS, counted, type DeskEntry } from '@/lib/desk/entries'
 import { SOURCE_TITLES, sourceLines } from '@/lib/desk/sources'
-import type { Edition, Snapshot } from '@/lib/desk/types'
+import type { CategoryStatus, Edition, Snapshot } from '@/lib/desk/types'
 
 function Wire({ title, right, children }: { title: string; right: ReactNode; children: ReactNode }) {
   return (
@@ -26,16 +26,17 @@ interface Props {
   run: Edition
   snapshots: Snapshot[]
   entries: DeskEntry[]
+  status?: CategoryStatus[]
 }
 
 /** "The wire": the phone desk's closing accordions (DeskPhone). Phones only. */
-export default function PhoneWire({ run, snapshots, entries }: Props) {
+export default function PhoneWire({ run, snapshots, entries, status }: Props) {
   const fires = fireDistricts(snapshots)
   const air = snapshots.find((s) => s.category === 'air' && s.status === 'open')
   const cities = air ? worstCities(air.figures).slice(0, 10) : []
   const quakes = entries.flatMap((e) => (e.members.length ? e.members : [e])).filter((e) => e.category === 'earthquake')
   const maxM = Math.max(...quakes.map((qk) => qk.strength))
-  const sources = sourceLines(run)
+  const sources = sourceLines(run, status)
   const late = sources.filter((s) => s.failed).length
 
   return (

@@ -132,6 +132,16 @@ export const SOURCE_WORDS: Record<string, string> = {
   DATAGOV: "the pollution control board's live feed",
 }
 
+/** A feed that answered but whose snapshot the pipeline didn't use ("snapshot is 14 h old", "looks incomplete"), in words; null for anything else. */
+export function feedWords(why: string | null): string | null {
+  if (!why) return null
+  if (/data\.gov\.in snapshot is \d+ h old/.test(why)) return `${SOURCE_WORDS.DATAGOV} sent old data this time`
+  if (/data\.gov\.in snapshot looks incomplete|data\.gov\.in: only \d+ cit|data\.gov\.in feed has no snapshot time/.test(why)) {
+    return `${SOURCE_WORDS.DATAGOV} sent partial data this time`
+  }
+  return null
+}
+
 /**
  * Why an item is last-known, in words. The pipeline's notes: "FIRMS fetch
  * failed this run", "fire assessment failed this run", or the air stage's own.
@@ -142,7 +152,7 @@ export function lastKnownWords(why: string | null): string {
   if (fetch) return `${SOURCE_WORDS[fetch[1]] ?? fetch[1]} didn't answer this time`
   const stage = /^(\w+) assessment failed this run$/.exec(why)
   if (stage) return `the ${stage[1]} check failed this time`
-  return why
+  return feedWords(why) ?? why
 }
 
 // --- where fires are -----------------------------------------------------------------

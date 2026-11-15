@@ -11,7 +11,7 @@ import { istDate, istDay, istShortDate, istTime } from '@/lib/desk/ist'
 import { SCALE } from '@/lib/desk/scale'
 import { editionQuery } from '@/lib/desk/paths'
 import { FOOTER_NAMES, lateNotice, sourceLines } from '@/lib/desk/sources'
-import type { Edition } from '@/lib/desk/types'
+import type { CategoryStatus, Edition } from '@/lib/desk/types'
 import PaperShell from '@/components/paper/PaperShell'
 import DeskEntryRow from '@/components/paper/DeskEntryRow'
 import DeskHero from '@/components/paper/DeskHero'
@@ -61,8 +61,8 @@ function EditionLine({ run, latestId }: { run: Edition; latestId: number | null 
   )
 }
 
-function SourceFooter({ run }: { run: Edition }) {
-  const lines = sourceLines(run)
+function SourceFooter({ run, status }: { run: Edition; status?: CategoryStatus[] }) {
+  const lines = sourceLines(run, status)
   if (lines.length === 0) return null
   return (
     <span>
@@ -264,7 +264,7 @@ export default function Desk({ editionId, dayNote }: DeskProps = {}) {
                 />
               </aside>
               <div className="basis-full sm:hidden">
-                <PhoneWire run={data.run} snapshots={data.snapshots} entries={entries} />
+                <PhoneWire run={data.run} snapshots={data.snapshots} entries={entries} status={data.status} />
               </div>
             </div>
           </>
@@ -276,7 +276,7 @@ export default function Desk({ editionId, dayNote }: DeskProps = {}) {
   const notes = data && data.run.status !== 'running' ? deskNotes(entries, ctx?.scale) : []
   return (
     <PaperShell
-      footer={data && data.run.status !== 'running' ? <SourceFooter run={data.run} /> : null}
+      footer={data && data.run.status !== 'running' ? <SourceFooter run={data.run} status={data.status} /> : null}
       notes={notes.length > 0 ? <PageNotes notes={notes} /> : null}
       scale={ctx?.scale}
     >

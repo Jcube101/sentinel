@@ -3,7 +3,8 @@ import { compareEntries, deskEntries, editionTitle, type DeskEntry } from './ent
 import { istDate, istTime, shortAge } from './ist'
 import { splitReason } from './levels'
 import { CELL_WORDS, SOURCE_ORDER, cellState, lateNotice, sourceLines } from './sources'
-import type { EditionData } from './types'
+import type { Edition, EditionData } from './types'
+import { lastKnownWords } from './words'
 import e14 from './__fixtures__/edition-14.json'
 import e17 from './__fixtures__/edition-17.json'
 import e19 from './__fixtures__/edition-19.json'
@@ -140,6 +141,61 @@ describe('sources', () => {
       "NASA's fire satellites and the global disaster monitors didn't answer this time, so cyclone, flood and fire news is as last reported.",
     )
     expect(lateNotice(editions[25].run, editions[25].status)).toBeNull()
+  })
+})
+
+describe('a feed whose data was not used (from edition 80: stale or incomplete)', () => {
+  // Edition 25 with CPCB's feed rejected; the air item either covered by OpenAQ or last-known.
+  const hoursBefore = (h: number) => new Date(Date.parse(editions[25].run.finished_at ?? editions[25].run.started_at) - h * 3600_000).toISOString()
+  const withFeed = (status: string, newest: string | null = hoursBefore(20)): Edition => ({
+    ...editions[25].run,
+    sources: { ...editions[25].run.sources, DATAGOV: { status, newest_observation_at: newest, rows: 3990, new_data: false } },
+  })
+  const airStatus = (lastKnown: boolean) => editions[25].status.map((c) => (c.category === 'air' ? { ...c, last_known: lastKnown } : c))
+  const covered = airStatus(false)
+  const uncovered = airStatus(true)
+  const line = (run: Edition, status?: typeof covered) => sourceLines(run, status).find((l) => l.id === 'DATAGOV')
+
+  it('is not red and not late when OpenAQ covered the air item', () => {
+    expect(line(withFeed('stale'), covered)).toMatchObject({ failed: false })
+    expect(line(withFeed('incomplete'), covered)).toMatchObject({ failed: false, text: 'PARTIAL', words: 'partial data' })
+    expect(lateNotice(withFeed('stale'), covered)).toBeNull()
+    expect(lateNotice(withFeed('incomplete'), covered)).toBeNull()
+  })
+
+  it('shows a stale snapshot by the age of what it holds', () => {
+    const l = line(withFeed('stale'), covered)
+    expect(l?.words).toMatch(/hours old$/)
+  })
+
+  it('is red, and said in the late notice, when nothing covered for it', () => {
+    expect(line(withFeed('stale'), uncovered)).toMatchObject({ failed: true, text: 'OLD DATA', words: 'sent old data' })
+    expect(line(withFeed('incomplete'), uncovered)).toMatchObject({ failed: true, text: 'PARTIAL DATA', words: 'sent partial data' })
+    expect(lateNotice(withFeed('stale'), uncovered)).toBe(
+      "The pollution control board's live feed sent old data this time, so air quality news is as last reported.",
+    )
+    expect(lateNotice(withFeed('incomplete'), uncovered)).toBe(
+      "The pollution control board's live feed sent partial data this time, so air quality news is as last reported.",
+    )
+  })
+
+  it('without the category status it never calls the feed late', () => {
+    expect(line(withFeed('incomplete'))).toMatchObject({ failed: false })
+    expect(lateNotice(withFeed('stale'), [])).toBeNull()
+  })
+
+  it('has its own words in the Sources grid, not "didn\'t answer"', () => {
+    expect(CELL_WORDS[cellState({ status: 'stale' })]).toBe('old data')
+    expect(CELL_WORDS[cellState({ status: 'incomplete' })]).toBe('partial data')
+    expect(cellState({ status: 'timeout' })).toBe('failed')
+  })
+
+  it('explains a last-known item in words, from the pipeline\'s own note', () => {
+    const old = 'data.gov.in snapshot is 14 h old (max 6 h); OpenAQ fetch failed this run'
+    const partial = 'data.gov.in snapshot looks incomplete (117 stations, usually about 540); OpenAQ fetch failed this run'
+    expect(lastKnownWords(old)).toBe("the pollution control board's live feed sent old data this time")
+    expect(lastKnownWords(partial)).toBe("the pollution control board's live feed sent partial data this time")
+    expect(lastKnownWords('data.gov.in feed failed (HTTP 502 (3 tries, offset 0)); OpenAQ fetch failed this run')).toContain('HTTP 502')
   })
 })
 

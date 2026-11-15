@@ -26,6 +26,21 @@ const STATUS_WORDS: Record<string, string> = {
   timeout: 'timed out',
   error: 'failed',
   empty: 'came back empty',
+  stale: 'old data',
+  incomplete: 'partial data',
+}
+
+/** The feed answered, but the pipeline didn't use its data (migration 010; DATAGOV from edition 80). */
+const REJECTED = new Set(['stale', 'incomplete'])
+
+/**
+ * Whether the category a source mainly feeds is last-known in this edition, i.e. nothing
+ * else covered for it. A rejected feed whose category was covered (OpenAQ set the air
+ * item) is not a failure to the reader: it isn't red and doesn't count as late.
+ */
+function uncovered(id: string, status: CategoryStatus[] | undefined): boolean {
+  const category = CATEGORY_SOURCE_MAP.find((m) => m.main === id)?.category
+  return !!category && !!status?.some((c) => c.category === category && c.last_known)
 }
 
 /** Short names for the footer line: what each source covers, then its own name. */
@@ -66,18 +81,24 @@ function ageWords(ms: number): string {
   return `${Math.round(hours / 24)} days old`
 }
 
-export function sourceLines(run: Edition): SourceLine[] {
+export function sourceLines(run: Edition, status?: CategoryStatus[]): SourceLine[] {
   const at = new Date(run.finished_at ?? run.started_at).getTime()
   const out: SourceLine[] = []
   for (const id of SOURCE_ORDER) {
     const r = run.sources?.[id]
     if (!r) continue
     const name = SOURCE_NAMES[id]
-    if (r.status !== 'ok') {
-      const words = r.status === 'empty' ? 'sent nothing' : "didn't answer"
+    const rejected = REJECTED.has(r.status)
+    if (r.status !== 'ok' && !(rejected && !uncovered(id, status))) {
+      const words = r.status === 'empty' ? 'sent nothing' : rejected ? `sent ${STATUS_WORDS[r.status]}` : "didn't answer"
       out.push({ id, name, failed: true, text: (STATUS_WORDS[r.status] ?? r.status).toUpperCase(), words })
       continue
     }
+    if (r.status === 'incomplete') {
+      out.push({ id, name, failed: false, text: 'PARTIAL', words: 'partial data' })
+      continue
+    }
+    // ok, or a stale snapshot that something else covered: the age of what it holds, as for any source
     const newest = r.newest_observation_at ? new Date(r.newest_observation_at).getTime() : null
     const age = newest === null ? null : at - newest
     if (EVENT_DRIVEN.has(id) && (age === null || age > QUIET_AFTER_MS)) {
@@ -96,9 +117,16 @@ export function sourceLines(run: Edition): SourceLine[] {
 export function lateNotice(run: Edition, status: CategoryStatus[]): string | null {
   const silent: string[] = []
   const empty: string[] = []
+  const old: string[] = []
+  const partial: string[] = []
   for (const id of SOURCE_ORDER) {
     const r = run.sources?.[id]
     if (!r || r.status === 'ok') continue
+    if (REJECTED.has(r.status)) {
+      // said only when nothing covered for it; otherwise the item's own source line says so
+      if (uncovered(id, status)) (r.status === 'stale' ? old : partial).push(SOURCE_WORDS[id] ?? id)
+      continue
+    }
     ;(r.status === 'empty' ? empty : silent).push(SOURCE_WORDS[id] ?? id)
   }
   const stale = status
@@ -110,6 +138,8 @@ export function lateNotice(run: Edition, status: CategoryStatus[]): string | nul
   const said: string[] = []
   if (silent.length > 0) said.push(`${listText(silent)} didn't answer this time`)
   if (empty.length > 0) said.push(`${listText(empty)} sent nothing this time`)
+  if (old.length > 0) said.push(`${listText(old)} sent old data this time`)
+  if (partial.length > 0) said.push(`${listText(partial)} sent partial data this time`)
   if (said.length === 0) return news ? `${cap(news)}.` : null
   return `${cap(listText(said))}${news ? `, so ${news}` : ''}.`
 }
@@ -141,12 +171,13 @@ export const CATEGORY_SOURCE_MAP: { category: Category; main: string; also: stri
   { category: 'fire', main: 'FIRMS', also: 'GDACS' },
 ]
 
-export type CellState = 'new' | 'same' | 'empty' | 'failed' | 'none'
+export type CellState = 'new' | 'same' | 'empty' | 'stale' | 'incomplete' | 'failed' | 'none'
 
-/** One source in one run, for the status grid: new data, nothing new, sent nothing, didn't answer, not read. */
+/** One source in one run, for the status grid: new data, nothing new, sent nothing, old or partial data, didn't answer, not read. */
 export function cellState(r: RunSourceResult | undefined): CellState {
   if (!r) return 'none'
   if (r.status === 'ok') return r.new_data ? 'new' : 'same'
+  if (r.status === 'stale' || r.status === 'incomplete') return r.status
   return r.status === 'empty' ? 'empty' : 'failed'
 }
 
@@ -154,6 +185,8 @@ export const CELL_WORDS: Record<CellState, string> = {
   new: 'new data',
   same: 'nothing new',
   empty: 'sent nothing',
+  stale: 'old data',
+  incomplete: 'partial data',
   failed: "didn't answer",
   none: 'not read',
 }

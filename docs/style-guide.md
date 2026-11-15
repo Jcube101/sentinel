@@ -45,7 +45,9 @@ State facts with confidence; caveats go in the source line or Notes.
   - "GDACS (position as of 28 Oct, 11:30 IST)": a cyclone whose position (plan P7) is
     more than six hours older than the edition.
   - "GDACS", "USGS", "NASA FIRMS satellites; GDACS forest-fire alert".
-  - "· didn't answer this time" when the item is last-known.
+  - "· didn't answer this time" when the item is last-known. When the air feed answered but
+    its data was not used and nothing covered: "· CPCB data was old this time" /
+    "· CPCB data was partial this time" (pipeline status `stale` / `incomplete`).
 - **Kicker:** a last-known item gets a short kicker over its title, never a sentence:
   "As of Saturday" (fire: the day of the count), "As of 14:00 IST" (air read earlier the
   same day), "As of yesterday"; "Not updated" when its figures carry no time.
@@ -116,6 +118,7 @@ outside the evidence.
 | last-known | a kicker: "As of Saturday"; the source line: "didn't answer this time" |
 | capped at L2 pending calibration | the dashed square; the Notes explain it |
 | fetch failed / timed out | didn't answer |
+| feed answered, snapshot too old / partial (`stale`, `incomplete`) | old data / partial data (never "didn't answer") |
 | M7.0 | magnitude 7.0 |
 
 ### Context from the past
@@ -327,4 +330,10 @@ published.
 Which source didn't answer, in words, and what that means: "NASA's fire satellites and the
 global disaster monitors didn't answer this time, so cyclone, flood and fire news is as
 last reported." (No. 19; categories in desk order.) A source that answered with nothing
-"sent nothing this time".
+"sent nothing this time". One that answered with a snapshot the pipeline did not use
+"sent old data this time" or "sent partial data this time". These two are said, and shown
+red, only when nothing covered for the category (air last-known); when OpenAQ set the air
+item they are not a failure: no late notice, no red, and the phone wire does not count them
+as late. The footer then shows a stale feed by the age of its snapshot ("26 hours old") and
+an incomplete one as "partial data"; the Sources grid has its own "old data" and "partial
+data" cells.
