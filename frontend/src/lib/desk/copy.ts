@@ -319,24 +319,6 @@ function stateName(e: DeskEntry): string {
   return String(e.figures.state ?? e.title)
 }
 
-/** "led by a spike in Chhattisgarh", "now including Telangana", "up from four" */
-function angleSuffix(a: Angle): string {
-  const names = a.states.map(stateName)
-  switch (a.kind) {
-    case 'record':
-      if (names.length === 1) return `led by a spike in ${names[0]}`
-      return names.length === 2 ? `led by spikes in ${listText(names)}` : `with spikes in ${numberWord(names.length)} of them`
-    case 'new':
-      return names.length <= 2 ? `now including ${listText(names)}` : `${numberWord(names.length)} of them new`
-    case 'spreading':
-      return `up from ${a.before === 0 ? 'none' : numberWord(a.before)}`
-    case 'largest':
-      return `the most in ${names[0]}`
-    case 'multiple':
-      return `led by ${names[0]}`
-  }
-}
-
 /**
  * The fire roundup: one story for the fire states, led by the strongest
  * angle. Only the states still above normal are in it; those that fell back
@@ -369,10 +351,13 @@ function roundupCopy(e: DeskEntry, ctx: CopyContext): ItemCopy {
 
   const also = ctx.ownFires.some((x) => x.level >= 2)
   const angle = fireAngle(above, ctx, !also)
-  const base = also
-    ? `Fires also run above normal in ${counted_(above.length, 'more state', 'more states')}`
-    : `Fires run above normal in ${counted_(above.length, 'state', 'states')}`
-  const title = `${base}, ${angleSuffix(angle)}`
+  // The title says what the states are doing and how many; which state stands out is the standfirst's
+  // first sentence, and what is new since yesterday is Since yesterday's (style guide, The fire roundup).
+  const record = above.some((x) => stateFacts(x, ctx).record === 'above' && stateFacts(x, ctx).counted)
+  const verb = record ? 'surge' : 'run above normal'
+  const title = also
+    ? `Fires also ${verb} in ${counted_(above.length, 'more state', 'more states')}`
+    : `Fires ${verb} in ${counted_(above.length, 'state', 'states')}`
 
   // The standout: the state the angle names, else the furthest above normal.
   const standout = angle.kind === 'record' || angle.kind === 'new' ? angle.states[0] : above[0]

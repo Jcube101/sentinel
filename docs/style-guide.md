@@ -19,7 +19,7 @@ shouldn't need to. Write like a news report, not a database.
 1. **Kicker,** only when the item wasn't updated: "As of Saturday" (see Facts in the
    story, caveats in notes).
 2. **Title:** a news headline with a verb, saying what happened. "Fires run above normal
-   in five states, led by a spike in Chhattisgarh". A named event may stand on its name
+   in five states". A named event may stand on its name
    alone ("Cyclone Arnab"); then the standfirst carries the verb.
 3. **Standfirst:** one to three sentences, each a fact said plainly. What happened first,
    then how it compares with the past. "Madhya Pradesh logged 145 fires yesterday across
@@ -270,15 +270,16 @@ above normal they are.
   Telangana and Chhattisgarh fell back toward normal since yesterday. Madhya Pradesh
   logged 145 fires yesterday across 21 districts, about double the late-October average
   but normal for the season."
-- **Title** otherwise: "Fires run above normal in N states, …", led by the strongest true
-  angle, in this order:
-  1. a record for the time of year: "led by a spike in Chhattisgarh"
-  2. new since a day earlier: "now including Telangana"
-  3. spreading, more states than a day earlier: "up from four"
-  4. the largest count: "the most in Madhya Pradesh"
-  5. the multiple of normal: "led by Chhattisgarh" (the multiple itself stays out)
+- **Title** otherwise: what the states are doing and how many, nothing else: "Fires run
+  above normal in five states"; "Fires surge in five states" when any of them beats its
+  busiest day for the season (a record); "Fires also run above normal in four more states"
+  next to a state's own story. The same rules as the page headline: a strong verb, no
+  bookkeeping, so never "led by …", "now including …", "up from four" or "the most in …".
+  Which state stands out is the standfirst's first sentence; what is new since yesterday is
+  Since yesterday's.
 - **Standfirst,** two or three sentences, only about the states still above normal: the
-  standout (the state the angle names, else the furthest above normal) in one sentence,
+  standout in one sentence, first: the state with a record for the season, else the one
+  new since a day earlier, else the furthest above normal,
   and "That was the most of any state." if it led every state; the biggest count, if that
   is another state ("Madhya Pradesh had the most fires of any state, 200, about three
   times the late-October average but normal for the season."); the others by name. States
@@ -296,7 +297,7 @@ above normal they are.
 
 | Category | Title | Standfirst | Source line |
 |---|---|---|---|
-| Fire (roundup) | "Fires run above normal in five states, led by a spike in Chhattisgarh" | "Chhattisgarh logged 27 fires on Monday across 10 districts, about nine times the late-October average and a two-year high for the season. Madhya Pradesh had the most fires, 200, about three times the late-October average but normal for the season. Telangana, Maharashtra and Uttar Pradesh are also above normal." | NASA FIRMS satellites |
+| Fire (roundup) | "Fires surge in five states" | "Chhattisgarh logged 27 fires on Monday across 10 districts, about nine times the late-October average and a two-year high for the season. Madhya Pradesh had the most fires, 200, about three times the late-October average but normal for the season. Telangana, Maharashtra and Uttar Pradesh are also above normal." | NASA FIRMS satellites |
 | Fire (own story) | "Telangana's fires run at six times the usual"; "Madhya Pradesh's fires run at twice the usual" | "Telangana logged 39 fires on Monday across 17 districts, about six times the late-October average but normal for the season." / "Madhya Pradesh logged 145 fires yesterday across 21 districts, about double the late-October average but normal for the season." | NASA FIRMS satellites (27 Oct incomplete: no data after 14:37 IST) |
 | Air | "Air is very poor in Panipat and poor in 16 more cities"; "Air is poor in 23 cities, worst in Panipat" | "Panipat had the worst air in the country, with an index of 293, just short of 'very poor'. 22 other cities were rated poor." / "Baraut had the worst air in the country, with an index of 335, rated 'very poor'. Meerut and Gajraula were also rated very poor. 10 more cities were rated poor." | CPCB live data (unvalidated); Sentinel estimate from OpenAQ monitors |
 | Cyclone | "Cyclone Arnab" | "Global disaster monitors give it their second-highest alert, orange, with winds of up to 102 km/h. They place it near the Andhra Pradesh coast. Its winds peaked at 222 km/h." (edition 32 on) / "Global disaster monitors give it their highest alert, red, with peak winds of 222 km/h. They place it near the Andhra Pradesh coast." (before 32: only the peak is known) | GDACS; GDACS (position as of 28 Oct, 11:30 IST) |

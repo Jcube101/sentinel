@@ -56,9 +56,9 @@ describe('edition 25 (Wed 28 Oct, 02:30 IST)', () => {
     })
   })
 
-  it('fires: one roundup, led by the strongest angle (a spike in Chhattisgarh)', () => {
+  it('fires: one roundup; a record for the season surges, and the standfirst opens with the standout (Chhattisgarh)', () => {
     expect(item(25, 'fire:roundup')).toMatchObject({
-      title: 'Fires run above normal in five states, led by a spike in Chhattisgarh',
+      title: 'Fires surge in five states',
       standfirst:
         // The fire day is Monday 26 Oct: two days before this 02:30 edition, so not "yesterday".
         'Chhattisgarh logged 27 fires on Monday across 10 districts, about nine times the late-October average and a two-year high ' +
@@ -133,13 +133,13 @@ describe('edition 26 (Wed 28 Oct, 14:30 IST): four fire states fall back on an i
 })
 
 describe('edition 17 (Sun 25 Oct, 14:30 IST)', () => {
-  it('page headline: fires lead, spreading from none a day earlier, led by a spike in Gujarat', () => {
+  it('page headline: fires lead, four states up from none a day earlier', () => {
     expect(edition(17).headline).toBe('Fires flare in four states.')
   })
 
   it('the roundup; the fire day is yesterday for a 14:30 edition', () => {
     expect(item(17, 'fire:roundup')).toMatchObject({
-      title: 'Fires run above normal in four states, led by a spike in Gujarat',
+      title: 'Fires surge in four states',
       standfirst:
         'Gujarat logged 46 fires yesterday across 14 districts, about eight times the late-October average and a two-year high for the ' +
         'season. Madhya Pradesh had the most fires, 185, about three times the late-October average but normal for the season. ' +
@@ -212,27 +212,31 @@ describe('fire roundup rules', () => {
     return fixtures[n][0].snapshots.map((s) => (s.item_id === key ? { ...s, figures: { ...s.figures, ...patch } } : s))
   }
 
-  function roundupTitle(snapshots: EditionData['snapshots'], window: ChangeWindow | null) {
+  function roundup(snapshots: EditionData['snapshots'], window: ChangeWindow | null) {
     const since = window ? sinceYesterday(snapshots, window) : null
     const entries = deskEntries(snapshots, since?.byItem ?? new Map())
     const ctx = copyContext(entries, since, ed25.run)
-    return itemCopy(entries.find((e) => e.key === 'fire:roundup')!, ctx).title
+    return itemCopy(entries.find((e) => e.key === 'fire:roundup')!, ctx)
   }
 
-  it('angle order: record, then new, then spreading, then the largest count, then the multiple', () => {
+  it('the title never names an angle; the standout goes first in the standfirst: record, then new, then the furthest above normal', () => {
+    // No record anywhere: the title is the same whatever the angle.
     const noRecord = withFigures(25, 'fire:chhattisgarh', { norm_max_daily_events: 40 })
-    expect(roundupTitle(noRecord, w25_)).toBe('Fires run above normal in five states, now including Chhattisgarh')
-    // Without the comparison there is nothing new or spreading: the largest count leads.
-    expect(roundupTitle(noRecord, null)).toBe('Fires run above normal in five states, the most in Madhya Pradesh')
-    // Spreading: more states above normal than a day earlier, none of them new.
-    // A day earlier: Uttar Pradesh not yet above normal, Chhattisgarh already was (so not new).
-    const spreading = {
-      ...w25_,
-      rows: w25_.rows.filter((r) => r.item_id !== 'fire:uttar-pradesh' && !(r.item_id === 'fire:chhattisgarh' && r.change === 'opened')),
+    expect(roundup(noRecord, w25_).title).toBe('Fires run above normal in five states')
+    expect(roundup(noRecord, null).title).toBe('Fires run above normal in five states')
+    // New since yesterday (Chhattisgarh opened): it opens the standfirst; without the comparison, the furthest above normal does.
+    expect(roundup(noRecord, w25_).standfirst).toMatch(/^Chhattisgarh logged /)
+    expect(roundup(noRecord, null).standfirst).toMatch(/^Chhattisgarh logged /)   // here it is also the furthest above normal
+    // A record for the season: the title surges, and the record state opens the standfirst.
+    expect(roundup(ed25.snapshots, w25_).title).toBe('Fires surge in five states')
+    expect(roundup(ed25.snapshots, null).standfirst).toMatch(/^Chhattisgarh logged .* two-year high/)
+  })
+
+  it('no roundup title carries bookkeeping words', () => {
+    for (const n of [17, 19, 25, 26]) {
+      const t = edition(n).items.find((i) => i.key === 'fire:roundup')?.title
+      if (t) expect(t, `No. ${n}`).not.toMatch(/now including|led by|of them new|up from|the most in|spreading/i)
     }
-    const old = noRecord.map((s) => (s.item_id === 'fire:chhattisgarh' ? { ...s, change: null } : s))
-    const oldWindow = { ...spreading, rows: [...spreading.rows, { run_id: 22, item_id: 'fire:chhattisgarh', category: 'fire' as const, status: 'open' as const, severity_level: 2 as const, change: null }] }
-    expect(roundupTitle(old, oldWindow)).toBe('Fires run above normal in five states, up from four')
   })
 
   it('a lone fire state gets its own story: the plain multiple in the title, the average in the standfirst', () => {
@@ -253,7 +257,7 @@ describe('fire roundup rules', () => {
     const ctx = copyContext(entries, null, ed25.run)
     expect(entries.map((e) => e.key)).toEqual(['cyclone:GDACS-TC-1001345', 'fire:telangana', 'air:IN', 'fire:roundup'])
     expect(itemCopy(entries[1], ctx).title).toBe("Telangana's fires run at six times the usual")
-    expect(itemCopy(entries[3], ctx).title).toBe('Fires also run above normal in four more states, led by a spike in Chhattisgarh')
+    expect(itemCopy(entries[3], ctx).title).toBe('Fires also surge in four more states')
   })
 
   it('intensity words match the verdict: no "well/far above normal" or × in titles; at most one multiple in a title', () => {
