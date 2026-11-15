@@ -261,8 +261,9 @@ const byStrength = (a: FireStory, b: FireStory) => (b.f.r ?? 0) - (a.f.r ?? 0) |
 function stateClause(s: FireStory): Clause {
   const { state } = s.f
   const same = (t: string): Clause => ({ full: t, short: t })
-  if (s.record) return same(`${state} sees its busiest ${hyphen(s.f.period)} fire day in ${yearsOf(s.f.span)}`)
-  if (s.tie) return same(`${state} matches its busiest ${hyphen(s.f.period)} fire day in ${yearsOf(s.f.span)}`)
+  // A record is said once, in the first edition that reports it; after that the state is "after record day".
+  if (s.voice === 'now' && s.record) return same(`${state} sees its busiest ${hyphen(s.f.period)} fire day in ${yearsOf(s.f.span)}`)
+  if (s.voice === 'now' && s.tie) return same(`${state} matches its busiest ${hyphen(s.f.period)} fire day in ${yearsOf(s.f.span)}`)
   if (s.voice === 'now') {
     if (s.spread) return same(`Fires spread to ${s.f.districts} districts in ${state}`)
     if (s.dir === 'up') {
@@ -276,8 +277,15 @@ function stateClause(s: FireStory): Clause {
     }
   }
   // A Level 3 state is well above usual: its benchmark stays in the title.
-  const stay = `Fires stay above usual in ${state}${forDay(s.aboveRun, 3)}`
+  const stay = `Fires stay above usual in ${state}${s.record || s.tie ? ' after record day' : forDay(s.aboveRun, 3)}`
   return s.e.level >= 3 ? { short: stay, full: `${stay}, ${benchFor(s)}` } : same(stay)
+}
+
+/** How newsworthy a fire story is: 3 a record, 2 a move said for the first time (incl. easing), 1 a state that stays. */
+function storyTier(s: FireStory): number {
+  if (s.voice !== 'now') return 1
+  if (s.record || s.tie) return 3
+  return s.spread || s.dir !== 'hold' ? 2 : 1
 }
 
 /** The states a clause names: a record or a lone state names itself, a group is a region or a pair. */
@@ -286,11 +294,11 @@ function placesOf(names: string[]): number {
 }
 
 /** Several states as one clause: "Fires climb across western India, double the usual in Gujarat and Maharashtra". */
-function groupClause(stories: FireStory[]): { clause: Clause; places: number } {
+function groupClause(stories: FireStory[]): { clause: Clause; places: number; tier: number } {
   const news = stories.filter((s) => s.news).sort(byStrength)
   const pool = news.length > 0 ? news : [...stories].sort(byStrength)
-  const lone = (s: FireStory) => ({ clause: stateClause(s), places: 1 })
-  const records = pool.filter((s) => s.record || s.tie)
+  const lone = (s: FireStory) => ({ clause: stateClause(s), places: 1, tier: storyTier(s) })
+  const records = pool.filter((s) => (s.record || s.tie) && s.voice === 'now')
   if (records.length > 0) return lone(records[0])
   const spreads = pool.filter((s) => s.spread && s.voice === 'now').sort((a, b) => b.f.districts - a.f.districts)
   if (spreads.length > 0) return lone(spreads[0])
@@ -309,15 +317,15 @@ function groupClause(stories: FireStory[]): { clause: Clause; places: number } {
     const short = `Fires ${verb} ${where}`
     // Naming at most two states for the benchmark; a pair already named in `where` isn't named twice.
     const tail = ups.length <= 2 ? (sameBand.length === ups.length ? topBench : `${topBench} in ${top.f.state}`) : `${topBench} in ${listText(names(sameBand))}`
-    return { clause: { short, full: `${short}, ${tail}` }, places: placesOf(names(ups)) }
+    return { clause: { short, full: `${short}, ${tail}` }, places: placesOf(names(ups)), tier: 2 }
   }
   if (downs.length > 0) {
     const short = `Fires dip ${whereStates(names(downs)).inText}`
-    return { clause: { short, full: `${short}, still above usual` }, places: placesOf(names(downs)) }
+    return { clause: { short, full: `${short}, still above usual` }, places: placesOf(names(downs)), tier: 2 }
   }
   const where = whereStates(names(pool)).inText
   const t = `Fires stay above usual ${where}`
-  return { clause: { full: t, short: t }, places: placesOf(names(pool)) }
+  return { clause: { full: t, short: t }, places: placesOf(names(pool)), tier: 1 }
 }
 
 /**
@@ -328,14 +336,22 @@ function groupClause(stories: FireStory[]): { clause: Clause; places: number } {
 function storySentences(s: FireStory, ctx: CopyContext): string {
   const { f } = s
   if (f.n === 0) return `NASA's fire satellites saw no fires in ${f.state} ${f.day}.`
-  const where = f.districts > 0 ? `${f.districts} ${f.state} ${f.districts === 1 ? 'district' : 'districts'}` : f.state
-  let first = `Satellites picked up fires in ${where} ${f.day}`
-  if (s.prev && f.districts > 0 && s.prev.districts > 0 && s.prev.districts !== f.districts) {
-    first += `, ${f.districts > s.prev.districts ? 'up' : 'down'} from ${s.prev.districts} ${relativeDay(s.prev.day, ctx.editionAt)}`
+  const districts = f.districts > 0 ? `${f.districts} ${f.state} ${f.districts === 1 ? 'district' : 'districts'}` : f.state
+  let first: string
+  if (s.record || s.tie) {
+    // The same measure as the headline: a record day is about the day's fires, so no district comparison.
+    const than = s.record ? `more fires in ${f.state} ${f.day} than on any` : `as many fires in ${f.state} ${f.day} as on the busiest`
+    first = `Satellites picked up ${than} ${hyphen(f.period)} day in ${yearsOf(f.span)}${f.districts > 0 ? `, across ${f.districts} ${f.districts === 1 ? 'district' : 'districts'}` : ''}`
+  } else {
+    first = `Satellites picked up fires in ${districts} ${f.day}`
+    // The district count against the day before, only when it points the way the story does.
+    const p = s.prev?.districts ?? 0
+    const agrees = (s.dir === 'up' || s.spread) && f.districts > p ? 'up' : s.dir === 'down' && f.districts < p ? 'down' : null
+    if (s.prev && agrees && p > 0) first += `, ${agrees} from ${p} ${relativeDay(s.prev.day, ctx.editionAt)}`
   }
   const out = [`${first}.`]
-  if (f.counted && f.r !== null) {
-    const still = s.dir === 'down' || (s.e.runChange === 'deescalated' && s.e.level >= 2) ? ' still' : ''
+  if (f.r !== null && (f.counted || s.e.level < 2)) {
+    const still = s.e.level >= 2 && (s.dir === 'down' || s.e.runChange === 'deescalated') ? ' still' : ''
     out.push(`That's${still} ${aboutWhatSees(f.r, f.period)}.`)
   }
   return out.join(' ')
@@ -392,6 +408,8 @@ function fireStateCopy(e: DeskEntry, ctx: CopyContext): ItemCopy {
     }
   }
   if (f.n === 0) return { title: `Satellites see no fires in ${f.state}`, standfirst: storySentences(story, ctx) }
+  // A Level 1 state is a status line among the minor items, not a story (the first edition after it eased is Since yesterday's news).
+  if (e.level === 1 && e.runChange !== 'deescalated') return { title: `${f.state}: fires at seasonal levels`, standfirst: null }
   if (!f.counted || e.level === 1) {
     const title = e.runChange === 'deescalated' ? `Fires in ${f.state} ease back to seasonal levels` : `Fires in ${f.state} are at seasonal levels`
     return { title, standfirst: storySentences(story, ctx) }
@@ -411,7 +429,7 @@ function roundupCopy(e: DeskEntry, ctx: CopyContext): ItemCopy {
   if (eased) {
     const aboveNames = above.map(stateName)
     const title = `Fires ease back to seasonal levels ${whereStates(eased).inText}` + (aboveNames.length > 0 ? `, ${listText(aboveNames)} still above usual` : '')
-    const sentences = [`${listText(eased)} fell back to seasonal levels since yesterday.`]
+    const sentences = [`${cap(listText(eased))} ${eased.length === 1 ? 'is' : 'are'} back to seasonal levels.`]
     if (above.length > 0) sentences.push(storySentences(fireStory(above[0], ctx), ctx))
     const others = above.slice(1).map(stateName)
     if (others.length > 0) sentences.push(`${listText(others)} ${others.length === 1 ? 'is' : 'are'} also still above usual.`)
@@ -423,7 +441,7 @@ function roundupCopy(e: DeskEntry, ctx: CopyContext): ItemCopy {
     return {
       // Only built in the edition whose own run lowered a state (entries.ts drops it after that).
       title: `Fires ease back to seasonal levels ${whereStates(names).inText}`,
-      standfirst: `${listText(names)} ${names.length === 1 ? 'has' : 'have'} fallen back to seasonal levels.`,
+      standfirst: `${listText(names)} ${names.length === 1 ? 'is' : 'are'} back to seasonal levels.`,
     }
   }
   if (above.length === 1) return fireStateCopy(above[0], ctx)
@@ -836,6 +854,8 @@ interface HeadEvent {
   /** Something changed since the edition a day earlier. */
   moved: boolean
   text: string
+  /** How newsworthy: 3 a record, 2 a change said for the first time (easing included), 1 a state that continues. */
+  tier: number
   /** The clause without its benchmark, when two events share a headline. */
   short?: string
   places: number
@@ -891,7 +911,8 @@ function cycloneEvent(e: DeskEntry, ctx: CopyContext): HeadEvent {
     text += ` in ${place.sea}`
     places += 1
   }
-  return { category: e.category, level: e.level, moved: !!move && move.kind !== 'closed', text, places }
+  const tier = (land && crossedJustNow) || fading || isRise(e.runChange) ? 2 : 1
+  return { category: e.category, level: e.level, moved: !!move && move.kind !== 'closed', text, tier, places }
 }
 
 /**
@@ -906,12 +927,12 @@ function fireEvent(ctx: CopyContext): HeadEvent | null {
   if (eased) {
     const where = whereStates(eased).inText
     const text = `fires ease back to seasonal levels ${where}`
-    return { category: 'fire', level, moved: moves.length > 0, text, short: `fires ease ${where}`, places: placesIn(where, eased.length) }
+    return { category: 'fire', level, moved: moves.length > 0, tier: 2, text, short: `fires ease ${where}`, places: placesIn(where, eased.length) }
   }
   const stories = ctx.fires.map((x) => fireStory(x, ctx))
   if (!stories.some((s) => s.news)) return null
-  const { clause, places } = groupClause(stories)
-  return { category: 'fire', level, moved: moves.length > 0, text: lowerLead(clause.full), short: lowerLead(clause.short), places }
+  const { clause, places, tier } = groupClause(stories)
+  return { category: 'fire', level, moved: moves.length > 0, tier, text: lowerLead(clause.full), short: lowerLead(clause.short), places }
 }
 
 /** "Fires climb …" mid-sentence; a state's name keeps its capital. */
@@ -927,7 +948,7 @@ function airEvent(e: DeskEntry, ctx: CopyContext): HeadEvent {
     else if (e.runChange === 'deescalated') text = `air eases to ${a.band} in ${a.where}`
     else text = `air stays ${a.band} in ${a.where}`
   }
-  return { category: 'air', level: e.level, moved: !!move && move.kind !== 'closed', text, places: a && !/cities$/.test(a.where) ? 1 : 0 }
+  return { category: 'air', level: e.level, moved: !!move && move.kind !== 'closed', tier: isRise(e.runChange) || e.runChange === 'deescalated' ? 2 : 1, text, places: a && !/cities$/.test(a.where) ? 1 : 0 }
 }
 
 /** An earthquake, or the small ones together: "strikes" in its first edition, "struck" after. */
@@ -939,7 +960,7 @@ function quakeEvent(e: DeskEntry, ctx: CopyContext): HeadEvent {
     e.members.length > 0
       ? `${numberWord(e.members.length)} small earthquakes ${fresh || e.members.some((m) => isFresh(m.runChange)) ? 'strike' : 'struck'} near India's borders`
       : `a ${quakeStrength(f.magnitude ?? e.strength)} earthquake ${fresh ? 'strikes' : 'struck'} ${quakeWhere(e)}`
-  return { category: 'earthquake', level: e.level, moved: !!move && move.kind !== 'closed', text, places: /near (?!India)/.test(text) ? 1 : 0 }
+  return { category: 'earthquake', level: e.level, moved: !!move && move.kind !== 'closed', tier: fresh || e.members.some((m) => isFresh(m.runChange)) ? 2 : 1, text, places: /near (?!India)/.test(text) ? 1 : 0 }
 }
 
 /** A flood as a clause: "flooding in Assam is on an orange alert", "worsens" only in the edition that reports it. */
@@ -948,7 +969,7 @@ function floodEvent(e: DeskEntry, ctx: CopyContext): HeadEvent {
   const colour = String(e.figures.episode_alert_level ?? e.figures.alert_level ?? '').toLowerCase()
   const verb = e.runChange === 'escalated' ? 'worsens' : e.runChange === 'deescalated' ? 'eases' : 'is on'
   const text = verb === 'is on' ? `${midName(floodName(e))} is on ${/^[aeiou]/.test(colour) ? 'an' : 'a'} ${colour} alert` : `${midName(floodName(e))} ${verb}`
-  return { category: 'flood', level: e.level, moved: !!move && move.kind !== 'closed', text, places: 1 }
+  return { category: 'flood', level: e.level, moved: !!move && move.kind !== 'closed', tier: verb === 'is on' ? 1 : 2, text, places: 1 }
 }
 
 /** Every event of the edition that is worth a headline, most newsworthy first: level, then what moved, then category order. */
@@ -964,7 +985,7 @@ function headEvents(entries: DeskEntry[], ctx: CopyContext): HeadEvent[] {
   const fires = fireEvent(ctx)
   if (fires) out.push(fires)
   const rank = (c: Category) => CATEGORY_ORDER.indexOf(c)
-  return out.sort((a, b) => b.level - a.level || Number(b.moved) - Number(a.moved) || rank(a.category) - rank(b.category))
+  return out.sort((a, b) => b.tier - a.tier || b.level - a.level || Number(b.moved) - Number(a.moved) || rank(a.category) - rank(b.category))
 }
 
 /**
@@ -1095,7 +1116,7 @@ export function allClearRows(entries: DeskEntry[], status: CategoryStatus[], edi
         line =
           states.length === 0
             ? 'Fires are at seasonal levels across India.'
-            : `Fires in ${listText(states)} have fallen back to seasonal levels.`
+            : `Fires in ${listText(states)} ${states.length === 1 ? 'is' : 'are'} back to seasonal levels.`
         break
       }
     }

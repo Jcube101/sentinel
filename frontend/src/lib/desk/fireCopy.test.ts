@@ -84,6 +84,18 @@ function run(specs: Spec[], at = FIRST_SLOT, withHistory = true) {
   return { fires, entries, headline: pageHeadline(fireOnly, copyContext(fireOnly, since, { ...ed.run, started_at: at }, withHistory ? history(specs) : undefined)) }
 }
 
+/** The page headline with the cyclone and air of edition 25 beside the fire states. */
+function headlineWith(specs: Spec[], at = FIRST_SLOT, airChange: 'escalated' | null = null) {
+  const others = ed.snapshots
+    .filter((s) => s.category !== 'fire')
+    .map((s) => (s.category === 'air' ? { ...s, change: airChange } : { ...s, change: null }))
+  const snaps = [...others, ...specs.map(snapshot)] as EditionData['snapshots']
+  const noWindow: ChangeWindow = { ref: null, rows: [], closed: [] }
+  const since = sinceYesterday(snaps, noWindow)
+  const entries = deskEntries(snaps, since.byItem)
+  return pageHeadline(entries, copyContext(entries, since, { ...ed.run, started_at: at }, history(specs)))
+}
+
 const rising = [{ events: 20 }, { events: 30 }, { events: 45 }].map((d) => ({ ...d, ratio: 2.2 }))
 
 describe('fire titles: place + direction + benchmark', () => {
@@ -212,5 +224,65 @@ describe('fire history', () => {
       ['2026-10-24', 20, false],
       ['2026-10-25', 50, true],
     ])
+  })
+})
+
+describe('headline priority: newsworthiness, not category', () => {
+  const record: Spec = { state: 'Gujarat', n: 60, ratio: 2.0, max: 55, before: rising }
+
+  it('a record leads, ahead of a storm and air that only continue', () => {
+    expect(headlineWith([record])).toMatch(/^Gujarat sees its busiest late-October fire day in three years/)
+  })
+
+  it('a continuing state does not beat air that turned in this edition', () => {
+    const steady: Spec = { state: 'Gujarat', n: 55, ratio: 2.2, before: [{ events: 50 }, { events: 52 }, { events: 54 }].map((d) => ({ ...d, ratio: 2.2 })) }
+    expect(headlineWith([steady], FIRST_SLOT, 'escalated')).toMatch(/^Air turns /)
+  })
+})
+
+describe('a record is said once', () => {
+  const spec: Spec = { state: 'Gujarat', n: 60, ratio: 2.0, max: 55, before: rising }
+
+  it('the first edition of the fire day says it; the later ones say "after record day"', () => {
+    expect(run([spec], FIRST_SLOT).fires[0].title).toBe('Gujarat sees its busiest late-October fire day in three years')
+    for (const later of [LATER_SLOT, '2026-10-27T21:00:00Z']) {
+      expect(run([spec], later).fires[0].title).toBe('Fires stay above usual in Gujarat after record day')
+      expect(headlineWith([spec], later)).not.toMatch(/busiest/)
+    }
+  })
+})
+
+describe('the standfirst supports the headline, with the same measure', () => {
+  it('a record day is about the day’s fires: no district comparison against the day before', () => {
+    const { fires } = run([{ state: 'Maharashtra', n: 60, districts: 16, ratio: 5, max: 55, before: [{ events: 70, districts: 18, ratio: 5 }] }])
+    expect(fires[0].standfirst).toBe(
+      "Satellites picked up more fires in Maharashtra yesterday than on any late-October day in three years, across 16 districts. That's about five times what late October usually sees.",
+    )
+    expect(fires[0].standfirst).not.toMatch(/down from|up from/)
+  })
+
+  it('a district count that points the other way from the story is dropped', () => {
+    const climbing = run([{ state: 'Gujarat', n: 60, districts: 10, ratio: 2.0, before: [{ events: 45, districts: 12, ratio: 2.2 }] }]).fires[0]
+    expect(climbing.title).toMatch(/^Fires climb in Gujarat/)
+    expect(climbing.standfirst).not.toMatch(/down from/)
+    const dipping = run([{ state: 'Telangana', n: 40, districts: 10, ratio: 1.6, before: [{ events: 55, districts: 9, ratio: 2.4 }] }]).fires[0]
+    expect(dipping.standfirst).not.toMatch(/up from/)
+  })
+
+  it('an easing standfirst keeps the benchmark sentence', () => {
+    const { fires } = run([{ state: 'Maharashtra', n: 12, districts: 14, ratio: 1.0, level: 1, change: 'deescalated', before: [{ events: 50, districts: 20 }] }])
+    expect(fires[0].title).toBe('Fires in Maharashtra ease back to seasonal levels')
+    expect(fires[0].standfirst).toBe(
+      "Satellites picked up fires in 14 Maharashtra districts yesterday, down from 20 on Sunday. That's about what late October usually sees.",
+    )
+  })
+})
+
+describe('a Level 1 fire state is a status line, not a story', () => {
+  it('no standfirst and a plain line; the edition that eased it keeps its news title', () => {
+    const quiet = run([{ state: 'Madhya Pradesh', n: 12, ratio: 0.9, level: 1, before: [{ events: 14 }] }]).fires[0]
+    expect(quiet).toEqual({ title: 'Madhya Pradesh: fires at seasonal levels', standfirst: null })
+    const eased = run([{ state: 'Madhya Pradesh', n: 12, ratio: 0.9, level: 1, change: 'deescalated', before: [{ events: 50 }] }]).fires[0]
+    expect(eased.title).toBe('Fires in Madhya Pradesh ease back to seasonal levels')
   })
 })

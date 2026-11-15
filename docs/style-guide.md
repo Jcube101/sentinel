@@ -128,7 +128,8 @@ strip. Districts are the number the copy may print.
    "double", "three times".
 3. **Past years only when it is a record:** "busiest late-October fire day in three years",
    the years being those the edition's own norm covers (`norm_years`, else its config):
-   never a fixed "two". Said in every edition of that fire day (it is a fact of the day).
+   never a fixed "two". Said once, in the first edition that reports it (the 14:30 IST edition of that fire day); the
+   later editions say "Fires stay above usual in Gujarat after record day".
 4. **Numbers in titles:** district counts only, and only when spreading is the story
    ("Fires spread to 14 districts in Maharashtra": at least three more districts and a
    quarter more than the day before). Never cluster counts.
@@ -143,6 +144,20 @@ first edition of a fire day (the 14:30 IST edition, the one that reads the new c
 and for the edition whose own run recorded the change. The two editions after it, and every
 later one, say where the state stands: "Fires stay above usual in Gujarat for a fourth day"
 (the run, from the third day on).
+
+**The standfirst supports the headline, using the same measure.** A record is about the day's
+fires, so its standfirst says so and gives no comparison with the day before: "Satellites
+picked up more fires in Maharashtra yesterday than on any early-November day in two years,
+across 16 districts." A district comparison ("down from 18 on Tuesday") appears only when it
+points the way the title does; one that contradicts the direction is dropped. An easing
+standfirst keeps the benchmark sentence ("That's about what early November usually sees.").
+States that fell to seasonal levels are named as they are now, not as a move: "Maharashtra,
+Telangana and Karnataka are back to seasonal levels."
+
+**A Level 1 fire state is a status line among the minor items, not a story:** "Madhya
+Pradesh: fires at seasonal levels", with no standfirst. Only the edition whose own run eased
+it has a news title ("Fires in Madhya Pradesh ease back to seasonal levels", with its
+standfirst).
 
 Targets (the tests hold them):
 - Rising: "Fires climb in Gujarat for a third day, double the usual for late October"
@@ -247,8 +262,12 @@ Rules:
    central India") counts as one, a bare count ("in four states", "in eight cities") as
    none. A second event that would add a third place is dropped; so is one that would take the
    headline past twelve words, and the next event in line is tried instead.
-5. **The lead** is the event with the highest level; among equals, the one that moved since
-   yesterday; then category order (cyclone, flood, earthquake, air, fire). The fire event is
+5. **The lead is the most newsworthy event, not the highest category.** In order: a record
+   (said once); a change said for the first time (a one-time verb, easing included: "Fires
+   ease back to seasonal levels …", "Air turns very poor …"); a state that continues ("holds",
+   "stays"). Within the same kind, the higher level, then what moved since yesterday, then
+   category order (cyclone, flood, earthquake, air, fire) breaks the tie. When two events
+   don't fit, the more newsworthy one is kept. The fire event is
    the fire states that are news (see Fire; a busy state within its usual range has no
    headline): "Fires climb in Gujarat for a third day, double the usual for late October";
    "Fires climb across western India, double the usual in Gujarat and Maharashtra"; "Fires
