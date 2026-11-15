@@ -179,3 +179,42 @@ def test_freshness_update_marks_new_data_only_when_newer():
     assert not new and "newest_observation_at" not in update
     update, new = runs.freshness_update("timeout", "timed out", 0, None, None, 9, now)
     assert not new and "last_success_at" not in update and update["last_status"] == "timeout"
+
+
+# --- missed slots ----------------------------------------------------------------------
+
+def _utc(day, hh, mm=0, ss=0):
+    return datetime(2026, 11, day, hh, mm, ss, tzinfo=timezone.utc)
+
+
+def test_normal_runs_miss_nothing():
+    assert runs.missed_slots(_utc(5, 9, 0, 7), _utc(5, 15, 0, 3)) == []
+    assert runs.missed_slots(_utc(5, 21, 0, 1), _utc(6, 9, 0, 8)) == []
+
+
+def test_the_6_nov_outage_names_both_slots():
+    # edition 52 ran 5 Nov 21:00; 6 Nov 09:00 and 15:00 had no record; edition 53 ran 21:00
+    assert runs.missed_slots(_utc(5, 21, 0, 1), _utc(6, 21, 0, 4)) == [_utc(6, 9), _utc(6, 15)]
+
+
+def test_a_late_run_still_covers_its_own_slot():
+    assert runs.missed_slots(_utc(5, 9, 0, 7), _utc(5, 15, 40)) == []          # woke up late
+    assert runs.missed_slots(_utc(5, 9, 0, 7), _utc(5, 21, 10)) == [_utc(5, 15)]
+
+
+def test_a_manual_run_between_slots_misses_nothing():
+    assert runs.missed_slots(_utc(5, 9, 0, 7), _utc(5, 11, 30)) == []
+    assert runs.missed_slots(_utc(5, 11, 30), _utc(5, 15, 0, 5)) == []
+
+
+def test_a_gap_over_days_lists_every_slot():
+    slots = runs.missed_slots(_utc(5, 21, 0, 1), _utc(8, 9, 0, 2))
+    assert len(slots) == 6 and slots[0] == _utc(6, 9) and slots[-1] == _utc(7, 21)
+
+
+def test_the_alert_names_slots_in_utc_and_ist():
+    subject, body = runs.missed_slots_alert([_utc(6, 9), _utc(6, 15)], 53)
+    assert subject == "Sentinel: 2 scheduled editions missed"
+    assert "Fri 06 Nov 09:00 UTC (14:30 IST)" in body and "Fri 06 Nov 15:00 UTC (20:30 IST)" in body
+    assert "Edition 53 is the first run since" in body
+    assert runs.missed_slots_alert([_utc(6, 9)], 53)[0] == "Sentinel: 1 scheduled edition missed"

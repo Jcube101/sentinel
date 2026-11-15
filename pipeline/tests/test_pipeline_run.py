@@ -5,7 +5,7 @@ events / aqi_readings writes, and its failures must still fail the run.
 """
 import sqlite3
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
 import pytest
@@ -387,3 +387,34 @@ def test_data_gov_in_attempt_lands_in_the_run_record(harness):
     assert "no DATA_GOV_IN_API_KEY" in run["sources"]["DATAGOV"]["error"]
     row = next(r for r in harness.db.rows("sources") if r["id"] == "DATAGOV")
     assert row["last_status"] == "error" and row["last_run_id"] == 1
+
+
+# --- missed-edition alert ----------------------------------------------------------------
+
+def _alerts(monkeypatch):
+    sent = []
+    monkeypatch.setattr(pipeline.notify, "send_alert", lambda subject, body: sent.append((subject, body)) or True)
+    return sent
+
+
+def test_first_run_after_a_gap_alerts_once_with_the_missed_slots(harness, monkeypatch):
+    sent = _alerts(monkeypatch)
+    now = datetime.now(timezone.utc)
+    two_days_ago = now.replace(hour=9, minute=0, second=7, microsecond=0) - timedelta(days=2)
+    harness.db.tables["pipeline_runs"] = [{"id": 7, "started_at": two_days_ago.isoformat(), "status": "ok"}]
+    harness.db._next_id["pipeline_runs"] = 8
+    harness.run()
+    assert len(sent) == 1 and "missed" in sent[0][0] and "Edition 8 is the first run since" in sent[0][1]
+    harness.run()                       # the next run starts from this one, so it stays quiet
+    assert len(sent) == 1
+
+
+def test_no_alert_on_the_first_edition_or_when_nothing_was_missed(harness, monkeypatch):
+    sent = _alerts(monkeypatch)
+    harness.run()                       # no previous run record
+    assert sent == []
+
+
+def test_a_failing_missed_slot_check_never_stops_the_run(harness, monkeypatch):
+    monkeypatch.setattr(pipeline.runs, "previous_run_start", lambda *a: 1 / 0)
+    assert harness.run() == 0

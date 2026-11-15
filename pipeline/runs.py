@@ -13,7 +13,7 @@ import json
 import logging
 import re
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from dateutil import parser as dateutil_parser
 
@@ -175,6 +175,59 @@ def start_run(supabase, started_at: datetime) -> int:
         {"started_at": started_at.isoformat(), "status": "running"}
     ).execute()
     return resp.data[0]["id"]
+
+
+# The timer's slots (sentinel-pipeline.timer: OnCalendar=*-*-* 09,15,21:00:00 UTC).
+SCHEDULE_UTC_HOURS = (9, 15, 21)
+IST = timezone(timedelta(hours=5, minutes=30))
+
+
+def slot_at_or_before(when: datetime) -> datetime:
+    """The latest scheduled slot at or before `when` (UTC)."""
+    when = when.astimezone(timezone.utc)
+    slots = [when.replace(hour=h, minute=0, second=0, microsecond=0) for h in SCHEDULE_UTC_HOURS]
+    earlier = [s for s in slots if s <= when]
+    return earlier[-1] if earlier else slots[-1] - timedelta(days=1)
+
+
+def missed_slots(previous_start: datetime, started_at: datetime) -> list[datetime]:
+    """Scheduled slots between the previous run record and this run with no
+    run record of their own: the timer fired but the run couldn't start (DNS
+    down, Supabase unreachable, crash), or the Pi was off. Each run covers the
+    slot it started in (or after, if it started late), so only slots strictly
+    between the previous run's start and this run's own slot count."""
+    own = slot_at_or_before(started_at)
+    slot = slot_at_or_before(previous_start)
+    out = []
+    while True:
+        hours = sorted(SCHEDULE_UTC_HOURS)
+        later = [h for h in hours if h > slot.hour]
+        slot = (slot.replace(hour=later[0]) if later
+                else (slot + timedelta(days=1)).replace(hour=hours[0]))
+        if slot >= own:
+            return out
+        if slot > previous_start:
+            out.append(slot)
+
+
+def previous_run_start(supabase, run_id: int) -> datetime | None:
+    rows = (supabase.table(RUNS_TABLE).select("id,started_at").lt("id", run_id)
+            .order("id", desc=True).limit(1).execute().data)
+    return _to_datetime(rows[0]["started_at"]) if rows else None
+
+
+def missed_slots_alert(slots: list[datetime], run_id: int) -> tuple[str, str]:
+    """(subject, body) of the alert naming the missed slots."""
+    names = "\n".join(f"  - {s:%a %d %b %H:%M} UTC ({s.astimezone(IST):%H:%M} IST)" for s in slots)
+    many = len(slots) != 1
+    return (
+        f"Sentinel: {len(slots)} scheduled edition{'s' if many else ''} missed",
+        f"No pipeline_runs row exists for {'these slots' if many else 'this slot'}:\n{names}\n\n"
+        f"Edition {run_id} is the first run since; the editions in between were never created. "
+        "Usual causes: the Pi had no network or DNS at that time (the run could not create its record, "
+        "and the failure alert could not be sent either), or the Pi was off. "
+        "See pipeline/logs/pipeline.log around those times.",
+    )
 
 
 def store_severity_config(supabase, run_id: int, severity_config: dict) -> None:

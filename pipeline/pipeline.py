@@ -324,6 +324,23 @@ def _log_dry_run_freshness(supabase, results: dict) -> None:
         )
 
 
+def _alert_missed_slots(supabase, run_id: int, started_at: datetime) -> None:
+    """The first run after a gap names the scheduled slots that never got an
+    edition. Best effort: never stops the run, and the alert is sent once (the
+    next run looks only at the slots after this run's start)."""
+    try:
+        previous = runs.previous_run_start(supabase, run_id)
+        slots = runs.missed_slots(previous, started_at) if previous else []
+        if not slots:
+            return
+        logger.warning("runs: no edition for %d scheduled slot(s): %s", len(slots),
+                       ", ".join(s.strftime("%d %b %H:%M UTC") for s in slots))
+        subject, body = runs.missed_slots_alert(slots, run_id)
+        notify.send_alert(subject, body)
+    except Exception as exc:
+        logger.error("runs: could not check for missed slots — %s", exc)
+
+
 def run(dry_run: bool = False):
     start = time.monotonic()
     started_at = datetime.now(tz=timezone.utc)
@@ -350,6 +367,7 @@ def run(dry_run: bool = False):
         try:
             run_id = runs.start_run(supabase, started_at)
             logger.info("runs: started edition %d", run_id)
+            _alert_missed_slots(supabase, run_id, started_at)
         except Exception as exc:
             logger.error("runs: could not create run record — %s", exc)
             runs_ok = False

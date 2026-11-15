@@ -37,6 +37,21 @@ failed (so it alerts) while the others still run.
    then `_cleanup()` only if `archive.run()` succeeded
 10. `_check_staleness()`, then `runs.finish_run()` closes the edition as ok or failed
 
+## Alerts
+- **Failed run:** `pipeline.py` exits 1 when any source or stage failed, or the run record
+  couldn't be created; systemd then runs `sentinel-pipeline-alert.service`
+  (`notify_failure.py`, `OnFailure=` on the service). That alert is a POST to
+  `NOTIFY_WEBHOOK_URL`, so it cannot be delivered while the Pi's own network or DNS is down:
+  on 6 Nov 2026 two editions (14:30 and 20:30 IST) were lost that way with no message.
+- **Missed editions:** the first run after a gap checks the scheduled slots (09:00, 15:00,
+  21:00 UTC, `runs.SCHEDULE_UTC_HOURS`, the same as `sentinel-pipeline.timer`) between the
+  previous run record and its own, and sends one alert naming the slots with no
+  `pipeline_runs` row (`pipeline._alert_missed_slots`, `runs.missed_slots`). It looks only
+  at slots after the previous run's start, so each gap alerts once; if the webhook is down
+  at that moment the alert is lost (the log line `runs: no edition for N scheduled slot(s)`
+  stays). Dry runs skip it.
+- **Stale data:** `_check_staleness`, as before.
+
 ## How to Run
 
 Full pipeline (from pipeline/ directory). A real run creates an edition and writes to
