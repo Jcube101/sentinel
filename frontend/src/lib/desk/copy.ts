@@ -319,9 +319,18 @@ function stateName(e: DeskEntry): string {
   return String(e.figures.state ?? e.title)
 }
 
-/** "led by a spike in Chhattisgarh", "now including Telangana", "up from four" */
-function angleSuffix(a: Angle): string {
+/**
+ * "led by a spike in Chhattisgarh", "now including Telangana", "up from four".
+ * named: the clause the suffix follows, when it already names states ("in Gujarat
+ * and Madhya Pradesh"): a new state in it isn't named again, only counted ("one of
+ * them new", "both new"), because "…in Gujarat and Madhya Pradesh, now including
+ * Gujarat" says Gujarat twice (edition 78). total: how many states the clause covers.
+ */
+function angleSuffix(a: Angle, named?: string, total?: number): string {
   const names = a.states.map(stateName)
+  if (a.kind === 'new' && named && names.every((n) => named.includes(n))) {
+    return names.length === total ? (total === 2 ? 'both new' : 'all new') : `${numberWord(names.length)} of them new`
+  }
   switch (a.kind) {
     case 'record':
       if (names.length === 1) return `led by a spike in ${names[0]}`
@@ -791,7 +800,7 @@ function firesClause(ctx: CopyContext, withAngle: boolean): string {
         : `fires run ${record ? 'far ' : ''}above normal ${where.inText}`
   if (!withAngle) return clause
   const angle = fireAngle(ctx.fires, ctx, false)
-  return angle.kind === 'spreading' ? clause : `${clause}, ${angleSuffix(angle)}`
+  return angle.kind === 'spreading' ? clause : `${clause}, ${angleSuffix(angle, where.inText, ctx.fires.length)}`
 }
 
 /** "holds at red alert", "rises to red alert": the move since yesterday, if the comparison says. */

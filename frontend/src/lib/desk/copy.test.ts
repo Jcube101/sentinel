@@ -235,6 +235,25 @@ describe('fire roundup rules', () => {
     expect(roundupTitle(old, oldWindow)).toBe('Fires run above normal in five states, up from four')
   })
 
+  it('the headline never repeats a state it already names in "now including" (edition 78: "Gujarat and Madhya Pradesh, now including Gujarat")', () => {
+    // Two fire states above normal, Chhattisgarh new: the clause names both, so the angle can't name Chhattisgarh again.
+    const two = withFigures(25, 'fire:chhattisgarh', { norm_max_daily_events: 400 }).filter(
+      (s) => s.category === 'fire' && ['fire:chhattisgarh', 'fire:madhya-pradesh'].includes(s.item_id),
+    )
+    const since = sinceYesterday(two, w25_)
+    const entries = deskEntries(two, since.byItem)
+    const ctx = copyContext(entries, since, ed25.run)
+    const headline = pageHeadline(entries, ctx)
+    expect(headline).not.toMatch(/now including/)
+    expect(headline).toMatch(/^Fires .* in Chhattisgarh and Madhya Pradesh, one of them new\.$/)
+    // Past two states the clause names no state, so the angle still can.
+    const five = withFigures(25, 'fire:chhattisgarh', { norm_max_daily_events: 400 })
+    const sinceFive = sinceYesterday(five, w25_)
+    const entriesFive = deskEntries(five, sinceFive.byItem)
+    const fireOnly = entriesFive.filter((e) => e.category === 'fire')
+    expect(pageHeadline(fireOnly, copyContext(fireOnly, sinceFive, ed25.run))).toMatch(/now including Chhattisgarh\.$/)
+  })
+
   it('a lone fire state gets its own story: the plain multiple in the title, the average in the standfirst', () => {
     const only = ed25.snapshots.filter((s) => s.category !== 'fire' || s.item_id === 'fire:telangana')
     const entries = deskEntries(only, new Map())
