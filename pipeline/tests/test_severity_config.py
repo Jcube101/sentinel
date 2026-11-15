@@ -65,6 +65,7 @@ def _broken(cfg, dotted, value):
         ("watching.rising_updates", 2.5, "must be an integer"),
         ("fire.min_fire_events", "ten", "must be an integer"),
         ("fire.confidence", ["x"], "fire.confidence"),
+        ("fire.gdacs_wildfire_alert_levels", ["Amber"], "fire.gdacs_wildfire_alert_levels"),
         ("fire.min_fire_events", KeyError, "missing fire.min_fire_events"),
         ("fire.lifecycle", KeyError, "missing fire.lifecycle.open_min_level"),
         ("quake.lifecycle", KeyError, "missing quake.lifecycle.open_min_level"),

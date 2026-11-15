@@ -19,8 +19,10 @@ Step 6 of docs/severity-pipeline.md. Each run:
        level_4_near_km of a place of level_4_min_population people -> 4.
      It is capped at calibration_cap until live counts are calibrated
      against the archive; the reason says when the cap lowers a level.
-  3. A current GDACS wildfire alert located in the state lifts the item to
-     gdacs_wildfire_level ("forest fire"), whatever the cap.
+  3. A current GDACS wildfire alert located in the state, at an alert colour
+     in gdacs_wildfire_alert_levels (Orange, Red; never Green), lifts the item
+     to gdacs_wildfire_level ("forest fire"), whatever the cap. Other alerts
+     are dropped: they are not on the item.
   4. Reconcile with the stored fire:<state> items: open at
      lifecycle.open_min_level, escalate or de-escalate, close only after
      close_after_hours of complete days below the open level (no fire
@@ -169,6 +171,12 @@ def large_fires_near_people(events: list[dict], places, cfg: dict) -> list[dict]
     return out
 
 
+def lifting_alerts(alerts: list[dict], cfg: dict) -> list[dict]:
+    """The alerts whose colour lifts a state (fire.gdacs_wildfire_alert_levels)."""
+    colours = set(cfg["fire"]["gdacs_wildfire_alert_levels"])
+    return [a for a in alerts if a.get("alert_level") in colours]
+
+
 def wildfire_alerts_by_state(alerts: list[dict], districts, cfg: dict) -> tuple[dict[str, list[dict]], int]:
     """Current GDACS wildfire alerts by the state their point falls in.
 
@@ -187,7 +195,7 @@ def wildfire_alerts_by_state(alerts: list[dict], districts, cfg: dict) -> tuple[
             "alert_level": a["episodealertlevel"] or a["alertlevel"],
             "from": a["fromdate"], "to": a["todate"], "url": a["url"],
         })
-    return dict(by_state), unmatched
+    return {state: kept for state, found in by_state.items() if (kept := lifting_alerts(found, cfg))}, unmatched
 
 
 # --- one state -------------------------------------------------------------------------
@@ -233,6 +241,7 @@ def state_candidate(state: str, events: list[dict], today_events: list[dict], no
                     gdacs_checked: bool, data_to: datetime | None) -> desk.Candidate:
     """The fire item for one state from its complete day's fire events."""
     f = cfg["fire"]
+    alerts = lifting_alerts(alerts, cfg)   # also drops Green alerts an older item carried
     n = len(events)
     mean = norm["mean_daily_events"] if norm else None
     r_level, ratio, counted = ratio_level(n, mean, cfg)

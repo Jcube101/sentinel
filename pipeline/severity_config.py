@@ -11,6 +11,7 @@ import tomllib
 from pathlib import Path
 
 CONFIG_PATH = Path(__file__).with_name("severity.toml")
+ALERT_COLOURS = {"Green", "Orange", "Red"}
 CONFIDENCE_CODES = {"l", "n", "h"}
 
 
@@ -134,6 +135,11 @@ def validate(cfg: dict) -> None:
     _ascending(cfg, "fire.level_2_min_ratio", "fire.level_3_min_ratio")
     _number(cfg, "fire.min_fire_events", minimum=1, integer=True)
     _number(cfg, "fire.gdacs_wildfire_level", minimum=1, maximum=4, integer=True)
+    colours = _get(cfg, "fire.gdacs_wildfire_alert_levels")
+    if not isinstance(colours, list) or not all(c in ALERT_COLOURS for c in colours):
+        raise ConfigError(
+            f"severity.toml: fire.gdacs_wildfire_alert_levels must be a list of {sorted(ALERT_COLOURS)}, got {colours!r}"
+        )
     _number(cfg, "fire.level_4_min_frp_mw", minimum=0)
     _number(cfg, "fire.level_4_near_km", minimum=0)
     _number(cfg, "fire.level_4_min_population", minimum=0, integer=True)

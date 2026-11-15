@@ -345,8 +345,8 @@ in `desk_watch` are dropped. The level: the day's fire events over the state's n
 that week (`data/fire_baseline.csv`), counted from `fire.min_fire_events`
 events; a large fire near a city (`data/india_places.csv`) is Level 4. These
 FIRMS-derived levels are capped at `fire.calibration_cap` (2) until live
-counts are calibrated against the archive; a current GDACS wildfire alert in
-the state lifts the item to Level 3 regardless. Today's events so far are in
+counts are calibrated against the archive; a current Orange or Red GDACS wildfire alert
+in the state (never Green) lifts the item to Level 3 regardless. Today's events so far are in
 `figures.today` (marked partial) and never set the level. `figures.state_rank` is the
 state's national rank by fire events that day among every state with fires
 (`states_with_fires`; equal counts share a rank, `rank_shared`). Items close after

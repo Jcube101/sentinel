@@ -48,9 +48,9 @@ def _candidate(events, *, state="Punjab", today_events=(), alerts=(), cfg=CFG, n
         places=PLACES, gdacs_checked=True, data_to=datetime(2026, 10, 20, 20, 41, tzinfo=timezone.utc))
 
 
-def _wildfire(eid=1, lat=31.5, lon=74.5, current=True, kind="WF"):
+def _wildfire(eid=1, lat=31.5, lon=74.5, current=True, kind="WF", colour="Orange"):
     return {"id": f"GDACS-{kind}-{eid}", "eventtype": kind, "eventid": eid, "name": f"Forest fire {eid}",
-            "alertlevel": "Green", "episodealertlevel": "Green", "iscurrent": current,
+            "alertlevel": colour, "episodealertlevel": colour, "iscurrent": current,
             "fromdate": "2026-10-19T00:00:00+00:00", "todate": "2026-10-21T00:00:00+00:00",
             "latitude": lat, "longitude": lon, "url": "https://www.gdacs.org/report"}
 
@@ -159,13 +159,25 @@ def test_no_level_4(event):
 
 
 def test_gdacs_wildfire_lifts_past_the_cap():
-    alert = {"id": "GDACS-WF-1", "name": "Forest fire 1", "alert_level": "Green", "url": "u", "from": None, "to": None}
+    alert = {"id": "GDACS-WF-1", "name": "Forest fire 1", "alert_level": "Orange", "url": "u", "from": None, "to": None}
     c = _candidate(_events(3), alerts=[alert])
     assert c.level == 3 and c.figures["gdacs_level"] == 3 and not c.figures["capped"]
-    assert c.reason == ("Forest fire: GDACS Green wildfire alert (Forest fire 1); "
+    assert c.reason == ("Forest fire: GDACS Orange wildfire alert (Forest fire 1); "
                         "3 fire events on 20 Oct, too few to compare with the norm (minimum 10)")
     no_events = _candidate([], alerts=[alert])
     assert no_events.level == 3 and no_events.title == "Forest fire in Punjab" and no_events.latitude is None
+
+
+def test_green_wildfire_alert_does_not_lift():
+    green = {"id": "GDACS-WF-1", "name": "Forest fire 1", "alert_level": "Green", "url": "u", "from": None, "to": None}
+    c = _candidate(_events(3), alerts=[green])
+    assert c.level == 1 and c.figures["gdacs_level"] is None and c.figures["gdacs_wildfire"] == []
+    assert "GDACS" not in c.reason and c.title != "Forest fire in Punjab"
+    assert _candidate([], alerts=[green]).level == 1
+    # an Orange one next to it still lifts, and is the only one kept
+    orange = dict(green, id="GDACS-WF-2", alert_level="Orange")
+    both = _candidate(_events(3), alerts=[green, orange])
+    assert both.level == 3 and [a["id"] for a in both.figures["gdacs_wildfire"]] == ["GDACS-WF-2"]
 
 
 def test_wildfire_alerts_located_in_states():
@@ -173,6 +185,8 @@ def test_wildfire_alerts_located_in_states():
               _wildfire(4, lat=25.0, lon=70.0), _wildfire(5, kind="FL")]
     by_state, unmatched = fire_desk.wildfire_alerts_by_state(alerts, DISTRICTS, CFG)
     assert {s: [a["id"] for a in v] for s, v in by_state.items()} == {"Punjab": ["GDACS-WF-1"], "Haryana": ["GDACS-WF-2"]}
+    green_only, _ = fire_desk.wildfire_alerts_by_state([_wildfire(6, colour="Green")], DISTRICTS, CFG)
+    assert green_only == {}
     assert unmatched == 1
 
 

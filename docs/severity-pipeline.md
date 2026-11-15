@@ -38,6 +38,7 @@ which no longer does).
 | Part C: FIRMS hotspots no longer go to `events`; they go to the fire stages and the local archive (`archive.store_hotspots()`); FIRMS's staleness reads its `sources` row | 29 Oct | Live since edition 31: `events` got 141 rows (EONET 2, GDACS 11, USGS 128), 2,242 hotspots stored locally, FIRMS staleness ok from `sources` (12.5 h) |
 | Part C: migration 009, `events`, `aqi_readings`, `sources` and `categories` private | applied 30 Oct | Job's check query; an anon-key read gets 401 on the four, 200 on every desk, fire and run table and view; no anon write anywhere |
 | Cyclones: closed once the latest advisory is over 24 h old, reopened by a new one; the latest wind next to the peak, the track and the landfall from GDACS's advisory timeline (*Decisions (30 Oct 2026): cyclones*) | 30 Oct | Live in edition 32: ARNAB-26 closed (last advisory 28 Oct 06:00 UTC), "GDACS Orange alert, 102 km/h winds (peaked at 222 km/h)", peak 27 Oct 12:00 UTC, landfall 27 Oct 18:00 UTC in West Godavari, Andhra Pradesh; the track requests took 8.9 s (`pipeline_runs.sources.GDACS.parts.tracks`). Reopening: offline tests only |
+| Only Orange and Red GDACS wildfire alerts lift a fire state to Level 3 (`fire.gdacs_wildfire_alert_levels`); Green alerts are dropped | 15 Nov | Dry run: Madhya Pradesh (Level 3 since edition 59 on Green alerts, 0.88× norm) de-escalates to Level 1. Live check: pending |
 
 ## The problem
 
@@ -131,7 +132,10 @@ changed in *Decisions (21 Oct 2026)*, and air reads CPCB's AQI from data.gov.in 
 5. **GDACS wildfire alerts:** kept **out of `events`** (EONET already carries the same
    alerts). Used only as the **forest-fire trigger for Level 3**. GDACS has never issued an
    Orange/Red wildfire alert for India (2023–2026, all Green), so it cannot replace the
-   FIRMS-derived level.
+   FIRMS-derived level. **Since 15 Nov 2026 only Orange and Red alerts lift**
+   (`fire.gdacs_wildfire_alert_levels`): a Green alert held Madhya Pradesh at Level 3 from
+   8 Nov while it ran at 0.6-0.9× its norm, and left "days since Level 3" at zero. Green
+   alerts are not on the item at all.
 6. **Migrations:** SQL files in `pipeline/migrations/`, pasted into the Supabase SQL editor
    by Job. Each includes the Data API grants (see `pipeline/CLAUDE.md`).
 
@@ -141,7 +145,7 @@ changed in *Decisions (21 Oct 2026)*, and air reads CPCB's AQI from data.gov.in 
    means FIRMS holds the night pass (*Decisions (29 Oct 2026)*).
 2. **Calibration cap:** until the live-vs-archive comparison (follow-ups) is done,
    FIRMS-derived fire levels are capped at 2 (`fire.calibration_cap` in `severity.toml`).
-   A current GDACS wildfire alert in the state can still lift an item to Level 3. The reason
+   A current Orange or Red GDACS wildfire alert in the state can still lift an item to Level 3. The reason
    says when the cap lowers a level.
 3. **Fire thresholds:** at least **25 fire events** before any ratio counts, **Level 2 at 2×**
    the norm, **Level 3 at 4×** (replacing the draft 10 events and 1.25× / 2×). A replay of the

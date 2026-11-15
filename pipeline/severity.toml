@@ -162,8 +162,13 @@ level_3_min_ratio = 4.0
 # below it the state stays Level 1 however high the ratio. Stops a state
 # that averages 0.3 fires/day reading 10x norm on a 3-fire day.
 min_fire_events = 25
-# Level 3 "forest fire": an active GDACS wildfire alert in the state.
+# Level 3 "forest fire": an active GDACS wildfire alert in the state, but only
+# at these alert colours. Every wildfire alert GDACS has sent so far was Green;
+# one held Madhya Pradesh at Level 3 for a week at 0.6-0.9x its fire norm (15 Nov
+# 2026 review). A Green alert is left out of the item entirely (no figure, no
+# note); the state is levelled on its FIRMS fire events alone.
 gdacs_wildfire_level = 3
+gdacs_wildfire_alert_levels = ["Orange", "Red"]
 # Level 4: a fire event with max FRP at or above this, within level_4_near_km
 # of a place with at least level_4_min_population people
 # (data/india_places.csv, GeoNames). Not in the spec; first guesses.
