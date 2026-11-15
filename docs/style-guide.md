@@ -18,7 +18,7 @@ shouldn't need to. Write like a news report, not a database.
 
 1. **Kicker,** only when the item wasn't updated: "As of Saturday" (see Facts in the
    story, caveats in notes).
-2. **Title:** a news headline with a verb, saying what happened. "Fires run above normal
+2. **Title:** a news headline with a verb, saying what happened. "Fires stay high
    in five states". A named event may stand on its name
    alone ("Cyclone Arnab"); then the standfirst carries the verb.
 3. **Standfirst:** one to three sentences, each a fact said plainly. What happened first,
@@ -206,12 +206,15 @@ happened; what is new since yesterday belongs in Since yesterday, not here.
 Rules:
 1. **One main event, optionally a second of another kind.** Never a third. Clauses are not
    stacked: no appended "led by …" or "now including …" tail.
-2. **A strong verb,** the one the change since a day earlier supports: fires "flare"
-   (new or back) or "climb" (a level up), "ease" (fell back), "surge" (no change, but a
-   record for the season), "run above normal" (no change); air "turns" a band (moved up), "eases to" one, or "stays" in one; a storm
-   "strengthens", "weakens", "crosses the Andhra coast" (landfall, with "and weakens" once
-   its wind is below its peak), or "holds at red alert" when nothing moved; a quake
-   "strikes". No "is" where a verb will do.
+2. **A strong verb, one-time verbs once.** Verbs that announce a change ("flare", "climb",
+   "surge", "turn", "cross", "strike") are used only in the first edition that reports the
+   change: the edition whose own run recorded it (a state opened, reopened or rose a level; air
+   moved a band; a storm's landfall within the last run's interval; a quake's first edition).
+   Every edition after says where things stand, in ongoing wording: fires "stay high in
+   Maharashtra"; air "stays severe in Ballabgarh"; a storm "weakens inland over Andhra
+   Pradesh" (or "moves inland"), or "holds at red alert" when nothing moved; a quake "struck".
+   Easing ("fires ease …", air "eases to …") is also said once. "Surge" is a rise that sets a
+   record for the season; "climb" a rise by a level; "flare" a state that is new or back.
 3. **No bookkeeping words,** ever: "one of them new", "both new", "now including", "led by",
    "on the desk", "top story", "spreading". That is the desk talking about itself, and it
    is Since yesterday's job (see also No self-reference).
@@ -221,12 +224,13 @@ Rules:
    headline past twelve words, and the next event in line is tried instead.
 5. **The lead** is the event with the highest level; among equals, the one that moved since
    yesterday; then category order (cyclone, flood, earthquake, air, fire). Several fire
-   states are one event: those that rose are named ("Fires flare in Gujarat"); if more fell
-   back than rose, on a complete day, the clause is "Fires ease across central India";
-   otherwise "Fires run above normal in Gujarat and Assam".
+   states are one event: those whose rise is this edition's news are named ("Fires flare in Gujarat"); if more fell
+   back than rose in this edition, on a complete day, the clause is "Fires ease across
+   central India"; otherwise "Fires stay high in Gujarat and Assam".
 6. **Fire regions** come from where the states are: one or two states by name; one region
    ("across northern India"); states clustered round the middle of the country ("across
-   central India"); two regions ("across western and southern India"); otherwise a count
+   central India"); two regions, always north to south ("across central and western
+   India", "across western and southern India"); otherwise a count
    ("in four states"). The sea is named ("in the Bay of Bengal") only for a storm that has
    not crossed, and only when its mapped area is centred 150 km or more out at sea.
 7. When nothing is above Level 1: "A quiet day across India, with nothing above minor."
@@ -270,13 +274,13 @@ above normal they are.
   Telangana and Chhattisgarh fell back toward normal since yesterday. Madhya Pradesh
   logged 145 fires yesterday across 21 districts, about double the late-October average
   but normal for the season."
-- **Title** otherwise: what the states are doing and how many, nothing else: "Fires run
-  above normal in five states"; "Fires surge in five states" when any of them beats its
-  busiest day for the season (a record); "Fires also run above normal in four more states"
-  next to a state's own story. The same rules as the page headline: a strong verb, no
-  bookkeeping, so never "led by …", "now including …", "up from four" or "the most in …".
-  Which state stands out is the standfirst's first sentence; what is new since yesterday is
-  Since yesterday's.
+- **Title** otherwise: what the states are doing and how many, nothing else, with the page
+  headline's rules (one-time verbs once, no bookkeeping): in the first edition that reports a
+  rise, "Fires flare in five states", or "Fires surge in five states" when the rise beats a
+  state's busiest day for the season; in every edition after, "Fires stay high in five
+  states". Next to a state's own story: "Fires also stay high in four more states". Never
+  "led by …", "now including …", "up from four" or "the most in …". Which state stands out is
+  the standfirst's first sentence; what is new since yesterday is Since yesterday's.
 - **Standfirst,** two or three sentences, only about the states still above normal: the
   standout in one sentence, first: the state with a record for the season, else the one
   new since a day earlier, else the furthest above normal,
@@ -290,14 +294,14 @@ above normal they are.
   with its level squares (state, fires, usual a day, against past years: "busiest in 2
   years" or "within range"). A held state shows its dashed square; the Notes explain it.
 - **Own story:** a state gets its own story if it reaches Level 3 or above, or is the only
-  fire state; the roundup then covers the rest ("Fires also run above normal in four more
+  fire state; the roundup then covers the rest ("Fires also stay high in four more
   states"). A record doesn't split a state out: it leads the roundup instead.
 
 ## Per category
 
 | Category | Title | Standfirst | Source line |
 |---|---|---|---|
-| Fire (roundup) | "Fires surge in five states" | "Chhattisgarh logged 27 fires on Monday across 10 districts, about nine times the late-October average and a two-year high for the season. Madhya Pradesh had the most fires, 200, about three times the late-October average but normal for the season. Telangana, Maharashtra and Uttar Pradesh are also above normal." | NASA FIRMS satellites |
+| Fire (roundup) | "Fires stay high in five states" | "Chhattisgarh logged 27 fires on Monday across 10 districts, about nine times the late-October average and a two-year high for the season. Madhya Pradesh had the most fires, 200, about three times the late-October average but normal for the season. Telangana, Maharashtra and Uttar Pradesh are also above normal." | NASA FIRMS satellites |
 | Fire (own story) | "Telangana's fires run at six times the usual"; "Madhya Pradesh's fires run at twice the usual" | "Telangana logged 39 fires on Monday across 17 districts, about six times the late-October average but normal for the season." / "Madhya Pradesh logged 145 fires yesterday across 21 districts, about double the late-October average but normal for the season." | NASA FIRMS satellites (27 Oct incomplete: no data after 14:37 IST) |
 | Air | "Air is very poor in Panipat and poor in 16 more cities"; "Air is poor in 23 cities, worst in Panipat" | "Panipat had the worst air in the country, with an index of 293, just short of 'very poor'. 22 other cities were rated poor." / "Baraut had the worst air in the country, with an index of 335, rated 'very poor'. Meerut and Gajraula were also rated very poor. 10 more cities were rated poor." | CPCB live data (unvalidated); Sentinel estimate from OpenAQ monitors |
 | Cyclone | "Cyclone Arnab" | "Global disaster monitors give it their second-highest alert, orange, with winds of up to 102 km/h. They place it near the Andhra Pradesh coast. Its winds peaked at 222 km/h." (edition 32 on) / "Global disaster monitors give it their highest alert, red, with peak winds of 222 km/h. They place it near the Andhra Pradesh coast." (before 32: only the peak is known) | GDACS; GDACS (position as of 28 Oct, 11:30 IST) |

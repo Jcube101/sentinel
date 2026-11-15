@@ -10,7 +10,7 @@ import { counted, snapshotEntry, type DeskEntry } from './entries'
 import type { MoveKind, Movement, SinceYesterday } from './changes'
 import { LEVEL_NAMES } from './levels'
 import { SCALE, minFireEvents, scaleFrom, type Scale } from './scale'
-import type { AirBand, AirCity, Category, CategoryStatus, Edition, Level, TimedSnapshot, WatchRow } from './types'
+import type { AirBand, AirCity, Category, CategoryStatus, Change, Edition, Level, TimedSnapshot, WatchRow } from './types'
 import { CATEGORY_ORDER } from './entries'
 import { SOURCE_NAMES } from './sources'
 import { istDay } from './ist'
@@ -197,12 +197,16 @@ function mostSentence(f: StateFacts): string {
   return `${f.state} ${most}, ${f.n}${vs}.`
 }
 
-/** Fire states that fell a level since yesterday, and how many rose. */
+/** The edition's own run recorded this change (the first edition to report it), not just the day's comparison. */
+const isFresh = (c: Change | null | undefined) => c === 'opened' || c === 'reopened' || c === 'escalated' || c === 'deescalated'
+const isRise = (c: Change | null | undefined) => c === 'opened' || c === 'reopened' || c === 'escalated'
+
+/** Fire states that fell a level, and how many rose, in this edition's own run (the first edition to report it). */
 function fireMoves(ctx: CopyContext): { fell: Movement[]; rose: number } {
-  const moves = (ctx.since?.moves ?? []).filter((m) => m.category === 'fire')
+  const moves = (ctx.since?.moves ?? []).filter((m) => m.category === 'fire' && isFresh(m.snapshot.change))
   return {
     fell: moves.filter((m) => m.kind === 'deescalated'),
-    rose: moves.filter((m) => m.kind === 'new' || m.kind === 'reopened' || m.kind === 'escalated').length,
+    rose: moves.filter((m) => isRise(m.snapshot.change)).length,
   }
 }
 
@@ -343,7 +347,8 @@ function roundupCopy(e: DeskEntry, ctx: CopyContext): ItemCopy {
   if (above.length === 0) {
     const names = e.members.map(stateName)
     return {
-      title: `Fires fall back toward normal in ${counted_(names.length, 'state', 'states')}`,
+      // "fall back" once, in the edition whose own run lowered a state; after that where they stand.
+      title: `Fires ${e.members.some((m) => m.runChange === 'deescalated') ? 'fall back toward' : 'stay near'} normal in ${counted_(names.length, 'state', 'states')}`,
       standfirst: `${listText(names)} ${names.length === 1 ? 'has' : 'have'} fallen back toward normal.`,
     }
   }
@@ -353,8 +358,10 @@ function roundupCopy(e: DeskEntry, ctx: CopyContext): ItemCopy {
   const angle = fireAngle(above, ctx, !also)
   // The title says what the states are doing and how many; which state stands out is the standfirst's
   // first sentence, and what is new since yesterday is Since yesterday's (style guide, The fire roundup).
-  const record = above.some((x) => stateFacts(x, ctx).record === 'above' && stateFacts(x, ctx).counted)
-  const verb = record ? 'surge' : 'run above normal'
+  // One-time verbs only while a state's rise is this edition's own news; after that the states "stay high".
+  const rising = above.filter((x) => isRise(x.runChange))
+  const record = rising.some((x) => stateFacts(x, ctx).record === 'above' && stateFacts(x, ctx).counted)
+  const verb = record ? 'surge' : rising.length > 0 ? 'flare' : 'stay high'
   const title = also
     ? `Fires also ${verb} in ${counted_(above.length, 'more state', 'more states')}`
     : `Fires ${verb} in ${counted_(above.length, 'state', 'states')}`
@@ -782,24 +789,36 @@ function placesIn(where: string, states: number): number {
   return /^across /.test(where) ? 1 : 0
 }
 
-/** A cyclone as a clause: "Cyclone Arnab crosses the Andhra coast and weakens". */
+// One-time verbs (crosses, turns, flares, climbs, surges, strikes) are for the first edition that reports
+// the change: the edition whose own run recorded it (runChange), or a landfall in the last run's interval.
+// Every edition after says what the state is now: "stays", "weakens inland", "stay high".
+
+/** A landfall this recent (hours before the edition) is still news; the pipeline runs every six. */
+const LANDFALL_NEWS_HOURS = 6
+
+/** A cyclone as a clause: "Cyclone Arnab crosses the Andhra coast and weakens", then "weakens inland over Andhra Pradesh". */
 function cycloneEvent(e: DeskEntry, ctx: CopyContext): HeadEvent {
   const f = e.figures
   const name = cycloneName(e.title)
   const move = ctx.since?.byItem.get(e.key)
   const w = cycloneWind(f)
   const land = f.landfall ?? null
-  const fading = weakened(w) || move?.kind === 'deescalated'
+  const fading = weakened(w) || e.runChange === 'deescalated'
+  const crossedJustNow = !!land && Date.parse(ctx.editionAt) - Date.parse(land.at) <= LANDFALL_NEWS_HOURS * 3600_000
   let text: string
   let places = 0
-  if (land) {
+  if (land && crossedJustNow) {
     if (land.state) {
       text = `${name} crosses the ${COAST_WORDS[land.state] ?? land.state} coast`
       places = 1
     } else text = `${name} makes landfall`
     if (fading) text += ' and weakens'
+  } else if (land) {
+    // After the crossing: where it is now.
+    text = `${name} ${fading ? 'weakens' : 'moves'} inland${land.state ? ` over ${land.state}` : ''}`
+    places = land.state ? 1 : 0
   } else if (fading) text = `${name} weakens`
-  else if (move?.kind === 'escalated' || move?.kind === 'new' || move?.kind === 'reopened') text = `${name} strengthens`
+  else if (isRise(e.runChange)) text = `${name} strengthens`
   else {
     const colour = String(f.episode_alert_level ?? f.alert_level ?? '').toLowerCase()
     text = `${name} holds at ${colour} alert`
@@ -813,13 +832,14 @@ function cycloneEvent(e: DeskEntry, ctx: CopyContext): HeadEvent {
   return { category: e.category, level: e.level, moved: !!move && move.kind !== 'closed', text, places }
 }
 
-/** The fire states as one event: "fires flare in Gujarat", "fires ease across central India". */
+/** The fire states as one event: "fires flare in Gujarat", "fires ease across central India", then "fires stay high in Gujarat". */
 function fireEvent(ctx: CopyContext): HeadEvent | null {
   const eased = fireEasing(ctx)
   if (ctx.fires.length === 0 && !eased) return null
   const moves = (ctx.since?.moves ?? []).filter((m) => m.category === 'fire')
   const stateOf = (m: Movement) => String(m.snapshot.figures?.state ?? m.itemId)
-  const up = moves.filter((m) => m.kind === 'new' || m.kind === 'reopened' || m.kind === 'escalated')
+  // Rises the edition's own run recorded; earlier ones are just where the states are now.
+  const up = moves.filter((m) => isRise(m.snapshot.change))
   const named = (verb: string, states: string[]): HeadEvent => {
     const where = whereStates(states).inText
     return {
@@ -831,41 +851,43 @@ function fireEvent(ctx: CopyContext): HeadEvent | null {
     }
   }
   if (eased) return named('ease', eased)
-  if (up.length > 0) return named(up.some((m) => m.kind !== 'escalated') ? 'flare' : 'climb', up.map(stateOf))
-  // No change since yesterday: a record for the season "surges"; anything else runs above normal.
-  const record = ctx.fires.some((x) => stateFacts(x, ctx).record === 'above')
-  return named(record ? 'surge' : 'run above normal', ctx.fires.map(stateName))
+  if (up.length > 0) {
+    const record = ctx.fires.some((x) => stateFacts(x, ctx).record === 'above' && up.some((m) => stateOf(m) === stateName(x)))
+    return named(record ? 'surge' : up.some((m) => m.snapshot.change !== 'escalated') ? 'flare' : 'climb', up.map(stateOf))
+  }
+  return named('stay high', ctx.fires.map(stateName))
 }
 
-/** The air item as a clause: "air turns very poor in eight cities", "air stays poor in Panipat". */
+/** The air item as a clause: "air turns very poor in eight cities" (first edition), then "air stays very poor in eight cities". */
 function airEvent(e: DeskEntry, ctx: CopyContext): HeadEvent {
   const a = airWorst(e)
   const move = ctx.since?.byItem.get(e.key)
   let text = 'air is poor'
   if (a) {
-    if (move?.kind === 'escalated' || move?.kind === 'new' || move?.kind === 'reopened') text = `air turns ${a.band} in ${a.where}`
-    else if (move?.kind === 'deescalated') text = `air eases to ${a.band} in ${a.where}`
+    if (isRise(e.runChange)) text = `air turns ${a.band} in ${a.where}`
+    else if (e.runChange === 'deescalated') text = `air eases to ${a.band} in ${a.where}`
     else text = `air stays ${a.band} in ${a.where}`
   }
   return { category: 'air', level: e.level, moved: !!move && move.kind !== 'closed', text, places: a && !/cities$/.test(a.where) ? 1 : 0 }
 }
 
-/** An earthquake, or the small ones together, as a clause. */
+/** An earthquake, or the small ones together: "strikes" in its first edition, "struck" after. */
 function quakeEvent(e: DeskEntry, ctx: CopyContext): HeadEvent {
   const move = ctx.since?.byItem.get(e.key)
   const f = e.figures
+  const fresh = isFresh(e.runChange)
   const text =
     e.members.length > 0
-      ? `${numberWord(e.members.length)} small earthquakes strike near India's borders`
-      : `a ${quakeStrength(f.magnitude ?? e.strength)} earthquake strikes ${quakeWhere(e)}`
+      ? `${numberWord(e.members.length)} small earthquakes ${fresh || e.members.some((m) => isFresh(m.runChange)) ? 'strike' : 'struck'} near India's borders`
+      : `a ${quakeStrength(f.magnitude ?? e.strength)} earthquake ${fresh ? 'strikes' : 'struck'} ${quakeWhere(e)}`
   return { category: 'earthquake', level: e.level, moved: !!move && move.kind !== 'closed', text, places: /near (?!India)/.test(text) ? 1 : 0 }
 }
 
-/** A flood as a clause: "flooding in Assam is on an orange alert". */
+/** A flood as a clause: "flooding in Assam is on an orange alert", "worsens" only in the edition that reports it. */
 function floodEvent(e: DeskEntry, ctx: CopyContext): HeadEvent {
   const move = ctx.since?.byItem.get(e.key)
   const colour = String(e.figures.episode_alert_level ?? e.figures.alert_level ?? '').toLowerCase()
-  const verb = move?.kind === 'escalated' ? 'worsens' : move?.kind === 'deescalated' ? 'eases' : 'is on'
+  const verb = e.runChange === 'escalated' ? 'worsens' : e.runChange === 'deescalated' ? 'eases' : 'is on'
   const text = verb === 'is on' ? `${midName(floodName(e))} is on ${/^[aeiou]/.test(colour) ? 'an' : 'a'} ${colour} alert` : `${midName(floodName(e))} ${verb}`
   return { category: 'flood', level: e.level, moved: !!move && move.kind !== 'closed', text, places: 1 }
 }

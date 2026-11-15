@@ -157,6 +157,8 @@ export function lastKnownWords(why: string | null): string {
 
 // --- where fires are -----------------------------------------------------------------
 
+const REGION_ORDER: string[] = ['north', 'central', 'west', 'east', 'south', 'northeast', 'islands']
+
 type Region = 'north' | 'central' | 'east' | 'west' | 'south' | 'northeast' | 'islands'
 
 /** Rough centre and region of each state and union territory, as named in the fire data. */
@@ -248,7 +250,8 @@ export function whereStates(states: string[]): Where {
     ]
     if (km(mid, MIDDLE) <= CENTRE_KM) return { inText: 'across central India', spreadText: 'across central India' }
     if (regions.length === 2 && !regions.includes('islands') && !regions.includes('northeast')) {
-      const [a, b] = regions.map((r) => REGION_WORDS[r].replace(' India', ''))
+      // One order everywhere, north to south: "central and western", "western and southern" (never the reverse).
+      const [a, b] = [...regions].sort((x, y) => REGION_ORDER.indexOf(x) - REGION_ORDER.indexOf(y)).map((r) => REGION_WORDS[r].replace(' India', ''))
       const t = `across ${a} and ${b} India`
       return { inText: t, spreadText: t }
     }

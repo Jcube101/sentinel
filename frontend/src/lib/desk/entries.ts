@@ -30,6 +30,12 @@ export interface DeskEntry {
    * this run alone. 'opened' prints as "+ New".
    */
   change: Change | null
+  /**
+   * The change this edition's own run recorded (opened, reopened, escalated, de-escalated), whatever the
+   * since-yesterday comparison says: null from the second edition on. Headlines use a one-time verb
+   * ("flare", "turn", "cross") only while this is set, and ongoing wording after.
+   */
+  runChange: Change | null
   /** Escalated or de-escalated: the level a day earlier. */
   from: Level | null
   /** Grouped rows: how many members are new. */
@@ -179,6 +185,7 @@ function toEntry(s: Snapshot, moves?: Map<string, Movement>): DeskEntry {
     asOf: stale ? asOf(s) : null,
     notes: notes.filter((n) => n.kind === 'other'),
     change: moves ? (move ? MOVE_CHANGE[move.kind] : null) : carried !== null ? null : s.change,
+    runChange: carried !== null ? null : s.change,
     from: move?.from ?? null,
     newMembers: 0,
     strength: snapshotStrength(s),
@@ -230,6 +237,7 @@ function quakeGroup(quakes: DeskEntry[]): DeskEntry {
     asOf: stale?.asOf ?? null,
     notes: [],
     change: null,
+    runChange: null,
     from: null,
     newMembers: ranked.filter((q) => isNew(q.change)).length,
     strength: largest.strength,
@@ -267,6 +275,7 @@ function fireRoundup(states: DeskEntry[], ownStories: number): DeskEntry {
     asOf: stale?.asOf ?? null,
     notes: [],
     change: null,
+    runChange: null,
     from: null,
     newMembers: ranked.filter((x) => isNew(x.change)).length,
     strength: top.strength,
