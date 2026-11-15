@@ -17,6 +17,7 @@ SNAPSHOT = "21-10-2026 19:00:00"                               # 13:30 UTC, half
 CFG = load()
 CFG["air"]["min_fresh_cities"] = 2
 CFG["air"]["severe_confirm_runs"] = 2
+CFG["air"]["datagov"]["incomplete_retry_wait_s"] = 0     # tests never wait; the retry tests inject a sleep
 
 
 def _station(name, city, subs, state="Delhi", updated=SNAPSHOT, lat="28.6", lon="77.2"):
@@ -280,6 +281,59 @@ def test_a_snapshot_far_below_the_typical_size_is_rejected_and_marked_incomplete
     assert row["newest_observation_at"] is None                      # nothing new was accepted
     assert s["datagov"]["status"] == "incomplete" and s["datagov"]["new_data"] is False
     assert (s["datagov"]["stations"], s["datagov"]["cities"]) == (3, 3)
+
+
+def _sequence(*reads):
+    """A feed that answers with these reads in turn (the last one repeats)."""
+    calls = []
+    def feed():
+        calls.append(1)
+        return (reads[min(len(calls), len(reads)) - 1], 4)
+    feed.calls = calls
+    return feed
+
+
+def test_an_incomplete_read_is_repeated_once_and_the_full_one_is_used():
+    db, slept = _db(), []
+    _history(db, GOOD, GOOD, GOOD)
+    cfg = copy.deepcopy(CFG)
+    cfg["air"]["datagov"]["incomplete_retry_wait_s"] = 90
+    feed = _sequence(_feed(("Delhi", [250]), *CLEAN), FULL)
+    s = air.run_air(db, 4, _results(), NOW, cfg=cfg, feed=feed, sleep=slept.append)
+    assert slept == [90] and len(feed.calls) == 2
+    assert s["source_id"] == "DATAGOV" and s["fallback_reason"] is None
+    assert (s["datagov"]["status"], s["datagov"]["stations"], s["datagov"]["retried"]) == ("ok", 10, 1)
+    assert s["requests"] == 8                                   # both reads count
+
+
+def test_still_incomplete_after_the_repeat_falls_back_to_openaq(monkeypatch):
+    monkeypatch.setattr(air, "reference_stations", lambda locations, cfg: STATIONS[:3])
+    db, slept = _db(), []
+    _history(db, GOOD, GOOD, GOOD)
+    feed = _sequence(_feed(("Delhi", [250]), *CLEAN))
+    s = air.run_air(db, 4, _results(), NOW, cfg=CFG, feed=feed, client=_openaq(), sleep=slept.append)
+    assert len(feed.calls) == 2 and s["source_id"] == "OPENAQ" and s["datagov"]["status"] == "incomplete"
+    assert s["datagov"]["retried"] == 1 and "looks incomplete" in s["fallback_reason"]
+
+
+def test_stale_and_failed_reads_are_not_repeated(monkeypatch):
+    monkeypatch.setattr(air, "reference_stations", lambda locations, cfg: STATIONS[:3])
+    slept = []
+    stale = _sequence(_feed(("Delhi", [250]), *CLEAN, updated="21-10-2026 12:00:00"))
+    air.run_air(_db(), 1, _results(), NOW, cfg=CFG, feed=stale, client=_openaq(), sleep=slept.append)
+    air.run_air(_db(), 1, _results(), NOW, cfg=CFG, feed=_failing_feed(), client=_openaq(), sleep=slept.append)
+    assert slept == [] and len(stale.calls) == 1
+
+
+def test_no_retries_when_set_to_zero(monkeypatch):
+    monkeypatch.setattr(air, "reference_stations", lambda locations, cfg: STATIONS[:3])
+    cfg, slept = copy.deepcopy(CFG), []
+    cfg["air"]["datagov"]["incomplete_retries"] = 0
+    db = _db()
+    _history(db, GOOD, GOOD, GOOD)
+    feed = _sequence(_feed(("Delhi", [250]), *CLEAN))
+    air.run_air(db, 4, _results(), NOW, cfg=cfg, feed=feed, client=_openaq(), sleep=slept.append)
+    assert slept == [] and len(feed.calls) == 1
 
 
 def test_a_full_snapshot_passes_and_is_recorded_for_next_time():

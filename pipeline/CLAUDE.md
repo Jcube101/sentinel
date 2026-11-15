@@ -335,7 +335,9 @@ sends its own. Fallback when the feed fails, its snapshot is older than
 cities, or it looks incomplete (stations or cities below `air.datagov.min_complete_fraction`,
 0.7, of the median of the last `typical_runs` accepted snapshots, read from
 `pipeline_runs.sources.DATAGOV`; until 3 of them carry station and city counts the record count
-stands in): 24 h means at CPCB / AirNow monitors on OpenAQ (~36 listing requests plus
+stands in). An incomplete snapshot is read once more after 90 s
+(`incomplete_retries`, `incomplete_retry_wait_s`) before falling back, because the feed is
+rewritten for a minute or so after each hourly update; stale and failed reads aren't repeated: 24 h means at CPCB / AirNow monitors on OpenAQ (~36 listing requests plus
 up to `air.max_history_requests` history requests, ~3 min), reason "approx. CPCB
 band", item source OPENAQ. OpenAQ readings older than the data behind the item's
 current level don't count (`air.level_data_from`), so the fallback never replaces a

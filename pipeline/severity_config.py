@@ -106,6 +106,8 @@ def validate(cfg: dict) -> None:
     _number(cfg, "air.datagov.min_complete_fraction", minimum=0.1, maximum=1)
     _number(cfg, "air.datagov.typical_runs", minimum=3, integer=True)
     _number(cfg, "air.datagov.typical_min_samples", minimum=1, integer=True)
+    _number(cfg, "air.datagov.incomplete_retries", minimum=0, maximum=3, integer=True)
+    _number(cfg, "air.datagov.incomplete_retry_wait_s", minimum=0, maximum=600)
     _number(cfg, "air.datagov.min_pollutants", minimum=1, maximum=7, integer=True)
     aqi_bands = [f"air.aqi.{b}_above" for b in ("poor", "very_poor", "severe")]
     for key in aqi_bands:

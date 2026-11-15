@@ -606,12 +606,34 @@ def incomplete_reason(stations: int, cities: int, rows: int, typical: dict, cfg:
     return "; ".join(low) or None
 
 
-def try_feed(feed, cfg: dict, now: datetime, typical: dict | None = None) -> tuple[dict | None, dict, str | None]:
-    """Read and assess the data.gov.in feed.
+def try_feed(feed, cfg: dict, now: datetime, typical: dict | None = None, *,
+             sleep=time.sleep) -> tuple[dict | None, dict, str | None]:
+    """Read and assess the data.gov.in feed; a snapshot rejected as incomplete is
+    read again after [air.datagov] incomplete_retry_wait_s, up to incomplete_retries
+    times (the feed is rewritten for a minute or so after each hourly update, and a
+    read in that window is partial: 15 Nov, 737 records, then 3,228 a minute later).
+    A stale snapshot or a failed read is not retried.
 
     Returns (figures if the feed can set the level else None, the attempt
     for the DATAGOV sources row, why the feed was not used).
     """
+    feed_cfg = cfg["air"]["datagov"]
+    figures, attempt, why = _read_feed(feed, cfg, now, typical)
+    for _ in range(feed_cfg["incomplete_retries"]):
+        if attempt["status"] != "incomplete":
+            break
+        logger.warning("air: %s; reading the feed again in %g s", why, feed_cfg["incomplete_retry_wait_s"])
+        sleep(feed_cfg["incomplete_retry_wait_s"])
+        again = _read_feed(feed, cfg, now + timedelta(seconds=feed_cfg["incomplete_retry_wait_s"]), typical)
+        again[1].update(requests=attempt["requests"] + again[1]["requests"],
+                        duration_s=attempt["duration_s"] + again[1]["duration_s"] + feed_cfg["incomplete_retry_wait_s"],
+                        retried=attempt.get("retried", 0) + 1)
+        figures, attempt, why = again
+    return figures, attempt, why
+
+
+def _read_feed(feed, cfg: dict, now: datetime, typical: dict | None) -> tuple[dict | None, dict, str | None]:
+    """One read and assessment of the feed (see try_feed)."""
     feed = feed or (lambda: datagov.fetch(config.DATA_GOV_IN_API_KEY))
     attempt = {"status": "error", "error": None, "rows": 0, "newest": None, "requests": 0, "duration_s": 0.0}
     t0 = time.monotonic()
@@ -727,6 +749,7 @@ def record_feed(supabase, run_id: int | None, attempt: dict, now: datetime) -> d
         "error": runs.redact(attempt["error"]),
         "newest_observation_at": attempt["newest"].isoformat() if attempt["newest"] else None,
         "new_data": new_data,
+        "retried": attempt.get("retried", 0),   # re-reads after an incomplete snapshot
         # what the completeness check compares with (feed_history); None when not assessed
         "stations": attempt.get("stations"),
         "cities": attempt.get("cities"),
@@ -734,7 +757,7 @@ def record_feed(supabase, run_id: int | None, attempt: dict, now: datetime) -> d
 
 
 def run_air(supabase, run_id: int | None, results: dict, now: datetime, *, write: bool = True,
-            cfg: dict | None = None, client: OpenAQ | None = None, feed=None) -> dict:
+            cfg: dict | None = None, client: OpenAQ | None = None, feed=None, sleep=time.sleep) -> dict:
     """Assess, reconcile and (if write) store the national air item.
 
     The data.gov.in feed sets the level when it is readable, at most
@@ -755,7 +778,7 @@ def run_air(supabase, run_id: int | None, results: dict, now: datetime, *, write
         existing = {}
 
     typical = typical_counts(feed_history(supabase, cfg), cfg)
-    figures, attempt, fallback_reason = try_feed(feed, cfg, now, typical)
+    figures, attempt, fallback_reason = try_feed(feed, cfg, now, typical, sleep=sleep)
     note = None
     if figures is None:
         figures, note, client = openaq_assessment(results, cfg, now, client,

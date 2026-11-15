@@ -117,6 +117,12 @@ max_snapshot_age_hours = 6
 min_complete_fraction = 0.7
 typical_runs = 12
 typical_min_samples = 3
+# An incomplete snapshot is read again this many times, this many seconds apart,
+# before falling back: the feed is rewritten for a minute or so after each hourly
+# update and a read in that window is partial (15 Nov: 737 records, 3,228 a minute
+# later, same snapshot stamp). Set the retries to 0 to fall back at once.
+incomplete_retries = 1
+incomplete_retry_wait_s = 90
 # CPCB method: a station's AQI is its highest sub-index, computed only with
 # at least this many pollutants, one of them PM2.5 or PM10. A city's AQI is
 # the mean of its stations' AQIs, as in CPCB's daily bulletin.
