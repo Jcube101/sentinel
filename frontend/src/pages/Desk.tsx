@@ -1,7 +1,7 @@
 import { useEffect, useMemo, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
-import { useChangeWindow, useDeskHistory, useEdition, useFirePoints, useLatestEditionId, useWatching } from '@/hooks/useEdition'
+import { useChangeWindow, useDeskHistory, useEdition, useFireHistory, useFirePoints, useLatestEditionId, useWatching } from '@/hooks/useEdition'
 import { sinceLabel, sinceYesterday, type Movement } from '@/lib/desk/changes'
 import { deskEntries } from '@/lib/desk/entries'
 import { copyContext, itemCopy, pageHeadline, sinceLines } from '@/lib/desk/copy'
@@ -107,6 +107,7 @@ export default function Desk({ editionId, dayNote }: DeskProps = {}) {
   const data = edition.data ?? null
   const finished = data && data.run.status !== 'running' ? data.run : null
   const changeWindow = useChangeWindow(finished)
+  const fireHistory = useFireHistory(finished)
 
   const since = useMemo(() => (data && changeWindow.data ? sinceYesterday(data.snapshots, changeWindow.data) : null), [data, changeWindow.data])
   const entries = useMemo(() => {
@@ -115,7 +116,7 @@ export default function Desk({ editionId, dayNote }: DeskProps = {}) {
     const moves = since?.byItem ?? (changeWindow.isError ? new Map<string, Movement>() : undefined)
     return deskEntries(data.snapshots, moves)
   }, [data, since, changeWindow.isError])
-  const ctx = useMemo(() => (data ? copyContext(entries, since, data.run) : null), [data, entries, since])
+  const ctx = useMemo(() => (data ? copyContext(entries, since, data.run, fireHistory.data) : null), [data, entries, since, fireHistory.data])
   // A quiet day: nothing open above Level 1 (DeskQuiet layout).
   const quiet = !!data && data.snapshots.length > 0 && (entries.length === 0 || entries[0].level <= 1)
   const isLatestEdition = !!data && data.run.id === latestId
@@ -172,7 +173,7 @@ export default function Desk({ editionId, dayNote }: DeskProps = {}) {
         )}
       </Message>
     )
-  } else if (changeWindow.isPending && !changeWindow.isError && data.run.status !== 'running') {
+  } else if ((changeWindow.isPending && !changeWindow.isError || fireHistory.isPending && !fireHistory.isError) && data.run.status !== 'running') {
     body = loading
   } else if (quiet && history.isPending && !history.isError) {
     body = loading

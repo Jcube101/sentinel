@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { sinceYesterday, type Movement } from '@/lib/desk/changes'
 import { copyContext } from '@/lib/desk/copy'
 import { deskEntries } from '@/lib/desk/entries'
-import { useChangeWindow, useEdition, useLatestEditionId } from './useEdition'
+import { useChangeWindow, useEdition, useFireHistory, useLatestEditionId } from './useEdition'
 
 /**
  * An edition ready to print: its data, the comparison with a day earlier, the
@@ -15,13 +15,14 @@ export function useEditionDesk(id: number | null) {
   const data = edition.data ?? null
   const run = data && data.run.status !== 'running' ? data.run : null
   const changeWindow = useChangeWindow(run)
+  const fireHistory = useFireHistory(run)
   const since = useMemo(() => (data && changeWindow.data ? sinceYesterday(data.snapshots, changeWindow.data) : null), [data, changeWindow.data])
   const entries = useMemo(() => {
     if (!data) return []
     const moves = since?.byItem ?? (changeWindow.isError ? new Map<string, Movement>() : undefined)
     return deskEntries(data.snapshots, moves)
   }, [data, since, changeWindow.isError])
-  const ctx = useMemo(() => (data ? copyContext(entries, since, data.run) : null), [data, entries, since])
-  const pending = latest.isPending || edition.isPending || (run !== null && changeWindow.isPending && !changeWindow.isError)
+  const ctx = useMemo(() => (data ? copyContext(entries, since, data.run, fireHistory.data) : null), [data, entries, since, fireHistory.data])
+  const pending = latest.isPending || edition.isPending || (run !== null && ((changeWindow.isPending && !changeWindow.isError) || (fireHistory.isPending && !fireHistory.isError)))
   return { latestId, data, since, entries, ctx, pending, error: latest.error ?? edition.error ?? null }
 }

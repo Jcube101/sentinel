@@ -56,14 +56,13 @@ describe('edition 25 (Wed 28 Oct, 02:30 IST)', () => {
     })
   })
 
-  it('fires: one roundup; the states stay high (nothing rose in this edition), and the standfirst opens with the standout (Chhattisgarh)', () => {
+  it('fires: one roundup; a record is the title, the standfirst gives the districts and the benchmark, no cluster counts', () => {
     expect(item(25, 'fire:roundup')).toMatchObject({
-      title: 'Fires stay high in five states',
+      title: 'Chhattisgarh sees its busiest late-October fire day in two years',
       standfirst:
         // The fire day is Monday 26 Oct: two days before this 02:30 edition, so not "yesterday".
-        'Chhattisgarh logged 27 fires on Monday across 10 districts, about nine times the late-October average and a two-year high ' +
-        'for the season. Madhya Pradesh had the most fires, 200, about three times the late-October average but normal for the season. ' +
-        'Telangana, Maharashtra and Uttar Pradesh are also above normal.',
+        "Satellites picked up fires in 10 Chhattisgarh districts on Monday. That's about nine times what late October usually sees. " +
+        'Telangana, Maharashtra, Madhya Pradesh and Uttar Pradesh are also above usual.',
     })
   })
 
@@ -76,8 +75,8 @@ describe('edition 25 (Wed 28 Oct, 02:30 IST)', () => {
 
   it('since yesterday', () => {
     expect(edition(25).since.map((l) => `${l.tag} ${l.text} (${l.levels})`)).toEqual([
-      "+ NEW Chhattisgarh's fires jump above normal (Level 2 · Elevated)",
-      "− CLOSED Gujarat's fires have stayed down for two days (was Level 1)",
+      '+ NEW Fires climb above usual in Chhattisgarh (Level 2 · Elevated)',
+      '− CLOSED Fires in Gujarat have stayed at seasonal levels for two days (was Level 1)',
     ])
   })
 })
@@ -93,12 +92,11 @@ describe('edition 26 (Wed 28 Oct, 14:30 IST): four fire states fall back on an i
     )
   })
 
-  it('fires: the one state still above normal, said plainly; those that fell back are in Since yesterday', () => {
+  it('fires: the one state still above usual, busy but within its range: no news, a plain title; those that fell back are in Since yesterday', () => {
     expect(item(26, 'fire:roundup')).toEqual({
       key: 'fire:roundup',
-      title: "Madhya Pradesh's fires run at twice the usual",
-      standfirst:
-        'Madhya Pradesh logged 145 fires yesterday across 21 districts, about double the late-October average but normal for the season.',
+      title: 'Fires stay above usual in Madhya Pradesh',
+      standfirst: "Satellites picked up fires in 21 Madhya Pradesh districts yesterday. That's about double what late October usually sees.",
     })
   })
 
@@ -110,7 +108,7 @@ describe('edition 26 (Wed 28 Oct, 14:30 IST): four fire states fall back on an i
 
   it('since yesterday: the four states that fell back share one line', () => {
     expect(edition(26).since.map((l) => `${l.tag} ${l.text} (${l.levels})`)).toEqual([
-      '▼ DOWN Fires fall back toward normal in four states: Maharashtra, Uttar Pradesh, Telangana and Chhattisgarh (Level 2 → 1)',
+      '▼ DOWN Fires ease back to seasonal levels across central India (Level 2 → 1)',
     ])
   })
 
@@ -124,26 +122,25 @@ describe('edition 26 (Wed 28 Oct, 14:30 IST): four fire states fall back on an i
     const ctx = copyContext(entries, since, ed.run)
     expect(pageHeadline(entries, ctx)).toBe('Cyclone Arnab holds at red alert as fires ease across central India.')
     expect(itemCopy(entries.find((e) => e.key === 'fire:roundup')!, ctx)).toEqual({
-      title: 'Fires ease across central India, with Madhya Pradesh still above normal',
+      title: 'Fires ease back to seasonal levels across central India, Madhya Pradesh still above usual',
       standfirst:
-        'Maharashtra, Uttar Pradesh, Telangana and Chhattisgarh fell back toward normal since yesterday. ' +
-        'Madhya Pradesh logged 145 fires yesterday across 21 districts, about double the late-October average but normal for the season.',
+        'Maharashtra, Uttar Pradesh, Telangana and Chhattisgarh fell back to seasonal levels since yesterday. ' +
+        "Satellites picked up fires in 21 Madhya Pradesh districts yesterday. That's about double what late October usually sees.",
     })
   })
 })
 
 describe('edition 17 (Sun 25 Oct, 14:30 IST)', () => {
   it('page headline: fires lead, four states up from none a day earlier', () => {
-    expect(edition(17).headline).toBe('Fires surge in four states.')
+    expect(edition(17).headline).toBe('Gujarat sees its busiest late-October fire day in two years.')
   })
 
   it('the roundup; the fire day is yesterday for a 14:30 edition', () => {
     expect(item(17, 'fire:roundup')).toMatchObject({
-      title: 'Fires surge in four states',
+      title: 'Gujarat sees its busiest late-October fire day in two years',
       standfirst:
-        'Gujarat logged 46 fires yesterday across 14 districts, about eight times the late-October average and a two-year high for the ' +
-        'season. Madhya Pradesh had the most fires, 185, about three times the late-October average but normal for the season. ' +
-        'Telangana and Maharashtra are also above normal.',
+        "Satellites picked up fires in 14 Gujarat districts yesterday. That's about eight times what late October usually sees. " +
+        'Telangana, Maharashtra and Madhya Pradesh are also above usual.',
     })
   })
 
@@ -174,8 +171,8 @@ describe('edition 17 (Sun 25 Oct, 14:30 IST)', () => {
 
 describe('edition 19 (Mon 26 Oct, 02:30 IST, a failed run)', () => {
   it('the same roundup, dated Saturday: the figures are last known from No. 17', () => {
-    expect(item(19, 'fire:roundup').standfirst).toMatch(/^Gujarat logged 46 fires on Saturday across 14 districts, /)
-    expect(edition(19).headline).toBe('Fires stay high in four states.')
+    expect(item(19, 'fire:roundup').standfirst).toMatch(/^Satellites picked up fires in 14 Gujarat districts on Saturday\. /)
+    expect(edition(19).headline).toBe('Gujarat sees its busiest late-October fire day in two years.')
   })
 })
 
@@ -219,17 +216,16 @@ describe('fire roundup rules', () => {
     return itemCopy(entries.find((e) => e.key === 'fire:roundup')!, ctx)
   }
 
-  it('the title never names an angle; the standout goes first in the standfirst: record, then new, then the furthest above normal', () => {
-    // No record anywhere: the title is the same whatever the angle.
-    const noRecord = withFigures(25, 'fire:chhattisgarh', { norm_max_daily_events: 40 })
-    expect(roundup(noRecord, w25_).title).toBe('Fires stay high in five states')
-    expect(roundup(noRecord, null).title).toBe('Fires stay high in five states')
-    // New since yesterday (Chhattisgarh opened): it opens the standfirst; without the comparison, the furthest above normal does.
-    expect(roundup(noRecord, w25_).standfirst).toMatch(/^Chhattisgarh logged /)
-    expect(roundup(noRecord, null).standfirst).toMatch(/^Chhattisgarh logged /)   // here it is also the furthest above normal
-    // A record for the season: the title surges, and the record state opens the standfirst.
-    expect(roundup(ed25.snapshots, w25_).title).toBe('Fires stay high in five states')
-    expect(roundup(ed25.snapshots, null).standfirst).toMatch(/^Chhattisgarh logged .* two-year high/)
+  it('the title names the story, not a count of states: a record, else the state that moved; the standout opens the standfirst', () => {
+    // A record for the season: the record state is the title.
+    expect(roundup(ed25.snapshots, w25_).title).toBe('Chhattisgarh sees its busiest late-October fire day in two years')
+    expect(roundup(ed25.snapshots, null).standfirst).toMatch(/^Satellites picked up fires in 10 Chhattisgarh districts on Monday\./)
+    // No record, and Chhattisgarh rose in this edition's own run: it climbs, with the benchmark after the comma.
+    const rose = withFigures(25, 'fire:chhattisgarh', { norm_max_daily_events: 400 }).map((s) => (s.item_id === 'fire:chhattisgarh' ? { ...s, change: 'opened' as const } : s))
+    expect(roundup(rose, w25_).title).toBe('Fires climb in Chhattisgarh, nine times the usual for late October')
+    // Nobody moved and nothing is a record: where the states stand, with no count of states.
+    const steady = withFigures(25, 'fire:chhattisgarh', { norm_max_daily_events: 400 }).map((s) => ({ ...s, change: null }))
+    expect(roundup(steady, null).title).toMatch(/^Fires stay above usual /)
   })
 
   it('no roundup title carries bookkeeping words', () => {
@@ -246,8 +242,8 @@ describe('fire roundup rules', () => {
     const fire = entries.find((e) => e.category === 'fire')!
     expect(fire.key).toBe('fire:telangana')
     expect(itemCopy(fire, ctx)).toEqual({
-      title: "Telangana's fires run at six times the usual",
-      standfirst: 'Telangana logged 39 fires on Monday across 17 districts, about six times the late-October average but normal for the season.',
+      title: 'Fires stay above usual in Telangana',
+      standfirst: "Satellites picked up fires in 17 Telangana districts on Monday. That's about six times what late October usually sees.",
     })
   })
 
@@ -256,8 +252,8 @@ describe('fire roundup rules', () => {
     const entries = deskEntries(l3, new Map())
     const ctx = copyContext(entries, null, ed25.run)
     expect(entries.map((e) => e.key)).toEqual(['cyclone:GDACS-TC-1001345', 'fire:telangana', 'air:IN', 'fire:roundup'])
-    expect(itemCopy(entries[1], ctx).title).toBe("Telangana's fires run at six times the usual")
-    expect(itemCopy(entries[3], ctx).title).toBe('Fires stay high in four more states')
+    expect(itemCopy(entries[1], ctx).title).toBe('Fires stay above usual in Telangana, six times the usual for late October')
+    expect(itemCopy(entries[3], ctx).title).toMatch(/^(Chhattisgarh sees|Fires stay above usual )/)
   })
 
   it('intensity words match the verdict: no "well/far above normal" or × in titles; at most one multiple in a title', () => {
@@ -384,23 +380,22 @@ describe('the page headline rules (docs/style-guide.md, The page headline)', () 
       .map((s) => ({ ...s, change, figures: { ...s.figures, ...patch } }))
   const noRecord = { norm_max_daily_events: 400 }
 
-  it('fires that rose in this edition lead and the air that stayed follows: "Fires flare in Chhattisgarh as air stays very poor in Panipat."', () => {
+  it('fires that rose in this edition lead and the air that stayed follows: "Fires climb in Chhattisgarh as air stays very poor in Panipat."', () => {
     const [ed, w] = fixtures[25]
     const air = (change: 'escalated' | null) => ed.snapshots.filter((s) => s.item_id === 'air:IN').map((s) => ({ ...s, change }))
     const airSteady = { ...w, rows: [...w.rows, { run_id: 22, item_id: 'air:IN', category: 'air' as const, status: 'open' as const, severity_level: 2 as const, change: null }] }
-    expect(headlineOf([...air(null), ...chhattisgarh('opened', noRecord)], airSteady, ed.run)).toBe('Fires flare in Chhattisgarh as air stays very poor in Panipat.')
+    expect(headlineOf([...air(null), ...chhattisgarh('opened', noRecord)], airSteady, ed.run)).toBe('Fires climb in Chhattisgarh as air stays very poor in Panipat.')
     // Air that turned in this edition is a move too: the tie goes to the category order, air first.
     const airUp = { ...w, rows: [...w.rows.filter((r) => r.item_id !== 'air:IN'), { run_id: 22, item_id: 'air:IN', category: 'air' as const, status: 'open' as const, severity_level: 1 as const, change: null }] }
-    expect(headlineOf([...air('escalated'), ...chhattisgarh('opened', noRecord)], airUp, ed.run)).toBe('Air turns very poor in Panipat as fires flare in Chhattisgarh.')
+    expect(headlineOf([...air('escalated'), ...chhattisgarh('opened', noRecord)], airUp, ed.run)).toBe('Air turns very poor in Panipat as fires climb in Chhattisgarh.')
   })
 
   it('a one-time verb only in the first edition that reports the change; later editions say where things stand', () => {
     const [ed, w] = fixtures[25]
     // Fires: the edition whose own run opened the state flares (or surges, with a record); the next one stays high.
-    expect(headlineOf(chhattisgarh('opened', noRecord), w, ed.run)).toBe('Fires flare in Chhattisgarh.')
-    expect(headlineOf(chhattisgarh('opened'), w, ed.run)).toBe('Fires surge in Chhattisgarh.')
-    expect(headlineOf(chhattisgarh(null, noRecord), w, ed.run)).toBe('Fires stay high in Chhattisgarh.')
-    expect(headlineOf(chhattisgarh(null), w, ed.run)).toBe('Fires stay high in Chhattisgarh.')
+    expect(headlineOf(chhattisgarh('opened', noRecord), w, ed.run)).toBe('Fires climb in Chhattisgarh, nine times the usual for late October.')
+    expect(headlineOf(chhattisgarh('opened'), w, ed.run)).toBe('Chhattisgarh sees its busiest late-October fire day in two years.')
+    expect(headlineOf(chhattisgarh(null, noRecord), w, ed.run)).toBe('Fires stay above usual in Chhattisgarh.')
     // Air: "turns" once, then "stays".
     const air = (change: 'escalated' | null) => ed.snapshots.filter((s) => s.item_id === 'air:IN').map((s) => ({ ...s, change }))
     expect(headlineOf(air('escalated'), w, ed.run)).toBe('Air turns very poor in Panipat.')
@@ -455,14 +450,14 @@ describe('roundup rules from 15 Nov 2026', () => {
       const entries = deskEntries(snaps, new Map())
       return itemCopy(entries[0], copyContext(entries, null, run)).title
     }
-    expect(titleOf((s) => s)).toMatch(/spike to a two-year high for the season/)                                    // norm_years 2024-2025
-    expect(titleOf((s) => ({ ...s, figures: { ...s.figures, norm_years: '2023-2025' } }))).toMatch(/a three-year high/)
+    expect(titleOf((s) => s)).toMatch(/busiest late-October fire day in two years$/)                                    // norm_years 2024-2025
+    expect(titleOf((s) => ({ ...s, figures: { ...s.figures, norm_years: '2023-2025' } }))).toMatch(/in three years$/)
     // Without norm_years in the figures: the years in the edition's own stored config.
     const noYears = (s: EditionData['snapshots'][number]) => ({ ...s, figures: { ...s.figures, norm_years: undefined } })
     const config = { fire: { baseline: { years: [2023, 2024, 2025] } } } as unknown as typeof ed25.run.severity_config
-    expect(titleOf(noYears, { ...ed25.run, severity_config: config })).toMatch(/a three-year high/)
+    expect(titleOf(noYears, { ...ed25.run, severity_config: config })).toMatch(/in three years$/)
     const six = { fire: { baseline: { years: [2020, 2021, 2022, 2023, 2024, 2025] } } } as unknown as typeof ed25.run.severity_config
-    expect(titleOf(noYears, { ...ed26.run, severity_config: six })).toMatch(/a six-year high/)
+    expect(titleOf(noYears, { ...ed26.run, severity_config: six })).toMatch(/in six years$/)
   })
 
   it('states all back near normal: "Fires ease …" in the first edition only, then no roundup', () => {
@@ -470,7 +465,7 @@ describe('roundup rules from 15 Nov 2026', () => {
       ed26.snapshots.filter((s) => s.category === 'fire').map((s) => ({ ...s, severity_level: 1 as const, change }))
     const first = deskEntries(calm('deescalated'), new Map())
     const roundup = first.find((e) => e.key === 'fire:roundup')!
-    expect(itemCopy(roundup, copyContext(first, null, ed26.run)).title).toMatch(/^Fires ease (across|in) /)
+    expect(itemCopy(roundup, copyContext(first, null, ed26.run)).title).toMatch(/^Fires ease back to seasonal levels (across|in) /)
     // The next edition: the same states, no change in its own run: no row for them at all.
     const later = deskEntries(calm(null), new Map())
     expect(later.some((e) => e.category === 'fire')).toBe(false)

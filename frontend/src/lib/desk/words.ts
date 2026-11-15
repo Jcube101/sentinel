@@ -38,6 +38,23 @@ export function theUsual(r: number): string {
   return `${numberWord(roundMultiple(r))} times the usual`
 }
 
+/** A fire title's benchmark, no decimals: "double the usual", "three times the usual". */
+export function benchmark(r: number): string {
+  if (r < 1.25) return 'close to the usual'
+  if (r < 1.75) return 'one and a half times the usual'
+  if (r < 2.5) return 'double the usual'
+  return `${numberWord(roundMultiple(r))} times the usual`
+}
+
+/** The same against the time of year, for a standfirst: "about double what late October usually sees". */
+export function aboutWhatSees(r: number, period: string): string {
+  const what = `what ${period} usually sees`
+  if (r < 1.25) return `about ${what}`
+  if (r < 1.75) return `about one and a half times ${what}`
+  if (r < 2.5) return `about double ${what}`
+  return `about ${numberWord(roundMultiple(r))} times ${what}`
+}
+
 /** A multiple for standfirsts: "about nine times usual", "about twice the usual". */
 export function timesUsual(r: number): string {
   if (r < 1.25) return 'about usual'

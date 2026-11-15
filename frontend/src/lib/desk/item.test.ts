@@ -29,7 +29,7 @@ describe('item history (Madhya Pradesh fires, editions 14 to 26)', () => {
       '26 latest L2: 145 fires on 27 Oct, about twice the usual',
       '19 last_known L2: 185 fires on 24 Oct, about three times usual',
       '17 reopened L2: 185 fires on 24 Oct, about three times usual',
-      "14 closed L1: Madhya Pradesh's fires have stayed down for two days",
+      "14 closed L1: Fires in Madhya Pradesh have stayed at seasonal levels for two days",
     ])
   })
 

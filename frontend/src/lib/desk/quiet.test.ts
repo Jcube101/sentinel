@@ -71,7 +71,7 @@ describe('the quiet desk copy (edition 19, Level 2+ taken out)', () => {
 
   it('standfirst: every category in a sentence; watching only on the latest edition', () => {
     expect(quietStandfirst(entries, null)).toBe(
-      "No floods or cyclones are open. No state's fires are well above normal, the largest earthquake was magnitude 4.3 " +
+      "No floods or cyclones are open. Fires are at seasonal levels across India, the largest earthquake was magnitude 4.3 " +
         'and the worst air is poor, in six cities.',
     )
     expect(quietStandfirst(entries, 1)).toMatch(/One thing is worth watching\.$/)
@@ -84,7 +84,7 @@ describe('the quiet desk copy (edition 19, Level 2+ taken out)', () => {
       'Floods [- GDACS] Not updated / None open.',
       'Earthquakes [1 USGS] Magnitude 4.3, 71 km from Rikaze, China.',
       'Air [1 CPCB] Poor in six cities, worst in Khairthal at 282.',
-      "Fire [- FIRMS] Not updated / No state's fires are well above normal for the time of year.",
+      "Fire [- FIRMS] Not updated / Fires are at seasonal levels across India.",
     ])
   })
 })

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, type ReactNode } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { useChangeWindow, useEdition, useFireDaily, useFirePoints, useItem, useLatestEditionId } from '@/hooks/useEdition'
+import { useChangeWindow, useEdition, useFireDaily, useFireHistory, useFirePoints, useItem, useLatestEditionId } from '@/hooks/useEdition'
 import { cityReading, entryCard, normText, worstCities } from '@/lib/desk/cards'
 import { sinceYesterday, type Movement } from '@/lib/desk/changes'
 import { closedLine, copyContext, itemCopy } from '@/lib/desk/copy'
@@ -312,6 +312,7 @@ export default function Item() {
   const edition = useEdition(shown?.run_id ?? null)
   const run = edition.data?.run ?? null
   const changeWindow = useChangeWindow(run && run.status !== 'running' ? run : null)
+  const fireHistory = useFireHistory(run && run.status !== 'running' ? run : null)
   const since = useMemo(
     () => (edition.data && changeWindow.data ? sinceYesterday(edition.data.snapshots, changeWindow.data) : null),
     [edition.data, changeWindow.data],
@@ -321,7 +322,7 @@ export default function Item() {
     const moves = since?.byItem ?? (changeWindow.isError ? new Map<string, Movement>() : undefined)
     return deskEntries(edition.data.snapshots, moves)
   }, [edition.data, since, changeWindow.isError])
-  const ctx = useMemo(() => (run ? copyContext(entries, since, run) : null), [run, entries, since])
+  const ctx = useMemo(() => (run ? copyContext(entries, since, run, fireHistory.data) : null), [run, entries, since, fireHistory.data])
   const flat = entries.flatMap((e) => (e.members.length > 0 ? e.members : [e]))
   const entry = flat.find((e) => e.key === id) ?? (shown ? snapshotEntry(shown, since?.byItem) : null)
   const closed = shown?.status === 'closed'

@@ -5,6 +5,7 @@ import { STRIP_DAYS } from '@/lib/desk/quiet'
 import { chooseDayEdition, dayStart, runsByDay, shiftMonth } from '@/lib/desk/archive'
 import type { FirePoint } from '@/components/paper/PaperMap'
 import { missingCategories } from '@/lib/desk/entries'
+import { fireHistoryFrom, type FireHistory, type HistoryRow } from '@/lib/desk/fireHistory'
 import { dayPoints, type DayPointsRow, type FireLayer } from '@/lib/desk/mapdata'
 import { scaleFrom, type Scale } from '@/lib/desk/scale'
 import { watchRows, type WatchSnapshot } from '@/lib/desk/watch'
@@ -354,6 +355,32 @@ export function useItem(id: string, edition: number | null) {
     },
     staleTime: edition !== null ? Infinity : 5 * 60_000,
     enabled: !!supabase,
+  })
+}
+
+/**
+ * A few days of fire items before an edition (slim rows: the fire day, counts and ratio), for the fire copy's
+ * "up from 15 on Monday" and "for a third day". Only runs before the edition, so cached for good.
+ */
+export function useFireHistory(run: Edition | null) {
+  return useQuery({
+    queryKey: ['fire-history', run?.id],
+    queryFn: async (): Promise<FireHistory> => {
+      if (!supabase || !run) return new Map()
+      const { data, error } = await supabase
+        .from('desk_item_snapshots')
+        .select(
+          'run_id,item_id,day:figures->>day,events:figures->>fire_events,districts:figures->>district_count,ratio:figures->>ratio_to_norm,counted:figures->>ratio_counted',
+        )
+        .like('item_id', 'fire:%')
+        .gte('run_id', Math.max(1, run.id - 30))
+        .lt('run_id', run.id)
+        .limit(5000)
+      if (error) throw error
+      return fireHistoryFrom((data ?? []) as unknown as HistoryRow[])
+    },
+    staleTime: Infinity,
+    enabled: !!supabase && run !== null,
   })
 }
 

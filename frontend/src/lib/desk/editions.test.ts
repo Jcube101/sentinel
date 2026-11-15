@@ -10,7 +10,6 @@ import { SCALE, minFireEvents, scaleFrom, scaleRows } from './scale'
 import { watchRows, type WatchSnapshot } from './watch'
 import type { EditionData, Snapshot, TimedSnapshot } from './types'
 import configs from './__fixtures__/severity-configs.json'
-import e25 from './__fixtures__/edition-25.json'
 import e26 from './__fixtures__/edition-26.json'
 
 const ed = e26 as unknown as EditionData
@@ -223,38 +222,16 @@ describe('air on the map (P5)', () => {
   })
 })
 
-describe('national fire rank in the copy (P6)', () => {
+describe('national fire rank (P6) is not in the copy', () => {
+  // The rank counts fire clusters; the copy no longer prints cluster counts or ranks by them (style guide, Fire).
   const mp = 'fire:madhya-pradesh'
-  const standfirst = (patch: Record<string, unknown>) => {
-    // Madhya Pradesh is the one state above normal: the roundup reads as its own story.
-    const { entries, ctx } = patched(ed, mp, patch)
-    return itemCopy(entries.find((e) => e.itemIds.includes(mp))!, ctx).standfirst
-  }
-  const told =
-    'Madhya Pradesh logged 145 fires yesterday across 21 districts, about double the late-October average but normal for the season.'
+  const told = "Satellites picked up fires in 21 Madhya Pradesh districts yesterday. That's about double what late October usually sees."
 
-  it('first of every state: said after the state’s sentence', () => {
-    expect(standfirst({ state_rank: 1, rank_shared: false, states_with_fires: 15 })).toBe(`${told} That was the most of any state.`)
-  })
-
-  it('a shared first place is a tie', () => {
-    expect(standfirst({ state_rank: 1, rank_shared: true })).toBe(`${told} That tied for the most of any state.`)
-  })
-
-  it('below first, or before the rank was stored: nothing added', () => {
-    expect(standfirst({ state_rank: 3, rank_shared: false })).toBe(told)
-    expect(standfirst({})).toBe(told)
-  })
-
-  it('the roundup’s biggest count says "of any state" only when it led every state', () => {
-    const roundup = (rank: Record<string, unknown>) => {
-      const { entries, ctx } = patched(e25 as unknown as EditionData, mp, rank)
-      return itemCopy(entries.find((e) => e.key === 'fire:roundup')!, ctx).standfirst!
+  it('the standfirst is the same whatever rank is stored', () => {
+    for (const patch of [{ state_rank: 1, rank_shared: false, states_with_fires: 15 }, { state_rank: 1, rank_shared: true }, { state_rank: 3 }, {}]) {
+      const { entries, ctx } = patched(ed, mp, patch)
+      expect(itemCopy(entries.find((e) => e.itemIds.includes(mp))!, ctx).standfirst).toBe(told)
     }
-    expect(roundup({ state_rank: 1, rank_shared: false })).toContain('Madhya Pradesh had the most fires of any state, 200, about three times')
-    expect(roundup({ state_rank: 1, rank_shared: true })).toContain('Madhya Pradesh tied for the most fires of any state, 200,')
-    expect(roundup({ state_rank: 2, rank_shared: false })).toContain('Madhya Pradesh had the most fires of the states above normal, 200,')
-    expect(roundup({})).toContain('Madhya Pradesh had the most fires, 200,')
   })
 })
 

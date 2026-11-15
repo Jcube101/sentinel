@@ -18,12 +18,12 @@ shouldn't need to. Write like a news report, not a database.
 
 1. **Kicker,** only when the item wasn't updated: "As of Saturday" (see Facts in the
    story, caveats in notes).
-2. **Title:** a news headline with a verb, saying what happened. "Fires stay high
-   in five states". A named event may stand on its name
+2. **Title:** a news headline with a verb, saying what happened. "Fires climb in
+   Gujarat for a third day, double the usual for late October". A named event may stand on its name
    alone ("Cyclone Arnab"); then the standfirst carries the verb.
 3. **Standfirst:** one to three sentences, each a fact said plainly. What happened first,
-   then how it compares with the past. "Madhya Pradesh logged 145 fires yesterday across
-   21 districts, about double the late-October average but normal for the season."
+   then how it compares with the usual. Fire: "Satellites picked up fires in 21 Madhya
+   Pradesh districts yesterday. That's about double what late October usually sees."
 4. **Source line,** small, like a photo credit: "Source: CPCB live data (unvalidated)".
 5. **Evidence**, set smaller and quieter under the story: the figures strip or state
    table, the exact rule that set the level ("Level from: …"), links to the source's own
@@ -64,8 +64,8 @@ State facts with confidence; caveats go in the source line or Notes.
 
 ### Lead with what happened
 Say what is happening in plain English, then give the number that shows it. Not "27 fire
-events on 26 Oct, 9.07× the seasonal norm (3.0/day)", but "Chhattisgarh's fires jump to
-nine times the usual".
+events on 26 Oct, 9.07× the seasonal norm (3.0/day)", but "Fires climb in Chhattisgarh,
+nine times the usual for late October".
 
 ### Translate and round numbers
 | In the data | In the story |
@@ -87,26 +87,16 @@ nine times the usual".
 
 ### Intensity matches the verdict
 A title must not contradict its standfirst. Intensity words follow the verdict against
-past years (the baseline's busiest day at this time of year):
-- above it: "spike to a two-year high for the season"; "far above normal" for a group
-  that includes such a state. The standfirst then gives the multiple without repeating
-  the verdict.
-- level with it: "match their busiest day for the season".
-- within the range: the plain multiple, nothing stronger: "Madhya Pradesh's fires run at
-  twice the usual", "jump to six times the usual". The standfirst gives the same multiple
-  against the average, with the verdict: "about double the late-October average but
-  normal for the season". Never "well above normal" or "far above normal" next to "normal
-  for the season".
-
-A title carries at most one multiple; the evidence gives the exact ratio. Never "×"
-outside the evidence.
+past years: see Fire. A title carries at most one multiple, in words ("double the usual",
+"three times the usual"); the evidence gives the exact ratio. Never "×" or a decimal outside
+the evidence.
 
 ### Words
 | Not | But |
 |---|---|
-| fire events | fires |
-| seasonal norm | the late-October average (standfirst); normal, the usual (titles) |
-| ratio to norm | a multiple: "about nine times the late-October average" |
+| fire events (clusters) | never counted in a title; the standfirst counts districts: "fires in 9 districts" |
+| seasonal norm | "what late October usually sees" (standfirst); "the usual", "usual for late October" (titles) |
+| ratio to norm | a multiple in words: "about nine times what late October usually sees"; never a decimal |
 | AQI | an index of 301; the full name stays in the evidence and About |
 | CPCB | the source line: "CPCB live data (unvalidated)" |
 | unvalidated | the source line, in brackets: "(unvalidated)" |
@@ -121,14 +111,53 @@ outside the evidence.
 | feed answered, snapshot too old / partial (`stale`, `incomplete`) | old data / partial data (never "didn't answer") |
 | M7.0 | magnitude 7.0 |
 
-### Context from the past
-Every fire count is measured against the same time of year in 2024–25 (the baseline
-averages that week and the week either side). Say how unusual it is, closing the
-state's sentence:
-- More than the baseline's busiest day: "… and a two-year high for the season."
-- Level with it: "… and level with its busiest day for the season in two years."
-- Not more: "… but normal for the season."
-- Never "more than any day in 2024": the baseline only covers this time of year.
+### Fire: what we measure, and how it is said
+We measure **satellite-detected fire clusters, rolled up to districts and states, judged
+against the usual for this time of year.** We do not count individual fires on the ground,
+so the copy never says "N fires" and never prints a cluster count: those stay in the figures
+strip. Districts are the number the copy may print.
+
+**Title formula: place + direction + benchmark.**
+1. **Direction leads,** from yesterday and recent complete days: climb, surge, dip, ease,
+   hold, spread. Run length when it is true: "for a third day", "after a three-day surge".
+   A move is at least 15% and three clusters against the day before; less is holding.
+   "Surge" is a jump (a rise of three-quarters or more); a run of rises is "climb".
+2. **The benchmark is the contrast after a comma:** the usual for the season, in words:
+   "double the usual for late October", "still above usual", "back to seasonal levels".
+   No decimals and no "1.7×" in reader copy. Multiples round to "one and a half times",
+   "double", "three times".
+3. **Past years only when it is a record:** "busiest late-October fire day in three years",
+   the years being those the edition's own norm covers (`norm_years`, else its config):
+   never a fixed "two". Said in every edition of that fire day (it is a fact of the day).
+4. **Numbers in titles:** district counts only, and only when spreading is the story
+   ("Fires spread to 14 districts in Maharashtra": at least three more districts and a
+   quarter more than the day before). Never cluster counts.
+5. **A state that is busy but within its usual range is not news:** no headline and no
+   title of its own; it sits in the roundup's table. (News is a record, a spread, a move
+   day on day, or three days or more above usual. A Level 3 state is always news.)
+6. **Never "farm" or "forest" fires** unless an Orange or Red GDACS forest-fire alert says
+   so (a Green alert says nothing).
+
+One-time verbs (climb, surge, dip, ease, spread, "ease back to seasonal levels") are for the
+first edition of a fire day (the 14:30 IST edition, the one that reads the new complete day)
+and for the edition whose own run recorded the change. The two editions after it, and every
+later one, say where the state stands: "Fires stay above usual in Gujarat for a fourth day"
+(the run, from the third day on).
+
+Targets (the tests hold them):
+- Rising: "Fires climb in Gujarat for a third day, double the usual for late October"
+- Record: "Gujarat sees its busiest late-October fire day in three years"
+- Spreading: "Fires spread to 14 districts in Maharashtra"
+- Easing, held: "Telangana fires dip after three-day surge, still above usual"
+- Back to normal (first edition only): "Fires in Telangana ease back to seasonal levels"
+- Several states: "Fires climb across western India, double the usual in Gujarat and Maharashtra"
+- Persisting: "Fires stay above usual in Gujarat for a fourth day"
+
+**Standfirst: numbers with their benchmark, sourced once.** "Satellites picked up fires in 9
+Telangana districts yesterday, down from 15 on Sunday. That's still about one and a half times
+what late October usually sees." The district count against the day before (only when it
+changed), then the benchmark ("still" when the state is dipping or was just eased from a
+higher level). Without the days before, the first sentence stands alone.
 
 ### Names, not IDs
 "Cyclone Arnab", not "Tropical Cyclone ARNAB-26". "Madhya Pradesh", not
@@ -147,10 +176,10 @@ average").
 Never "top story", "on the desk", "in this report", "this edition", "the list" or "the
 report" in generated copy. The headline states the news directly; its position on the
 page shows it is the lead. Not "A severe cyclone is the top story today", but "Cyclone
-Arnab holds at red alert as fires flare in Chhattisgarh" (No. 25). Not
+Arnab holds at red alert" (No. 25). Not
 "nothing in this report is above minor", but "A quiet day across India, with nothing above
 minor". Closed items say what happened, not that they left a list: "Gujarat's fires have
-stayed down for two days".
+stayed at seasonal levels for two days".
 
 ### Sources in the story
 A source's own alert is reported as theirs, in words: "Global disaster monitors give it
@@ -163,22 +192,16 @@ evidence.
 No landfall or track forecasts, no causes (crop burning, stubble), no land cover (farmland,
 forest) unless an alert says so, no casualties or damage. A claim of our own needs a
 figure behind it:
-- "spreading": more states are above normal than in the edition a day earlier.
-- "jump", "climb", "ease", "flare up again": the item is new, escalated, de-escalated or
-  reopened since the edition a day earlier.
+- "spread": the state's district count is at least three and a quarter more than the day
+  before. "Climb", "surge", "dip", "ease": the day's count against the day before (see Fire);
+  with no day before, the item's move since the edition a day earlier (new, reopened,
+  escalated, de-escalated).
 - "holds at red alert": the item was at the same level in the edition a day earlier.
-- "fires ease": more fire states fell back than rose since a day earlier, on a complete
-  day's counts. A day whose satellite data stops before the night pass (data before about
+- "ease back to seasonal levels": more fire states fell back to Level 1 than rose since a
+  day earlier, on a complete day's counts. A day whose satellite data stops before the night pass (data before about
   18:00 UTC only) is incomplete: the source line says so, and the story claims no easing.
-- "spike", "a two-year high for the season", "busiest in 2 years": the state's fires beat
-  the baseline's busiest day at this time of year (2024–25).
-- "the most of any state": the state's national rank by fires that day is 1, of every
-  state with fires (plan P6, from edition 30). Said in its own sentence after the
-  state's ("That was the most of any state."), or in the roundup's biggest-count sentence
-  ("Madhya Pradesh had the most fires of any state, 200, …"). When another state had the
-  same count, "tied for the most". Ranked lower, the roundup's biggest count "had the most
-  fires of the states above normal". Editions before 30 have no rank: there "had the most
-  fires" means the most of the states in the story, never "of any state".
+- "the busiest late-October fire day in three years": the state's fires beat the baseline's
+  busiest day at this time of year, over the years the norm covers.
 - "the worst air in the country": the worst of the cities reporting to the board's
   national feed.
 - A cyclone's "winds of up to 102 km/h": the latest advisory's wind (from edition 32).
@@ -188,7 +211,7 @@ figure behind it:
 - A closed cyclone "weakens": its latest wind is below its peak; "after crossing the
   Andhra Pradesh coast": it made landfall, in that state (the first point over land
   after one at sea). Without either, the plain closing line.
-- A neutral verb ("run at twice the usual") when nothing changed.
+- A neutral verb ("stay above usual") when nothing changed.
 
 ### Every line rebuilds for past editions
 Templates read only the edition's own data: its snapshots, its run time and the
@@ -210,11 +233,13 @@ Rules:
    "surge", "turn", "cross", "strike") are used only in the first edition that reports the
    change: the edition whose own run recorded it (a state opened, reopened or rose a level; air
    moved a band; a storm's landfall within the last run's interval; a quake's first edition).
-   Every edition after says where things stand, in ongoing wording: fires "stay high in
+   Every edition after says where things stand, in ongoing wording: fires "stay above usual in
    Maharashtra"; air "stays severe in Ballabgarh"; a storm "weakens inland over Andhra
    Pradesh" (or "moves inland"), or "holds at red alert" when nothing moved; a quake "struck".
-   Easing ("fires ease …", air "eases to …") is also said once. "Surge" is a rise that sets a
-   record for the season; "climb" a rise by a level; "flare" a state that is new or back.
+   Easing ("fires ease …", air "eases to …") is also said once. For fire the verbs are
+   climb, surge, dip, ease, spread (see Fire); a fire clause may run to fourteen words when
+   it is the headline alone, and is cut to its short form (no benchmark) when it shares the
+   headline with a second event.
 3. **No bookkeeping words,** ever: "one of them new", "both new", "now including", "led by",
    "on the desk", "top story", "spreading". That is the desk talking about itself, and it
    is Since yesterday's job (see also No self-reference).
@@ -223,10 +248,12 @@ Rules:
    none. A second event that would add a third place is dropped; so is one that would take the
    headline past twelve words, and the next event in line is tried instead.
 5. **The lead** is the event with the highest level; among equals, the one that moved since
-   yesterday; then category order (cyclone, flood, earthquake, air, fire). Several fire
-   states are one event: those whose rise is this edition's news are named ("Fires flare in Gujarat"); if more fell
-   back than rose in this edition, on a complete day, the clause is "Fires ease across
-   central India"; otherwise "Fires stay high in Gujarat and Assam".
+   yesterday; then category order (cyclone, flood, earthquake, air, fire). The fire event is
+   the fire states that are news (see Fire; a busy state within its usual range has no
+   headline): "Fires climb in Gujarat for a third day, double the usual for late October";
+   "Fires climb across western India, double the usual in Gujarat and Maharashtra"; "Fires
+   ease back to seasonal levels across central India"; "Gujarat sees its busiest late-October
+   fire day in three years"; otherwise "Fires stay above usual in Gujarat".
 6. **Fire regions** come from where the states are: one or two states by name; one region
    ("across northern India"); states clustered round the middle of the country ("across
    central India"); two regions, always north to south ("across central and western
@@ -237,10 +264,9 @@ Rules:
 
 Examples (the tests hold them):
 - "Cyclone Arnab crosses the Andhra coast and weakens."
-- "Fires flare in Chhattisgarh as air stays very poor in Panipat."
-- "Air turns very poor in Panipat as fires flare in Chhattisgarh."
-- "Cyclone Arnab holds at red alert as fires flare in Chhattisgarh." (No. 25)
-- "Fires flare in four states." (No. 17)
+- "Fires climb in Chhattisgarh as air stays very poor in Panipat."
+- "Air turns very poor in Panipat as fires climb in Chhattisgarh."
+- "Gujarat sees its busiest late-October fire day in two years." (No. 17)
 - "A major earthquake strikes 350 km outside India." (No. 14; the air clause would take it
   to fifteen words)
 - "A quiet day across India, with nothing above minor."
@@ -266,48 +292,43 @@ moved the item.
 
 A journalist doesn't run five near-identical fire stories. All fire states are one desk
 item, ranked at its highest state's level, with the states inside it in order of how far
-above normal they are.
+above usual they are. The fire formula (see Fire) applies to the roundup title.
 
-- **Easing first:** if more fire states fell back than rose since a day earlier (on a
-  complete day), the roundup leads with it, and easing is its story: "Fires ease across
-  central India, with Madhya Pradesh still above normal" / "Maharashtra, Uttar Pradesh,
-  Telangana and Chhattisgarh fell back toward normal since yesterday. Madhya Pradesh
-  logged 145 fires yesterday across 21 districts, about double the late-October average
-  but normal for the season."
-- **Title** otherwise: what the states are doing and how many, nothing else, with the page
-  headline's rules (one-time verbs once, no bookkeeping): in the first edition that reports a
-  rise, "Fires flare in five states", or "Fires surge in five states" when the rise beats a
-  state's busiest day for the season; in every edition after, "Fires stay high in five
-  states". Next to a state's own story: "Fires stay high in four more states" (never "also" beside "more"). Never
-  "led by …", "now including …", "up from four" or "the most in …". Which state stands out is
-  the standfirst's first sentence; what is new since yesterday is Since yesterday's.
-  **States all back near normal:** the roundup reads "Fires ease across central India" in the
-  first edition that reports it and is not shown after that: those states appear in Since
-  yesterday or drop off. **"N-year high"** (and "in N years") always counts the years the norm
-  covers, from the item's `norm_years` or the years in the edition's own config
-  (2023–2025 is "three-year"); it is never a fixed "two".
-- **Standfirst,** two or three sentences, only about the states still above normal: the
-  standout in one sentence, first: the state with a record for the season, else the one
-  new since a day earlier, else the furthest above normal,
-  and "That was the most of any state." if it led every state; the biggest count, if that
-  is another state ("Madhya Pradesh had the most fires of any state, 200, about three
-  times the late-October average but normal for the season."); the others by name. States
-  that fell back are in Since yesterday, not here. When easing leads, no rank sentence.
-- **One state above normal:** the roundup reads as that state's own story ("Madhya
-  Pradesh's fires run at twice the usual").
+- **Easing first:** if more fire states fell back to Level 1 than rose since a day earlier
+  (on a complete day), the roundup leads with it: "Fires ease back to seasonal levels across
+  central India, Madhya Pradesh still above usual" / "Maharashtra, Uttar Pradesh, Telangana
+  and Chhattisgarh fell back to seasonal levels since yesterday. Satellites picked up fires in
+  21 Madhya Pradesh districts yesterday. That's about double what late October usually
+  sees."
+- **Title** otherwise: the states with news, as one clause: a record ("Chhattisgarh sees its
+  busiest late-October fire day in two years"), a spread, or the direction with a region and
+  the benchmark for the strongest ("Fires climb across western India, double the usual in
+  Gujarat and Maharashtra"); with no news, where they stand ("Fires stay above usual across
+  central India"). Next to a state's own story the roundup names no count of states. Never
+  "led by …", "now including …", "up from four" or "the most in …". What is new since
+  yesterday is Since yesterday's.
+  **States all back near normal:** the roundup reads "Fires ease back to seasonal levels
+  across central India" in the first edition that reports it and is not shown after that:
+  those states appear in Since yesterday or drop off.
+- **Standfirst,** two or three sentences, only about the states still above usual: the
+  standout's sentences first (the record state, else the strongest mover, else the furthest
+  above usual), then the others by name ("Telangana and Maharashtra are also above usual.").
+  States that fell back are in Since yesterday, not here. No ranks and no cluster counts.
+- **One state above usual:** the roundup reads as that state's own story.
 - **State table** under it, as evidence: only the states still at Level 2 or above, each
   with its level squares (state, fires, usual a day, against past years: "busiest in 2
   years" or "within range"). A held state shows its dashed square; the Notes explain it.
+  The exact cluster counts live here.
 - **Own story:** a state gets its own story if it reaches Level 3 or above, or is the only
-  fire state; the roundup then covers the rest ("Fires stay high in four more
-  states"). A record doesn't split a state out: it leads the roundup instead.
+  fire state; the roundup then covers the rest. A record doesn't split a state out: it leads
+  the roundup instead.
 
 ## Per category
 
 | Category | Title | Standfirst | Source line |
 |---|---|---|---|
-| Fire (roundup) | "Fires stay high in five states" | "Chhattisgarh logged 27 fires on Monday across 10 districts, about nine times the late-October average and a two-year high for the season. Madhya Pradesh had the most fires, 200, about three times the late-October average but normal for the season. Telangana, Maharashtra and Uttar Pradesh are also above normal." | NASA FIRMS satellites |
-| Fire (own story) | "Telangana's fires run at six times the usual"; "Madhya Pradesh's fires run at twice the usual" | "Telangana logged 39 fires on Monday across 17 districts, about six times the late-October average but normal for the season." / "Madhya Pradesh logged 145 fires yesterday across 21 districts, about double the late-October average but normal for the season." | NASA FIRMS satellites (27 Oct incomplete: no data after 14:37 IST) |
+| Fire (roundup) | "Chhattisgarh sees its busiest late-October fire day in two years" | "Satellites picked up fires in 10 Chhattisgarh districts on Monday. That's about nine times what late October usually sees. Telangana, Maharashtra, Madhya Pradesh and Uttar Pradesh are also above usual." | NASA FIRMS satellites |
+| Fire (own story) | "Fires climb in Gujarat for a third day, double the usual for late October"; "Telangana fires dip after three-day surge, still above usual" | "Satellites picked up fires in 9 Telangana districts yesterday, down from 15 on Sunday. That's still about one and a half times what late October usually sees." | NASA FIRMS satellites (27 Oct incomplete: no data after 14:37 IST) |
 | Air | "Air is very poor in Panipat and poor in 16 more cities"; "Air is poor in 23 cities, worst in Panipat" | "Panipat had the worst air in the country, with an index of 293, just short of 'very poor'. 22 other cities were rated poor." / "Baraut had the worst air in the country, with an index of 335, rated 'very poor'. Meerut and Gajraula were also rated very poor. 10 more cities were rated poor." | CPCB live data (unvalidated); Sentinel estimate from OpenAQ monitors |
 | Cyclone | "Cyclone Arnab" | "Global disaster monitors give it their second-highest alert, orange, with winds of up to 102 km/h. They place it near the Andhra Pradesh coast. Its winds peaked at 222 km/h." (edition 32 on) / "Global disaster monitors give it their highest alert, red, with peak winds of 222 km/h. They place it near the Andhra Pradesh coast." (before 32: only the peak is known) | GDACS; GDACS (position as of 28 Oct, 11:30 IST) |
 | Flood | "Flooding in India" | "Global disaster monitors give it their second-highest alert, orange." | GDACS |
@@ -320,9 +341,9 @@ major (7), great (8+); "small" for a group of Level 1 quakes.
 
 Each line is the item's title, with the level change as small evidence ("Level 1 → 2").
 Fire states and quakes with the same kind of change share one line, the roundup rule:
-"Fires fall back toward normal in four states: Maharashtra, Uttar Pradesh, Telangana and
-Chhattisgarh"; "Fires jump above normal in two states: Gujarat and Telangana". A single
-state reads "Chhattisgarh's fires jump above normal". Closed items say what happened,
+"Fires ease back to seasonal levels across central India"; "Fires climb above usual in
+Gujarat and Telangana". A single state reads "Fires climb above usual in Chhattisgarh";
+a state that fell but stays at Level 2 reads "Fires dip in Telangana, still above usual". Closed items say what happened,
 from the closing rule: "Gujarat's fires have stayed down for two days"; "Two days have
 passed since the major earthquake 350 km outside India"; "Global disaster monitors have
 stopped tracking Cyclone Arnab"; "No city's air is poor any more". A closed cyclone reads
@@ -337,7 +358,7 @@ When nothing is above Level 1:
   days: "A quiet day across India, the third in a row, with nothing above minor"; two
   weeks: "A quiet fortnight across India, …".
 - **Standfirst:** every category in one or two sentences, then what's worth watching: "No
-  floods or cyclones are open. Fires have fallen back toward normal in four states, no
+  floods or cyclones are open. Fires are back to seasonal levels in four states, no
   earthquake of magnitude 4 or more has struck in or near India in two days and the worst
   air is poor, in 23 cities. One thing is worth watching." (Watching is said only on the
   latest edition.)
