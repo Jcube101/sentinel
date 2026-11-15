@@ -9,7 +9,7 @@ newspaper front page from the desk tables; it no longer reads `events` or `aqi_r
 
 ## Status (30 Oct 2026)
 Both phases are complete. The severity pipeline (Phase 6) has run since 20 Oct, and
-migrations 001-009 are applied. The Situation Report (Phase 7) has been live since 29 Oct
+migrations 001-010 are applied. The Situation Report (Phase 7) has been live since 29 Oct
 2026, about 22:30 IST. Part C followed on 29-30 Oct: FIRMS hotspots no longer go to `events`,
 and the four older tables are private. The latest edition checked is 32 (30 Oct, 14:30 IST):
 ok, every source ok. Open follow-ups: docs/severity-pipeline.md (*Follow-ups*),
@@ -74,7 +74,7 @@ earlier writes stand.
   stage itself fails. A run that fails because an unrelated outside source failed (GDACS,
   FIRMS, OpenAQ, data.gov.in) is not a reason to revert: keep the merge and report it.
 - **Thresholds** live in `pipeline/severity.toml`, never in code.
-- **Migrations** are numbered SQL files in `pipeline/migrations/` (001-009 applied; list in
+- **Migrations** are numbered SQL files in `pipeline/migrations/` (001-010 applied; list in
   pipeline/CLAUDE.md, *Migrations*). Job pastes each one into the Supabase SQL
   editor (there is no DB URL on the Pi). Code that needs a migration is merged
   only after Job has applied it.

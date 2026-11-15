@@ -9,7 +9,7 @@ data.gov.in for the air item. It runs on the Raspberry Pi (jobpi) from a systemd
 `pipeline_runs` row whose id is the edition number.
 
 ## Status (30 Oct 2026)
-Severity pipeline complete (build steps 0-7, 21 Oct) and migrations 001-009 applied. Since
+Severity pipeline complete (build steps 0-7, 21 Oct) and migrations 001-010 applied. Since
 then: the fixes after the editions 11-24 health review (28 Oct), complete fire days and the
 GDACS split (29 Oct), P1-P7 for the Situation Report (29 Oct), Part C (FIRMS out of
 `events`, the older tables private; 29-30 Oct), and the cyclone close rule with latest
@@ -396,7 +396,7 @@ psql on the Pi: Job pastes each file into the Supabase SQL editor. Write them
 idempotent, with the Data API grants above, and merge code that needs a
 migration only after it has been applied.
 
-All nine are applied:
+All ten are applied:
 - 001 `pipeline_runs` and source freshness
 - 002 `desk_items` and snapshots
 - 003 `fire_events`
@@ -411,6 +411,8 @@ All nine are applied:
 - 009 the four pre-001 tables private (applied 30 Oct: `events`, `aqi_readings`, `sources`
   and `categories` answer anon with 401; every desk, fire and run table and view still
   reads)
+- 010 `sources.last_status` also allows `stale` and `incomplete` (applied 15 Nov: the DATAGOV row
+  says why a data.gov.in snapshot wasn't used; Job's run returned "Success")
 
 001-006 were checked on 28 Oct 2026 (every table and view answers), 007-009 with Job's
 check queries when applied.

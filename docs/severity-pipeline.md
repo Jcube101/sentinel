@@ -2,7 +2,7 @@
 
 Status: **complete.** Build steps 0-7 were done on 21 Oct 2026; this file was last
 updated on 30 Oct 2026. They are merged and run on the Pi three times a day, and
-migrations 001-009 are applied (checked 30 Oct: every table and view the site reads
+migrations 001-010 are applied (checked 30 Oct: every table and view the site reads
 answers through the Data API, and the four older tables refuse anon). *Where things
 stand* lists the changes since and how far each has been verified. The site that reads
 these tables, the Situation Report, has been live since 29 Oct 2026
@@ -39,7 +39,7 @@ which no longer does).
 | Part C: migration 009, `events`, `aqi_readings`, `sources` and `categories` private | applied 30 Oct | Job's check query; an anon-key read gets 401 on the four, 200 on every desk, fire and run table and view; no anon write anywhere |
 | Cyclones: closed once the latest advisory is over 24 h old, reopened by a new one; the latest wind next to the peak, the track and the landfall from GDACS's advisory timeline (*Decisions (30 Oct 2026): cyclones*) | 30 Oct | Live in edition 32: ARNAB-26 closed (last advisory 28 Oct 06:00 UTC), "GDACS Orange alert, 102 km/h winds (peaked at 222 km/h)", peak 27 Oct 12:00 UTC, landfall 27 Oct 18:00 UTC in West Godavari, Andhra Pradesh; the track requests took 8.9 s (`pipeline_runs.sources.GDACS.parts.tracks`). Reopening: offline tests only |
 | Missed-edition alert: the first run after a gap names the scheduled slots with no `pipeline_runs` row (`runs.missed_slots`) | 15 Nov | Offline tests; checked against all 78 editions: it flags only the 6 Nov outage (14:30 and 20:30 IST). Live check: editions 80-82 ran with no false alert; a real gap hasn't happened since |
-| data.gov.in completeness guard (`air.datagov.min_complete_fraction`, `typical_runs`) and `stale` / `incomplete` DATAGOV statuses (migration 010) | 16 Nov (migration 010 applied) | Offline tests. Evidence: 8 of 42 data.gov.in editions (30 Oct - 15 Nov) had 47-442 stations against ~540; edition 37 (117 stations) closed the air item on a false all-clear, edition 60 (80) read "2 cities". Live check: edition 83 (17 Nov, 02:30 IST) |
+| data.gov.in completeness guard (`air.datagov.min_complete_fraction`, `typical_runs`) and `stale` / `incomplete` DATAGOV statuses (migration 010) | 15 Nov (migration 010 applied the same day) | Offline tests. Evidence: 8 of 42 data.gov.in editions (30 Oct - 15 Nov) had 47-442 stations against ~540; edition 37 (117 stations) closed the air item on a false all-clear, edition 60 (80) read "2 cities". Includes one re-read after 90 s (15 Nov, 15:35: 737 records, a minute later 3,228). Live check: edition 83 (17 Nov, 02:30 IST) |
 | Only Orange and Red GDACS wildfire alerts lift a fire state to Level 3 (`fire.gdacs_wildfire_alert_levels`); Green alerts are dropped | 15 Nov | Dry run: Madhya Pradesh (Level 3 since edition 59 on Green alerts, 0.88× norm) de-escalates to Level 1. Live check: pending |
 
 ## The problem
