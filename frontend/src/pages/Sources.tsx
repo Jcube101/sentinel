@@ -74,7 +74,7 @@ function ThisRun({ run }: { run: Edition }) {
                 </th>
                 <td className={`${td} font-serif text-[14px] text-ink-muted`}>{SOURCE_ROLES[id]}</td>
                 <td className={`${num} ${state === 'failed' || state === 'empty' ? 'text-accent font-semibold' : ''}`}>{CELL_WORDS[state]}</td>
-                <td className={num}>{line && !line.failed ? line.words : '—'}</td>
+                <td className={num}>{line && !line.failed && state !== 'incomplete' ? line.words : '—'}</td>
                 <td className={`${num} text-right`}>{r?.rows?.toLocaleString('en-IN') ?? '—'}</td>
                 <td className={`${num} text-right`}>{typeof r?.duration_s === 'number' ? `${Math.round(r.duration_s)} s` : '—'}</td>
               </tr>
