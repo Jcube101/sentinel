@@ -31,6 +31,7 @@ data runs to (figures.data_as_of) as well as the band.
 import logging
 import math
 import re
+import statistics
 import time
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
@@ -567,7 +568,45 @@ def watch_subject(figures: dict, level: int | None, item_open: bool, cfg: dict) 
 
 # --- stage -----------------------------------------------------------------------------
 
-def try_feed(feed, cfg: dict, now: datetime) -> tuple[dict | None, dict, str | None]:
+def feed_history(supabase, cfg: dict) -> list[dict]:
+    """The DATAGOV entries of the last [air.datagov] typical_runs editions whose
+    snapshot was accepted (status ok), newest first. Empty when unreadable."""
+    try:
+        rows = (supabase.table(runs.RUNS_TABLE).select("id,sources").order("id", desc=True)
+                .limit(cfg["air"]["datagov"]["typical_runs"]).execute().data)
+    except Exception as exc:
+        logger.warning("air: could not read the feed's recent snapshots (%s); no completeness check", exc)
+        return []
+    entries = [(r.get("sources") or {}).get("DATAGOV") or {} for r in rows]
+    return [e for e in entries if e.get("status") == "ok"]
+
+
+def typical_counts(history: list[dict], cfg: dict) -> dict[str, float | None]:
+    """Median stations, cities and records of the accepted snapshots in history;
+    None for a count with fewer than typical_min_samples of them."""
+    need = cfg["air"]["datagov"]["typical_min_samples"]
+    out = {}
+    for key in ("stations", "cities", "rows"):
+        values = [h[key] for h in history if isinstance(h.get(key), (int, float)) and h[key] > 0]
+        out[key] = statistics.median(values) if len(values) >= need else None
+    return out
+
+
+def incomplete_reason(stations: int, cities: int, rows: int, typical: dict, cfg: dict) -> str | None:
+    """Why a snapshot looks incomplete (below min_complete_fraction of the typical
+    counts), or None. Stations and cities are checked once the history has them;
+    until then the record count is."""
+    fraction = cfg["air"]["datagov"]["min_complete_fraction"]
+    if typical.get("stations") is None and typical.get("cities") is None:
+        checks = [("records", rows, typical.get("rows"))]
+    else:
+        checks = [("stations", stations, typical.get("stations")), ("cities", cities, typical.get("cities"))]
+    low = [f"{value:,} {name}, usually about {round(usual):,}"
+           for name, value, usual in checks if usual and value < fraction * usual]
+    return "; ".join(low) or None
+
+
+def try_feed(feed, cfg: dict, now: datetime, typical: dict | None = None) -> tuple[dict | None, dict, str | None]:
     """Read and assess the data.gov.in feed.
 
     Returns (figures if the feed can set the level else None, the attempt
@@ -592,17 +631,29 @@ def try_feed(feed, cfg: dict, now: datetime) -> tuple[dict | None, dict, str | N
         attempt.update(error=runs.redact(f"assessment failed: {type(exc).__name__}: {exc}"))
         return None, attempt, "data.gov.in feed could not be read"
     snapshot = desk._dt(figures["snapshot_at"])
-    attempt.update(status="ok", newest=snapshot)
+    attempt.update(status="ok", newest=snapshot, stations=figures["stations_reporting"],
+                   cities=figures["cities_reporting"])
     max_age = cfg["air"]["datagov"]["max_snapshot_age_hours"]
+
+    def rejected(status: str, why: str):
+        # The feed answered, but its snapshot can't set the level: the sources row says
+        # so ("stale" / "incomplete"), not "ok", and the reason is kept as its error.
+        attempt.update(status=status, error=why)
+        return None, attempt, why
+
     if snapshot is None:
-        return None, attempt, "data.gov.in feed has no snapshot time"
+        return rejected("incomplete", "data.gov.in feed has no snapshot time")
     age = (now - snapshot).total_seconds() / 3600
     if age > max_age:
-        return None, attempt, f"data.gov.in snapshot is {age:.0f} h old (max {max_age:g} h)"
+        return rejected("stale", f"data.gov.in snapshot is {age:.0f} h old (max {max_age:g} h)")
     if not figures["quorum_met"]:
         n = figures["cities_reporting"]
-        return None, attempt, (f"data.gov.in: only {n} {'city has' if n == 1 else 'cities have'} a CPCB AQI "
-                               f"(need {cfg['air']['min_fresh_cities']})")
+        return rejected("incomplete", f"data.gov.in: only {n} {'city has' if n == 1 else 'cities have'} a CPCB AQI "
+                                      f"(need {cfg['air']['min_fresh_cities']})")
+    low = incomplete_reason(figures["stations_reporting"], figures["cities_reporting"], len(records),
+                            typical or {}, cfg)
+    if low:
+        return rejected("incomplete", f"data.gov.in snapshot looks incomplete ({low})")
     return figures, attempt, None
 
 
@@ -676,6 +727,9 @@ def record_feed(supabase, run_id: int | None, attempt: dict, now: datetime) -> d
         "error": runs.redact(attempt["error"]),
         "newest_observation_at": attempt["newest"].isoformat() if attempt["newest"] else None,
         "new_data": new_data,
+        # what the completeness check compares with (feed_history); None when not assessed
+        "stations": attempt.get("stations"),
+        "cities": attempt.get("cities"),
     }
 
 
@@ -700,7 +754,8 @@ def run_air(supabase, run_id: int | None, results: dict, now: datetime, *, write
         logger.warning("dry-run: could not read desk items — %s", exc)
         existing = {}
 
-    figures, attempt, fallback_reason = try_feed(feed, cfg, now)
+    typical = typical_counts(feed_history(supabase, cfg), cfg)
+    figures, attempt, fallback_reason = try_feed(feed, cfg, now, typical)
     note = None
     if figures is None:
         figures, note, client = openaq_assessment(results, cfg, now, client,

@@ -331,8 +331,11 @@ station AQI = highest sub-index (3+ pollutants incl. PM2.5 or PM10), city AQI =
 mean of its stations; reason "CPCB AQI, real-time (unvalidated)", item source
 DATAGOV. The API hangs requests with Python's default user agent, so datagov.py
 sends its own. Fallback when the feed fails, its snapshot is older than
-`air.datagov.max_snapshot_age_hours` or it has fewer than `air.min_fresh_cities`
-cities: 24 h means at CPCB / AirNow monitors on OpenAQ (~36 listing requests plus
+`air.datagov.max_snapshot_age_hours`, it has fewer than `air.min_fresh_cities`
+cities, or it looks incomplete (stations or cities below `air.datagov.min_complete_fraction`,
+0.7, of the median of the last `typical_runs` accepted snapshots, read from
+`pipeline_runs.sources.DATAGOV`; until 3 of them carry station and city counts the record count
+stands in): 24 h means at CPCB / AirNow monitors on OpenAQ (~36 listing requests plus
 up to `air.max_history_requests` history requests, ~3 min), reason "approx. CPCB
 band", item source OPENAQ. OpenAQ readings older than the data behind the item's
 current level don't count (`air.level_data_from`), so the fallback never replaces a
@@ -343,7 +346,9 @@ item stays last-known and the reason says why. Each city in `figures.cities` (Po
 worse, either source) has `latitude`/`longitude` for the map: the mean of the stations
 counted for it, skipping coordinates outside India's bounding box; null if none has
 any. Each feed attempt updates the
-DATAGOV sources row (migration 006) and pipeline_runs.sources. Tests never reach
+DATAGOV sources row (migration 006) and pipeline_runs.sources; a snapshot that is rejected
+is recorded as `stale` or `incomplete` (not `ok`; migration 010 allows the two values), with
+the reason as its error, and `stations` / `cities` counts are stored for the next check. Tests never reach
 data.gov.in (tests/conftest.py drops the key and blocks requests).
 
 ## Fire desk

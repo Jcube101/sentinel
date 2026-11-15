@@ -257,6 +257,79 @@ def test_both_sources_down_keeps_last_known_and_says_why():
                                             "OpenAQ fetch failed this run")
 
 
+# --- completeness and the stale / incomplete statuses ------------------------------------------
+
+def _history(db, *entries):
+    """pipeline_runs rows (newest last) with these DATAGOV summaries."""
+    db.tables["pipeline_runs"] = [{"id": i + 1, "sources": {"DATAGOV": e}} for i, e in enumerate(entries)]
+
+
+GOOD = {"status": "ok", "stations": 10, "cities": 5, "rows": 40}
+FULL = _feed(("Delhi", [250, 260]), ("Pune", [60, 61]), ("Chennai", [70, 71]), ("Agra", [80, 81]), ("Kota", [90, 91]))
+
+
+def test_a_snapshot_far_below_the_typical_size_is_rejected_and_marked_incomplete(monkeypatch):
+    monkeypatch.setattr(air, "reference_stations", lambda locations, cfg: STATIONS[:3])
+    db = _db()
+    _history(db, GOOD, GOOD, GOOD)
+    s = air.run_air(db, 4, _results(), NOW, cfg=CFG, feed=_feed_fn(_feed(("Delhi", [250]), *CLEAN)), client=_openaq())
+    why = "data.gov.in snapshot looks incomplete (3 stations, usually about 10; 3 cities, usually about 5)"
+    assert (s["source_id"], s["fallback_reason"]) == ("OPENAQ", why)
+    row = next(r for r in db.rows("sources") if r["id"] == "DATAGOV")
+    assert (row["last_status"], row["last_error"]) == ("incomplete", why) and "last_success_at" not in row
+    assert row["newest_observation_at"] is None                      # nothing new was accepted
+    assert s["datagov"]["status"] == "incomplete" and s["datagov"]["new_data"] is False
+    assert (s["datagov"]["stations"], s["datagov"]["cities"]) == (3, 3)
+
+
+def test_a_full_snapshot_passes_and_is_recorded_for_next_time():
+    db = _db()
+    _history(db, GOOD, GOOD, GOOD)
+    s = air.run_air(db, 4, _results(), NOW, cfg=CFG, feed=_feed_fn(FULL))
+    assert s["source_id"] == "DATAGOV" and s["fallback_reason"] is None
+    assert (s["datagov"]["status"], s["datagov"]["stations"], s["datagov"]["cities"]) == ("ok", 10, 5)
+
+
+def test_a_stale_snapshot_is_marked_stale_not_ok(monkeypatch):
+    monkeypatch.setattr(air, "reference_stations", lambda locations, cfg: STATIONS[:3])
+    db = _db()
+    s = air.run_air(db, 1, _results(), NOW, cfg=CFG, client=_openaq(),
+                    feed=_feed_fn(_feed(("Delhi", [250]), *CLEAN, updated="21-10-2026 12:00:00")))
+    row = next(r for r in db.rows("sources") if r["id"] == "DATAGOV")
+    assert row["last_status"] == "stale" and row["last_error"] == "data.gov.in snapshot is 8 h old (max 6 h)"
+    assert "last_success_at" not in row and s["datagov"]["status"] == "stale"
+
+
+def test_no_check_until_the_history_has_enough_accepted_snapshots(monkeypatch):
+    monkeypatch.setattr(air, "reference_stations", lambda locations, cfg: STATIONS[:3])
+    db = _db()
+    _history(db, GOOD, GOOD, {"status": "stale", "stations": 400, "cities": 200, "rows": 3000})   # only 2 count
+    small = _feed(("Delhi", [250]), *CLEAN)
+    assert air.run_air(db, 4, _results(), NOW, cfg=CFG, feed=_feed_fn(small))["source_id"] == "DATAGOV"
+    assert air.typical_counts([GOOD, GOOD], CFG)["stations"] is None
+
+
+def test_until_stations_are_on_record_the_record_count_stands_in():
+    cfg = CFG
+    old = {"status": "ok", "rows": 3900}                 # editions before the guard stored rows only
+    typical = air.typical_counts([old, old, old], cfg)
+    assert typical == {"stations": None, "cities": None, "rows": 3900}
+    assert air.incomplete_reason(117, 55, 560, typical, cfg) == "560 records, usually about 3,900"
+    assert air.incomplete_reason(520, 270, 3800, typical, cfg) is None
+    assert air.incomplete_reason(520, 270, 2800, typical, cfg) is None          # 72%: above the 70% line
+
+
+def test_the_real_history_is_read_from_the_last_editions_that_were_accepted():
+    db = _db()
+    _history(db, GOOD, {"status": "error"}, {"status": "incomplete", "stations": 3}, GOOD)
+    assert len(air.feed_history(db, CFG)) == 2
+
+
+def test_an_unreadable_history_means_no_check_rather_than_a_failed_run():
+    db = FakeSupabase({"sources": [{"id": "DATAGOV"}]}, missing={"pipeline_runs"})
+    assert air.feed_history(db, CFG) == []
+
+
 # --- freshness of the DATAGOV source ---------------------------------------------------------------
 
 def test_feed_attempt_is_recorded_on_the_datagov_source():

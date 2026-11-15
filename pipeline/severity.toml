@@ -105,6 +105,18 @@ city_aliases = { "New Delhi" = "Delhi" }
 # the feed fails, has fewer than min_fresh_cities cities with an AQI, or its
 # snapshot is older than this:
 max_snapshot_age_hours = 6
+# ...or it looks incomplete. The feed sometimes serves a partial snapshot as if it
+# were whole (8 of 42 editions, 30 Oct - 15 Nov 2026: 47 to 442 stations against a
+# normal ~540; one closed the air item on a false all-clear). A snapshot whose
+# stations or cities fall below this fraction of the typical count is rejected and
+# the OpenAQ assessment is used, as for an old snapshot. Typical = the median of the
+# last typical_runs editions whose snapshot was accepted (at least
+# typical_min_samples of them; until then the raw record count stands in). A feed
+# that really shrinks below the fraction stays rejected: say so in the Sources page
+# and lower this, rather than let it adapt silently.
+min_complete_fraction = 0.7
+typical_runs = 12
+typical_min_samples = 3
 # CPCB method: a station's AQI is its highest sub-index, computed only with
 # at least this many pollutants, one of them PM2.5 or PM10. A city's AQI is
 # the mean of its stations' AQIs, as in CPCB's daily bulletin.
