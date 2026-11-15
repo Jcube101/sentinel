@@ -46,7 +46,7 @@ function item(n: number, key: string) {
 
 describe('edition 25 (Wed 28 Oct, 02:30 IST)', () => {
   it('page headline', () => {
-    expect(edition(25).headline).toBe('Cyclone Arnab holds at red alert as fires spread across central India.')
+    expect(edition(25).headline).toBe('Cyclone Arnab holds at red alert as fires flare in Chhattisgarh.')
   })
 
   it('cyclone: no position, since a later edition moved it (P1)', () => {
@@ -84,7 +84,7 @@ describe('edition 25 (Wed 28 Oct, 02:30 IST)', () => {
 
 describe('edition 26 (Wed 28 Oct, 14:30 IST): four fire states fall back on an incomplete day', () => {
   it('headline: the news itself, no "top story"; no easing claimed on incomplete counts', () => {
-    expect(edition(26).headline).toBe("Cyclone Arnab holds at red alert as Madhya Pradesh's fires run at twice the usual.")
+    expect(edition(26).headline).toBe('Cyclone Arnab holds at red alert.')
   })
 
   it('the cyclone: where global disaster monitors place it, in words', () => {
@@ -134,7 +134,7 @@ describe('edition 26 (Wed 28 Oct, 14:30 IST): four fire states fall back on an i
 
 describe('edition 17 (Sun 25 Oct, 14:30 IST)', () => {
   it('page headline: fires lead, spreading from none a day earlier, led by a spike in Gujarat', () => {
-    expect(edition(17).headline).toBe('Fires spread to four states, led by a spike in Gujarat.')
+    expect(edition(17).headline).toBe('Fires flare in four states.')
   })
 
   it('the roundup; the fire day is yesterday for a 14:30 edition', () => {
@@ -175,14 +175,14 @@ describe('edition 17 (Sun 25 Oct, 14:30 IST)', () => {
 describe('edition 19 (Mon 26 Oct, 02:30 IST, a failed run)', () => {
   it('the same roundup, dated Saturday: the figures are last known from No. 17', () => {
     expect(item(19, 'fire:roundup').standfirst).toMatch(/^Gujarat logged 46 fires on Saturday across 14 districts, /)
-    expect(edition(19).headline).toBe('Fires spread to four states, led by a spike in Gujarat.')
+    expect(edition(19).headline).toBe('Fires flare in four states.')
   })
 })
 
 describe('edition 14 (Sat 24 Oct, 14:30 IST)', () => {
   it('page headline: a quake leads, air follows', () => {
     expect(edition(14).headline).toBe(
-      'A major earthquake strikes 350 km outside India as air turns very poor in three cities.',
+      'A major earthquake strikes 350 km outside India.',
     )
   })
 
@@ -342,5 +342,70 @@ describe('words', () => {
   it('names cyclones as people say them', () => {
     expect(cycloneName('Tropical Cyclone ARNAB-26')).toBe('Cyclone Arnab')
     expect(cycloneName('Tropical Cyclone TWO-26')).toBe('An unnamed tropical cyclone')
+  })
+})
+
+
+describe('the page headline rules (docs/style-guide.md, The page headline)', () => {
+  const BOOKKEEPING = /one of them new|now including|both new|all new|led by|on the desk|top story|\bnew\b/i
+
+  function headlineOf(snapshots: EditionData['snapshots'], window: ChangeWindow | null, run = fixtures[25][0].run) {
+    const since = window ? sinceYesterday(snapshots, window) : null
+    const entries = deskEntries(snapshots, since?.byItem ?? new Map())
+    return pageHeadline(entries, copyContext(entries, since, run))
+  }
+
+  it('every real edition: about twelve words, no bookkeeping', () => {
+    for (const n of [14, 17, 19, 25, 26]) {
+      const h = edition(n).headline
+      expect(h, `No. ${n}`).not.toMatch(BOOKKEEPING)
+      expect(h.split(/\s+/).length, `No. ${n}: ${h}`).toBeLessThanOrEqual(12)
+    }
+  })
+
+  it('a storm that has crossed the coast: "Cyclone Arnab crosses the Andhra coast and weakens."', () => {
+    const [ed, w] = fixtures[25]
+    const crossed = ed.snapshots
+      .filter((s) => s.category === 'cyclone')
+      .map((s) => ({
+        ...s,
+        figures: { ...s.figures, wind_kmh: 102, peak_wind_kmh: 222, landfall: { at: '2026-10-27T18:00:00Z', latitude: 16.3, longitude: 81.5, state: 'Andhra Pradesh', district: 'West Godavari' } },
+      }))
+    expect(headlineOf(crossed, w, ed.run)).toBe('Cyclone Arnab crosses the Andhra coast and weakens.')
+  })
+
+  it('fires that rose lead and the air that stayed follows: "Fires flare in Chhattisgarh as air stays very poor in Panipat."', () => {
+    const [ed, w] = fixtures[25]
+    const some = ed.snapshots.filter((s) => s.item_id === 'air:IN' || s.item_id === 'fire:chhattisgarh')
+    const airSteady = { ...w, rows: [...w.rows, { run_id: 22, item_id: 'air:IN', category: 'air' as const, status: 'open' as const, severity_level: 2 as const, change: null }] }
+    const steady = some.map((s) => (s.item_id === 'air:IN' ? { ...s, change: null } : s))
+    expect(headlineOf(steady, airSteady, ed.run)).toBe('Fires flare in Chhattisgarh as air stays very poor in Panipat.')
+    // Air that turned is a move too: the tie goes to the category order, air first.
+    const airUp = { ...w, rows: [...w.rows.filter((r) => r.item_id !== 'air:IN'), { run_id: 22, item_id: 'air:IN', category: 'air' as const, status: 'open' as const, severity_level: 1 as const, change: null }] }
+    expect(headlineOf(some, airUp, ed.run)).toBe('Air turns very poor in Panipat as fires flare in Chhattisgarh.')
+  })
+
+  it('a record with no change since yesterday surges; without a record it runs above normal', () => {
+    const [ed, w] = fixtures[25]
+    const only = ed.snapshots.filter((s) => s.item_id === 'fire:chhattisgarh')
+    const steady = { ...w, rows: [...w.rows.filter((r) => !(r.item_id === 'fire:chhattisgarh' && r.change === 'opened')), { run_id: 22, item_id: 'fire:chhattisgarh', category: 'fire' as const, status: 'open' as const, severity_level: 2 as const, change: null }] }
+    expect(headlineOf(only, steady, ed.run)).toBe('Fires surge in Chhattisgarh.')
+    const noRecord = only.map((s) => ({ ...s, figures: { ...s.figures, norm_max_daily_events: 400 } }))
+    expect(headlineOf(noRecord, steady, ed.run)).toBe('Fires run above normal in Chhattisgarh.')
+  })
+
+  it('names at most two places, and drops the second event when it would not fit', () => {
+    const [ed, w] = fixtures[25]
+    const h = headlineOf(ed.snapshots, w, ed.run)
+    expect(h).toBe('Cyclone Arnab holds at red alert as fires flare in Chhattisgarh.')
+    // Three places would be too many: air names Panipat, fires would name two states.
+    const two = ed.snapshots.filter((s) => ['air:IN', 'fire:chhattisgarh', 'fire:telangana'].includes(s.item_id))
+    expect(headlineOf(two, w, ed.run).match(/Panipat|Chhattisgarh|Telangana/g)?.length ?? 0).toBeLessThanOrEqual(2)
+  })
+
+  it('a quiet edition: "A quiet day across India, with nothing above minor."', () => {
+    const [ed, w] = fixtures[25]
+    const calm = ed.snapshots.map((s) => ({ ...s, severity_level: 1 as const }))
+    expect(headlineOf(calm, w, ed.run)).toBe('A quiet day across India, with nothing above minor.')
   })
 })

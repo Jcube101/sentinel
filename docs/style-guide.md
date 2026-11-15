@@ -147,7 +147,7 @@ average").
 Never "top story", "on the desk", "in this report", "this edition", "the list" or "the
 report" in generated copy. The headline states the news directly; its position on the
 page shows it is the lead. Not "A severe cyclone is the top story today", but "Cyclone
-Arnab holds at red alert as fires spread across central India" (No. 25). Not
+Arnab holds at red alert as fires flare in Chhattisgarh" (No. 25). Not
 "nothing in this report is above minor", but "A quiet day across India, with nothing above
 minor". Closed items say what happened, not that they left a list: "Gujarat's fires have
 stayed down for two days".
@@ -198,26 +198,48 @@ the kicker and the Notes.
 
 ## The page headline
 
-One sentence: the lead item's news, then the next thing a reader should know, joined
-with "as". No self-reference.
-- "Cyclone Arnab holds at red alert as fires spread across central India." (No. 25)
-- "Fires spread to four states, led by a spike in Gujarat." (No. 17)
-- "A major earthquake strikes 350 km outside India as air turns very poor in three
-  cities." (No. 14)
-- "Cyclone Arnab holds at red alert as fires ease across central India." (No. 26, had its
-  fire day been complete)
+The test: would a desk editor at The Hindu print it as written? One main event, and
+optionally a second, joined by "as" (or a semicolon). About twelve words at most; when two
+events do not fit in twelve, the second is dropped, never squeezed. The headline says what
+happened; what is new since yesterday belongs in Since yesterday, not here.
 
-The lead is the first item (ranked by level, then cyclone, flood, earthquake, air, fire).
-Its verb comes from the change since a day earlier: a cyclone or flood "holds at", "rises
-to", "eases to" or "is back on" its alert colour; air "turns" or "eases to" a band; a
-quake "strikes". Several fire states are one clause: "fires spread …", "fires ease …",
-"fires run above normal …" ("far above normal" only with a record), led by the roundup's
-angle when fires lead. The sea is named ("in the Bay of Bengal") only when the item's
-mapped area is centred 150 km or more out at sea. Fire regions come from where the states
-are: one region ("across northern India"); states clustered round the middle of the
-country ("across central India"); two regions ("across western and southern India");
-otherwise a count ("in four states"). When nothing is above Level 1: "A quiet day across
-India, with nothing above minor."
+Rules:
+1. **One main event, optionally a second of another kind.** Never a third. Clauses are not
+   stacked: no appended "led by …" or "now including …" tail.
+2. **A strong verb,** the one the change since a day earlier supports: fires "flare"
+   (new or back) or "climb" (a level up), "ease" (fell back), "surge" (no change, but a
+   record for the season), "run above normal" (no change); air "turns" a band (moved up), "eases to" one, or "stays" in one; a storm
+   "strengthens", "weakens", "crosses the Andhra coast" (landfall, with "and weakens" once
+   its wind is below its peak), or "holds at red alert" when nothing moved; a quake
+   "strikes". No "is" where a verb will do.
+3. **No bookkeeping words,** ever: "one of them new", "both new", "now including", "led by",
+   "on the desk", "top story", "spreading". That is the desk talking about itself, and it
+   is Since yesterday's job (see also No self-reference).
+4. **Name at most two places,** counting states, cities, coasts and seas. A region ("across
+   central India") counts as one, a bare count ("in four states", "in eight cities") as
+   none. A second event that would add a third place is dropped; so is one that would take the
+   headline past twelve words, and the next event in line is tried instead.
+5. **The lead** is the event with the highest level; among equals, the one that moved since
+   yesterday; then category order (cyclone, flood, earthquake, air, fire). Several fire
+   states are one event: those that rose are named ("Fires flare in Gujarat"); if more fell
+   back than rose, on a complete day, the clause is "Fires ease across central India";
+   otherwise "Fires run above normal in Gujarat and Assam".
+6. **Fire regions** come from where the states are: one or two states by name; one region
+   ("across northern India"); states clustered round the middle of the country ("across
+   central India"); two regions ("across western and southern India"); otherwise a count
+   ("in four states"). The sea is named ("in the Bay of Bengal") only for a storm that has
+   not crossed, and only when its mapped area is centred 150 km or more out at sea.
+7. When nothing is above Level 1: "A quiet day across India, with nothing above minor."
+
+Examples (the tests hold them):
+- "Cyclone Arnab crosses the Andhra coast and weakens."
+- "Fires flare in Chhattisgarh as air stays very poor in Panipat."
+- "Air turns very poor in Panipat as fires flare in Chhattisgarh."
+- "Cyclone Arnab holds at red alert as fires flare in Chhattisgarh." (No. 25)
+- "Fires flare in four states." (No. 17)
+- "A major earthquake strikes 350 km outside India." (No. 14; the air clause would take it
+  to fifteen words)
+- "A quiet day across India, with nothing above minor."
 
 ## Where things are
 

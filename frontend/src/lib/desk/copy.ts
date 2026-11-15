@@ -768,92 +768,156 @@ function itemClause(e: DeskEntry): string {
 
 const emptyCtx: CopyContext = { editionAt: new Date(0).toISOString(), since: null, fires: [], ownFires: [], scale: SCALE }
 
-/** How the fire states moved since the edition a day earlier: more, fewer, the same, or unknown. */
-function fireTrend(ctx: CopyContext): 'more' | 'fewer' | 'same' | null {
-  const before = firesBefore(ctx)
-  if (before === null) return null
-  return ctx.fires.length > before ? 'more' : ctx.fires.length < before ? 'fewer' : 'same'
+// A headline is one main event, optionally a second after "as" (docs/style-guide.md, The page
+// headline): about twelve words, a strong verb, at most two places named, nothing about the
+// desk's own bookkeeping. What is new since yesterday belongs in Since yesterday.
+
+/** The most words a headline may run to before its second event is dropped. */
+const HEADLINE_WORDS = 12
+/** The most places a headline may name. */
+const HEADLINE_PLACES = 2
+
+/** One thing worth a headline: its clause (no capital, no full stop), the places it names, how big and whether it moved. */
+interface HeadEvent {
+  category: Category
+  level: number
+  /** Something changed since the edition a day earlier. */
+  moved: boolean
+  text: string
+  places: number
 }
 
-/** The fire states as one clause, mid-sentence: "fires ease across central India", "fires spread to four states". */
-function firesClause(ctx: CopyContext, withAngle: boolean): string {
-  const eased = fireEasing(ctx)
-  if (eased) return `fires ease ${whereStates(eased).inText}`
-  const where = whereStates(ctx.fires.map(stateName))
-  const trend = fireTrend(ctx)
-  // Intensity matches the verdict against past years: "far" only when a state beat its busiest day.
-  const record = ctx.fires.some((e) => stateFacts(e, ctx).record === 'above')
-  const clause =
-    trend === 'more'
-      ? `fires spread ${where.spreadText}`
-      : trend === 'fewer'
-        ? `fires ease but stay above normal ${where.inText}`
-        : `fires run ${record ? 'far ' : ''}above normal ${where.inText}`
-  if (!withAngle) return clause
-  const angle = fireAngle(ctx.fires, ctx, false)
-  return angle.kind === 'spreading' ? clause : `${clause}, ${angleSuffix(angle)}`
+const COAST_WORDS: Record<string, string> = { 'Andhra Pradesh': 'Andhra', 'West Bengal': 'Bengal' }
+
+const wordCount = (s: string) => s.split(/\s+/).filter(Boolean).length
+
+/** How many places a whereStates text names: the states themselves (one or two), a region as one, a bare count as none. */
+function placesIn(where: string, states: number): number {
+  if (states <= 2) return states
+  return /^across /.test(where) ? 1 : 0
 }
 
-/** "holds at red alert", "rises to red alert": the move since yesterday, if the comparison says. */
-function alertVerb(e: DeskEntry, ctx: CopyContext, colour: string): string {
-  const move = ctx.since?.byItem.get(e.key)
-  if (move?.kind === 'escalated') return `rises to ${colour} alert`
-  if (move?.kind === 'deescalated') return `eases to ${colour} alert`
-  if (move?.kind === 'reopened') return `is back on ${colour} alert`
-  if (!move && ctx.since?.ref && ctx.since.refLevels.has(e.key)) return `holds at ${colour} alert`
-  return `is on ${colour} alert`
-}
-
-/** An item as a headline clause, mid-sentence: the news, with a verb (style guide, The page headline). */
-function headClause(e: DeskEntry, ctx: CopyContext): string {
+/** A cyclone as a clause: "Cyclone Arnab crosses the Andhra coast and weakens". */
+function cycloneEvent(e: DeskEntry, ctx: CopyContext): HeadEvent {
   const f = e.figures
-  switch (e.category) {
-    case 'cyclone':
-    case 'flood': {
-      const colour = String(f.episode_alert_level ?? f.alert_level ?? '').toLowerCase()
-      const name = e.category === 'cyclone' ? cycloneName(e.title) : floodName(e)
-      // Name the sea only when the mapped area is centred well out at sea.
-      const place = e.coords ? placeOf(e.coords[0], e.coords[1]) : null
-      const sea = place?.sea && place.km >= 150 ? ` in ${place.sea}` : ''
-      return `${midName(name)} ${alertVerb(e, ctx, colour)}${sea}`
-    }
-    case 'earthquake':
-      return e.members.length > 0
-        ? `${numberWord(e.members.length)} small earthquakes strike near India's borders`
-        : `a ${quakeStrength(f.magnitude ?? e.strength)} earthquake strikes ${quakeWhere(e)}`
-    case 'air': {
-      const a = airWorst(e)
-      if (!a) return 'air is poor'
-      const move = ctx.since?.byItem.get(e.key)
-      if (move?.kind === 'escalated' || move?.kind === 'new' || move?.kind === 'reopened') return `air turns ${a.band} in ${a.where}`
-      if (move?.kind === 'deescalated') return `air eases to ${a.band} in ${a.where}`
-      return `air is ${a.band} in ${a.where}`
-    }
-    case 'fire':
-      if (e.members.length > 0) {
-        const above = e.members.filter((x) => x.level >= 2)
-        return above.length === 1 ? stateTitle(above[0], ctx) : firesClause(ctx, false)
-      }
-      return stateTitle(e, ctx)
+  const name = cycloneName(e.title)
+  const move = ctx.since?.byItem.get(e.key)
+  const w = cycloneWind(f)
+  const land = f.landfall ?? null
+  const fading = weakened(w) || move?.kind === 'deescalated'
+  let text: string
+  let places = 0
+  if (land) {
+    if (land.state) {
+      text = `${name} crosses the ${COAST_WORDS[land.state] ?? land.state} coast`
+      places = 1
+    } else text = `${name} makes landfall`
+    if (fading) text += ' and weakens'
+  } else if (fading) text = `${name} weakens`
+  else if (move?.kind === 'escalated' || move?.kind === 'new' || move?.kind === 'reopened') text = `${name} strengthens`
+  else {
+    const colour = String(f.episode_alert_level ?? f.alert_level ?? '').toLowerCase()
+    text = `${name} holds at ${colour} alert`
   }
+  // Only a storm at sea gets the sea; one that has crossed already has its coast.
+  const place = !land && e.coords ? placeOf(e.coords[0], e.coords[1]) : null
+  if (place?.sea && place.km >= 150) {
+    text += ` in ${place.sea}`
+    places += 1
+  }
+  return { category: e.category, level: e.level, moved: !!move && move.kind !== 'closed', text, places }
+}
+
+/** The fire states as one event: "fires flare in Gujarat", "fires ease across central India". */
+function fireEvent(ctx: CopyContext): HeadEvent | null {
+  const eased = fireEasing(ctx)
+  if (ctx.fires.length === 0 && !eased) return null
+  const moves = (ctx.since?.moves ?? []).filter((m) => m.category === 'fire')
+  const stateOf = (m: Movement) => String(m.snapshot.figures?.state ?? m.itemId)
+  const up = moves.filter((m) => m.kind === 'new' || m.kind === 'reopened' || m.kind === 'escalated')
+  const named = (verb: string, states: string[]): HeadEvent => {
+    const where = whereStates(states).inText
+    return {
+      category: 'fire',
+      level: Math.max(1, ...ctx.fires.map((x) => x.level)),
+      moved: moves.length > 0,
+      text: `fires ${verb} ${where}`,
+      places: placesIn(where, states.length),
+    }
+  }
+  if (eased) return named('ease', eased)
+  if (up.length > 0) return named(up.some((m) => m.kind !== 'escalated') ? 'flare' : 'climb', up.map(stateOf))
+  // No change since yesterday: a record for the season "surges"; anything else runs above normal.
+  const record = ctx.fires.some((x) => stateFacts(x, ctx).record === 'above')
+  return named(record ? 'surge' : 'run above normal', ctx.fires.map(stateName))
+}
+
+/** The air item as a clause: "air turns very poor in eight cities", "air stays poor in Panipat". */
+function airEvent(e: DeskEntry, ctx: CopyContext): HeadEvent {
+  const a = airWorst(e)
+  const move = ctx.since?.byItem.get(e.key)
+  let text = 'air is poor'
+  if (a) {
+    if (move?.kind === 'escalated' || move?.kind === 'new' || move?.kind === 'reopened') text = `air turns ${a.band} in ${a.where}`
+    else if (move?.kind === 'deescalated') text = `air eases to ${a.band} in ${a.where}`
+    else text = `air stays ${a.band} in ${a.where}`
+  }
+  return { category: 'air', level: e.level, moved: !!move && move.kind !== 'closed', text, places: a && !/cities$/.test(a.where) ? 1 : 0 }
+}
+
+/** An earthquake, or the small ones together, as a clause. */
+function quakeEvent(e: DeskEntry, ctx: CopyContext): HeadEvent {
+  const move = ctx.since?.byItem.get(e.key)
+  const f = e.figures
+  const text =
+    e.members.length > 0
+      ? `${numberWord(e.members.length)} small earthquakes strike near India's borders`
+      : `a ${quakeStrength(f.magnitude ?? e.strength)} earthquake strikes ${quakeWhere(e)}`
+  return { category: 'earthquake', level: e.level, moved: !!move && move.kind !== 'closed', text, places: /near (?!India)/.test(text) ? 1 : 0 }
+}
+
+/** A flood as a clause: "flooding in Assam is on an orange alert". */
+function floodEvent(e: DeskEntry, ctx: CopyContext): HeadEvent {
+  const move = ctx.since?.byItem.get(e.key)
+  const colour = String(e.figures.episode_alert_level ?? e.figures.alert_level ?? '').toLowerCase()
+  const verb = move?.kind === 'escalated' ? 'worsens' : move?.kind === 'deescalated' ? 'eases' : 'is on'
+  const text = verb === 'is on' ? `${midName(floodName(e))} is on ${/^[aeiou]/.test(colour) ? 'an' : 'a'} ${colour} alert` : `${midName(floodName(e))} ${verb}`
+  return { category: 'flood', level: e.level, moved: !!move && move.kind !== 'closed', text, places: 1 }
+}
+
+/** Every event of the edition that is worth a headline, most newsworthy first: level, then what moved, then category order. */
+function headEvents(entries: DeskEntry[], ctx: CopyContext): HeadEvent[] {
+  const out: HeadEvent[] = []
+  for (const e of entries) {
+    if (e.level < 2 || e.category === 'fire') continue
+    if (e.category === 'cyclone') out.push(cycloneEvent(e, ctx))
+    else if (e.category === 'flood') out.push(floodEvent(e, ctx))
+    else if (e.category === 'earthquake') out.push(quakeEvent(e, ctx))
+    else if (e.category === 'air') out.push(airEvent(e, ctx))
+  }
+  const fires = fireEvent(ctx)
+  if (fires) out.push(fires)
+  const rank = (c: Category) => CATEGORY_ORDER.indexOf(c)
+  return out.sort((a, b) => b.level - a.level || Number(b.moved) - Number(a.moved) || rank(a.category) - rank(b.category))
 }
 
 /**
- * The edition's headline: the lead item's news, then the next thing a reader
- * should know ("… as fires ease across central India"). Never about the
- * report itself (style guide, No self-reference).
+ * The edition's headline: the main event, then optionally a second of another kind after
+ * "as", if it fits in about twelve words and two places. Never about the report itself or
+ * its bookkeeping (style guide, The page headline).
  */
 export function pageHeadline(entries: DeskEntry[], ctx: CopyContext): string {
-  if (entries.length === 0 || entries[0].level <= 1) return quietHeadline(1)
-  const lead = entries[0]
-  if (lead.category === 'fire' && ctx.fires.length >= 2) {
-    const other = entries.find((e) => e.category !== 'fire' && e.level >= 2)
-    return `${cap(firesClause(ctx, true))}${other ? `, as ${headClause(other, ctx)}` : ''}.`
+  const events = headEvents(entries, ctx)
+  if (events.length === 0 || events[0].level < 2) return quietHeadline(1)
+  const [lead, ...rest] = events
+  const one = cap(lead.text)
+  // The first other event that fits in the words and places left; those that don't are dropped, not squeezed.
+  for (const second of rest) {
+    if (second.category === lead.category || lead.places + second.places > HEADLINE_PLACES) continue
+    const both = `${one} as ${second.text}`
+    if (wordCount(both) <= HEADLINE_WORDS) return `${both}.`
   }
-  const head = cap(headClause(lead, ctx))
-  if (lead.category !== 'fire' && (ctx.fires.length >= 2 || fireEasing(ctx))) return `${head} as ${firesClause(ctx, false)}.`
-  const other = entries.find((e) => e !== lead && e.level >= 2)
-  return other ? `${head} as ${headClause(other, ctx)}.` : `${head}.`
+  return `${one}.`
 }
 
 // --- the quiet desk ------------------------------------------------------------------
