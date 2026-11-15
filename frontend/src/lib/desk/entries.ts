@@ -305,7 +305,13 @@ export function deskEntries(snapshots: Snapshot[], moves?: Map<string, Movement>
   const own = fires.filter((e) => e.level >= 3)
   const grouped = fires.filter((e) => e.level < 3)
   if (grouped.length >= 2) {
-    entries = [...entries.filter((e) => !grouped.includes(e)), fireRoundup(grouped, own.length)]
+    // States that are all back near normal get a roundup ("Fires ease …") only in the first edition
+    // that reports it; after that they have no row of their own (Since yesterday has the move).
+    const calm = grouped.every((e) => e.level < 2)
+    const fresh = grouped.some((e) => e.runChange === 'deescalated')
+    entries = calm && !fresh
+      ? entries.filter((e) => !grouped.includes(e))
+      : [...entries.filter((e) => !grouped.includes(e)), fireRoundup(grouped, own.length)]
   }
   return entries.sort(compareEntries)
 }

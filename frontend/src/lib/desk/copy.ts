@@ -110,9 +110,12 @@ interface StateFacts {
   rankShared: boolean
 }
 
-/** How many years the fire baseline covers: 2 for "2024-2025". */
-function baselineYears(e: DeskEntry): number {
-  const [a, b] = String(e.figures.norm_years ?? SCALE.fire.baselineYears)
+/**
+ * How many years the fire baseline covers: 2 for "2024-2025", 3 for "2023-2025". From the item's own
+ * figures (norm_years), else the years in the edition's stored config: never a fixed "two".
+ */
+function baselineYears(e: DeskEntry, scale: Scale): number {
+  const [a, b] = String(e.figures.norm_years ?? scale.fire.baselineYears)
     .split(/[-–]/)
     .map(Number)
   return b ? b - a + 1 : 1
@@ -132,7 +135,7 @@ function stateFacts(e: DeskEntry, ctx: CopyContext): StateFacts {
     r,
     counted: r !== null && n >= minFireEvents(f, ctx.scale),
     record: max === null ? null : n > max ? 'above' : n === max ? 'equal' : 'within',
-    span: baselineYears(e),
+    span: baselineYears(e, ctx.scale),
     rank: typeof f.state_rank === 'number' && n > 0 ? f.state_rank : null,
     rankShared: f.rank_shared === true,
   }
@@ -347,8 +350,8 @@ function roundupCopy(e: DeskEntry, ctx: CopyContext): ItemCopy {
   if (above.length === 0) {
     const names = e.members.map(stateName)
     return {
-      // "fall back" once, in the edition whose own run lowered a state; after that where they stand.
-      title: `Fires ${e.members.some((m) => m.runChange === 'deescalated') ? 'fall back toward' : 'stay near'} normal in ${counted_(names.length, 'state', 'states')}`,
+      // Only built in the edition whose own run lowered a state (entries.ts drops it after that).
+      title: `Fires ease ${whereStates(names).inText}`,
       standfirst: `${listText(names)} ${names.length === 1 ? 'has' : 'have'} fallen back toward normal.`,
     }
   }
@@ -363,7 +366,7 @@ function roundupCopy(e: DeskEntry, ctx: CopyContext): ItemCopy {
   const record = rising.some((x) => stateFacts(x, ctx).record === 'above' && stateFacts(x, ctx).counted)
   const verb = record ? 'surge' : rising.length > 0 ? 'flare' : 'stay high'
   const title = also
-    ? `Fires also ${verb} in ${counted_(above.length, 'more state', 'more states')}`
+    ? `Fires ${verb} in ${counted_(above.length, 'more state', 'more states')}`
     : `Fires ${verb} in ${counted_(above.length, 'state', 'states')}`
 
   // The standout: the state the angle names, else the furthest above normal.

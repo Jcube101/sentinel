@@ -257,7 +257,7 @@ describe('fire roundup rules', () => {
     const ctx = copyContext(entries, null, ed25.run)
     expect(entries.map((e) => e.key)).toEqual(['cyclone:GDACS-TC-1001345', 'fire:telangana', 'air:IN', 'fire:roundup'])
     expect(itemCopy(entries[1], ctx).title).toBe("Telangana's fires run at six times the usual")
-    expect(itemCopy(entries[3], ctx).title).toBe('Fires also stay high in four more states')
+    expect(itemCopy(entries[3], ctx).title).toBe('Fires stay high in four more states')
   })
 
   it('intensity words match the verdict: no "well/far above normal" or × in titles; at most one multiple in a title', () => {
@@ -442,5 +442,41 @@ describe('the page headline rules (docs/style-guide.md, The page headline)', () 
     const [ed, w] = fixtures[25]
     const calm = ed.snapshots.map((s) => ({ ...s, severity_level: 1 as const }))
     expect(headlineOf(calm, w, ed.run)).toBe('A quiet day across India, with nothing above minor.')
+  })
+})
+
+describe('roundup rules from 15 Nov 2026', () => {
+  const [ed25] = fixtures[25]
+  const [ed26, w26_] = fixtures[26]
+
+  it('"N-year high" counts the years the norm covers, from the edition itself, never a fixed two', () => {
+    const titleOf = (patch: (s: EditionData['snapshots'][number]) => EditionData['snapshots'][number], run = ed25.run) => {
+      const snaps = ed25.snapshots.filter((s) => s.item_id === 'fire:chhattisgarh').map(patch)
+      const entries = deskEntries(snaps, new Map())
+      return itemCopy(entries[0], copyContext(entries, null, run)).title
+    }
+    expect(titleOf((s) => s)).toMatch(/spike to a two-year high for the season/)                                    // norm_years 2024-2025
+    expect(titleOf((s) => ({ ...s, figures: { ...s.figures, norm_years: '2023-2025' } }))).toMatch(/a three-year high/)
+    // Without norm_years in the figures: the years in the edition's own stored config.
+    const noYears = (s: EditionData['snapshots'][number]) => ({ ...s, figures: { ...s.figures, norm_years: undefined } })
+    const config = { fire: { baseline: { years: [2023, 2024, 2025] } } } as unknown as typeof ed25.run.severity_config
+    expect(titleOf(noYears, { ...ed25.run, severity_config: config })).toMatch(/a three-year high/)
+    const six = { fire: { baseline: { years: [2020, 2021, 2022, 2023, 2024, 2025] } } } as unknown as typeof ed25.run.severity_config
+    expect(titleOf(noYears, { ...ed26.run, severity_config: six })).toMatch(/a six-year high/)
+  })
+
+  it('states all back near normal: "Fires ease …" in the first edition only, then no roundup', () => {
+    const calm = (change: 'deescalated' | null) =>
+      ed26.snapshots.filter((s) => s.category === 'fire').map((s) => ({ ...s, severity_level: 1 as const, change }))
+    const first = deskEntries(calm('deescalated'), new Map())
+    const roundup = first.find((e) => e.key === 'fire:roundup')!
+    expect(itemCopy(roundup, copyContext(first, null, ed26.run)).title).toMatch(/^Fires ease (across|in) /)
+    // The next edition: the same states, no change in its own run: no row for them at all.
+    const later = deskEntries(calm(null), new Map())
+    expect(later.some((e) => e.category === 'fire')).toBe(false)
+    // A state still above normal keeps the roundup in every edition.
+    const mixed = ed26.snapshots.filter((s) => s.category === 'fire').map((s, i) => ({ ...s, severity_level: (i === 1 ? 2 : 1) as 1 | 2, change: null }))
+    expect(deskEntries(mixed, new Map()).some((e) => e.category === 'fire')).toBe(true)
+    void w26_
   })
 })

@@ -278,9 +278,14 @@ above normal they are.
   headline's rules (one-time verbs once, no bookkeeping): in the first edition that reports a
   rise, "Fires flare in five states", or "Fires surge in five states" when the rise beats a
   state's busiest day for the season; in every edition after, "Fires stay high in five
-  states". Next to a state's own story: "Fires also stay high in four more states". Never
+  states". Next to a state's own story: "Fires stay high in four more states" (never "also" beside "more"). Never
   "led by …", "now including …", "up from four" or "the most in …". Which state stands out is
   the standfirst's first sentence; what is new since yesterday is Since yesterday's.
+  **States all back near normal:** the roundup reads "Fires ease across central India" in the
+  first edition that reports it and is not shown after that: those states appear in Since
+  yesterday or drop off. **"N-year high"** (and "in N years") always counts the years the norm
+  covers, from the item's `norm_years` or the years in the edition's own config
+  (2023–2025 is "three-year"); it is never a fixed "two".
 - **Standfirst,** two or three sentences, only about the states still above normal: the
   standout in one sentence, first: the state with a record for the season, else the one
   new since a day earlier, else the furthest above normal,
@@ -294,7 +299,7 @@ above normal they are.
   with its level squares (state, fires, usual a day, against past years: "busiest in 2
   years" or "within range"). A held state shows its dashed square; the Notes explain it.
 - **Own story:** a state gets its own story if it reaches Level 3 or above, or is the only
-  fire state; the roundup then covers the rest ("Fires also stay high in four more
+  fire state; the roundup then covers the rest ("Fires stay high in four more
   states"). A record doesn't split a state out: it leads the roundup instead.
 
 ## Per category
