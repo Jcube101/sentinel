@@ -45,13 +45,17 @@ export interface Scale {
     level4MinFrpMw: number
     level4NearKm: number
     level4MinPopulation: number
-    /** The highest level satellite counts can set for now; null before the cap (editions 1-2). */
-    calibrationCap: number | null
+    /** The highest level a state's fire count can set for now; null when uncapped (editions 1-2, or no cap). The old single calibration_cap in earlier editions' configs. */
+    ratioLevelCap: number | null
+    /** The highest level a large fire near a town can set for now (Level 4 when uncapped); null when uncapped. */
+    nearPeopleCap: number | null
+    /** Hotspots a large fire needs to count as Level 4 (1 before 15 Nov 2026). */
+    level4MinHotspots: number
     baselineYears: string
   }
 }
 
-/** The current rules. */
+/** The rules before the 15 Nov 2026 changes: the fallback for fixtures and for an edition without a stored config. Real editions read their own config (scaleFrom). */
 export const SCALE = {
   fromEdition: 2,
   quake: {
@@ -79,12 +83,19 @@ export const SCALE = {
     level4MinFrpMw: 100,
     level4NearKm: 10,
     level4MinPopulation: 100_000,
-    calibrationCap: 2,
+    ratioLevelCap: 2,
+    nearPeopleCap: 2,
+    level4MinHotspots: 1,
     baselineYears: '2024–2025',
   },
 } satisfies Scale
 
 type Obj = Record<string, unknown>
+
+function capOf(f: Obj, key: string): number | null {
+  const v = typeof f[key] === 'number' ? f[key] : f.calibration_cap
+  return typeof v === 'number' && v < 4 ? v : null
+}
 
 function obj(v: unknown): Obj | null {
   return v !== null && typeof v === 'object' && !Array.isArray(v) ? (v as Obj) : null
@@ -149,7 +160,10 @@ export function scaleFrom(config: unknown): Scale {
       level4MinFrpMw: num(f, 'level_4_min_frp_mw', SCALE.fire.level4MinFrpMw),
       level4NearKm: num(f, 'level_4_near_km', SCALE.fire.level4NearKm),
       level4MinPopulation: num(f, 'level_4_min_population', SCALE.fire.level4MinPopulation),
-      calibrationCap: f ? (typeof f.calibration_cap === 'number' ? f.calibration_cap : null) : SCALE.fire.calibrationCap,
+      // 15 Nov 2026 split calibration_cap in two; earlier editions' configs only have the old one.
+      ratioLevelCap: f ? capOf(f, 'ratio_level_cap') : SCALE.fire.ratioLevelCap,
+      nearPeopleCap: f ? capOf(f, 'near_people_cap') : SCALE.fire.nearPeopleCap,
+      level4MinHotspots: num(f, 'level_4_min_hotspots', 1),
       baselineYears:
         Array.isArray(years) && years.length > 0 && years.every((y) => typeof y === 'number')
           ? years.length === 1

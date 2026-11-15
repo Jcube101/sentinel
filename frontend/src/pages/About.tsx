@@ -72,17 +72,24 @@ export default function About() {
               NASA's fire satellites spot the heat of fires as they pass over India. Sentinel groups nearby detections into fires and counts
               them per state for each full day, then compares the count with the same time of year in {f.baselineYears}.{' '}
               {f.level2MinRatio === 2 ? 'Twice' : `${f.level2MinRatio} times`} the usual count is Level 2,{' '}
-              {numberWord(f.level3MinRatio)} times is Level 3, and so is a forest-fire alert from the global disaster monitors. A
-              large fire within {f.level4NearKm} km of a town of {pop} people or more is Level 4. Fewer than {f.minFireEvents} fires in a day
-              are too few to compare.
-              {f.calibrationCap !== null && f.calibrationCap < 4 && (
+              {numberWord(f.level3MinRatio)} times is Level 3, and so is an orange or red forest-fire alert from the global disaster
+              monitors. A large fire{f.level4MinHotspots >= 2 ? ` (${numberWord(f.level4MinHotspots)} or more detections)` : ''} within{' '}
+              {f.level4NearKm} km of a town of {pop} people or more is Level 4. Fewer than {f.minFireEvents} fires in a day are too few to
+              compare.
+              {(f.ratioLevelCap !== null && f.ratioLevelCap < 3) || f.nearPeopleCap !== null ? (
                 <>
                   {' '}
-                  For now, levels from satellite counts stop at Level {f.calibrationCap}, until we've checked live counts against past years; a
-                  dashed square shows the level a held state would have. Fire states are reported together in one story, unless a state reaches
-                  Level 3 or is the only one.
+                  For now,{' '}
+                  {[
+                    f.ratioLevelCap !== null && f.ratioLevelCap < 3 ? `a state's fire count stops at Level ${f.ratioLevelCap}` : null,
+                    f.nearPeopleCap !== null ? `a large fire near a town stops at Level ${f.nearPeopleCap}` : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' and ')}
+                  , until we've checked live counts against past years; a dashed square shows the level a held state would have.
                 </>
-              )}
+              ) : null}{' '}
+              Fire states are reported together in one story, unless a state reaches Level 3 or is the only one.
             </Term>
             <Term term="Air">
               India's air quality index, from the Central Pollution Control Board's live feed. A city is poor from {aqi.poorAbove + 1} (Level

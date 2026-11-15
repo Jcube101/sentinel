@@ -34,7 +34,7 @@ describe('the scale each edition ran with (P3)', () => {
 
   it('edition 2 ran the first fire rules: 1.25 and 2 times usual, 10 fires, no cap', () => {
     const s = scaleFrom(configs['2'])
-    expect(s.fire).toMatchObject({ level2MinRatio: 1.25, level3MinRatio: 2, minFireEvents: 10, calibrationCap: null })
+    expect(s.fire).toMatchObject({ level2MinRatio: 1.25, level3MinRatio: 2, minFireEvents: 10, ratioLevelCap: null, nearPeopleCap: null })
     expect(scaleRows(s).find((r) => r.name === 'Fire')!.cells.slice(0, 3)).toEqual([
       'under 1.25 times usual',
       '1.25–2 times usual',
@@ -322,5 +322,15 @@ describe('a cyclone’s wind now, its peak and its close (edition 32 on)', () =>
     })
     const rows = itemHistory([{ ...snapshot, taken_at: '2026-10-30T09:00:00Z' } as TimedSnapshot])
     expect(rows[0].note).toBe('Cyclone Arnab weakens after crossing the Andhra Pradesh coast')
+  })
+})
+
+describe('the fire caps (15 Nov 2026 split calibration_cap in two)', () => {
+  const fire = (f: Record<string, unknown>) => scaleFrom({ fire: f } as never).fire
+  it('reads the two new keys, and the old single one for earlier editions', () => {
+    expect(fire({ calibration_cap: 2 })).toMatchObject({ ratioLevelCap: 2, nearPeopleCap: 2 })
+    expect(fire({ ratio_level_cap: 3, near_people_cap: 4 })).toMatchObject({ ratioLevelCap: 3, nearPeopleCap: null })   // 4 = no cap
+    expect(fire({ ratio_level_cap: 2, near_people_cap: 4, level_4_min_hotspots: 2 })).toMatchObject({ ratioLevelCap: 2, nearPeopleCap: null, level4MinHotspots: 2 })
+    expect(fire({})).toMatchObject({ ratioLevelCap: null, nearPeopleCap: null, level4MinHotspots: 1 })
   })
 })
