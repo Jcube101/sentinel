@@ -262,12 +262,14 @@ Rules:
    central India") counts as one, a bare count ("in four states", "in eight cities") as
    none. A second event that would add a third place is dropped; so is one that would take the
    headline past twelve words, and the next event in line is tried instead.
-5. **The lead is the most newsworthy event, not the highest category.** In order: a record
-   (said once); a change said for the first time (a one-time verb, easing included: "Fires
-   ease back to seasonal levels …", "Air turns very poor …"); a state that continues ("holds",
-   "stays"). Within the same kind, the higher level, then what moved since yesterday, then
-   category order (cyclone, flood, earthquake, air, fire) breaks the tie. When two events
-   don't fit, the more newsworthy one is kept. The fire event is
+5. **The lead.** Level 3 and above lead by level: a Level 4 item always leads, even when it
+   only continues ("Cyclone Arnab holds at red alert"). Below Level 3 the most newsworthy
+   event leads, not the highest category. In order: a record (said once); a change said for
+   the first time (a one-time verb, easing included: "Fires ease back to seasonal levels …",
+   "Air turns very poor …"); continuing items, where a state "after record day" (same fire
+   day) outranks the others ("holds", "stays"). Within the same kind, the higher level, then
+   what moved since yesterday, then category order (cyclone, flood, earthquake, air, fire)
+   breaks the tie. When two events don't fit, the more newsworthy one is kept. The fire event is
    the fire states that are news (see Fire; a busy state within its usual range has no
    headline): "Fires climb in Gujarat for a third day, double the usual for late October";
    "Fires climb across western India, double the usual in Gujarat and Maharashtra"; "Fires

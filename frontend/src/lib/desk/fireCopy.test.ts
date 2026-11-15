@@ -84,10 +84,10 @@ function run(specs: Spec[], at = FIRST_SLOT, withHistory = true) {
   return { fires, entries, headline: pageHeadline(fireOnly, copyContext(fireOnly, since, { ...ed.run, started_at: at }, withHistory ? history(specs) : undefined)) }
 }
 
-/** The page headline with the cyclone and air of edition 25 beside the fire states. */
-function headlineWith(specs: Spec[], at = FIRST_SLOT, airChange: 'escalated' | null = null) {
+/** The page headline with the air (and, if asked, the red-alert cyclone) of edition 25 beside the fire states. */
+function headlineWith(specs: Spec[], at = FIRST_SLOT, airChange: 'escalated' | null = null, storm = false) {
   const others = ed.snapshots
-    .filter((s) => s.category !== 'fire')
+    .filter((s) => s.category !== 'fire' && (storm || s.category !== 'cyclone'))
     .map((s) => (s.category === 'air' ? { ...s, change: airChange } : { ...s, change: null }))
   const snaps = [...others, ...specs.map(snapshot)] as EditionData['snapshots']
   const noWindow: ChangeWindow = { ref: null, rows: [], closed: [] }
@@ -230,8 +230,16 @@ describe('fire history', () => {
 describe('headline priority: newsworthiness, not category', () => {
   const record: Spec = { state: 'Gujarat', n: 60, ratio: 2.0, max: 55, before: rising }
 
-  it('a record leads, ahead of a storm and air that only continue', () => {
+  it('a record leads, ahead of air that only continues', () => {
     expect(headlineWith([record])).toMatch(/^Gujarat sees its busiest late-October fire day in three years/)
+  })
+
+  it('Level 3 and up lead by level: a red-alert storm that only continues still leads a record', () => {
+    expect(headlineWith([record], FIRST_SLOT, null, true)).toMatch(/^Cyclone Arnab holds at red alert/)
+  })
+
+  it('a state after its record day outranks other continuing items, such as air', () => {
+    expect(headlineWith([record], LATER_SLOT)).toMatch(/^Fires stay above usual in Gujarat after record day/)
   })
 
   it('a continuing state does not beat air that turned in this edition', () => {

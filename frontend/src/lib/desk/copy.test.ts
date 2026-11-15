@@ -46,8 +46,8 @@ function item(n: number, key: string) {
 
 describe('edition 25 (Wed 28 Oct, 02:30 IST)', () => {
   it('page headline', () => {
-    // Newsworthiness, not category: air turning very poor in this edition's run outranks a storm that holds.
-    expect(edition(25).headline).toBe('Air turns very poor in Panipat.')
+    // A Level 4 item leads by level, even when it only continues.
+    expect(edition(25).headline).toBe('Cyclone Arnab holds at red alert.')
   })
 
   it('cyclone: no position, since a later edition moved it (P1)', () => {
@@ -122,8 +122,8 @@ describe('edition 26 (Wed 28 Oct, 14:30 IST): four fire states fall back on an i
     const since = sinceYesterday(complete, w)
     const entries = deskEntries(complete, since.byItem)
     const ctx = copyContext(entries, since, ed.run)
-    // Easing is said for the first time here (a move), the storm only continues: the move leads.
-    expect(pageHeadline(entries, ctx)).toBe('Fires ease across central India as Cyclone Arnab holds at red alert.')
+    // The red alert is Level 4 and leads by level; easing, said for the first time, follows.
+    expect(pageHeadline(entries, ctx)).toBe('Cyclone Arnab holds at red alert as fires ease across central India.')
     expect(itemCopy(entries.find((e) => e.key === 'fire:roundup')!, ctx)).toEqual({
       title: 'Fires ease back to seasonal levels across central India, Madhya Pradesh still above usual',
       standfirst:
@@ -431,7 +431,7 @@ describe('the page headline rules (docs/style-guide.md, The page headline)', () 
   it('names at most two places, and drops the second event when it would not fit', () => {
     const [ed, w] = fixtures[25]
     const h = headlineOf(ed.snapshots, w, ed.run)
-    expect(h).toBe('Air turns very poor in Panipat.')
+    expect(h).toBe('Cyclone Arnab holds at red alert.')
     // Three places would be too many: air names Panipat, fires would name two states.
     const two = ed.snapshots.filter((s) => ['air:IN', 'fire:chhattisgarh', 'fire:telangana'].includes(s.item_id)).map((s) => (s.category === 'fire' ? { ...s, change: 'opened' as const } : s))
     expect(headlineOf(two, w, ed.run).match(/Panipat|Chhattisgarh|Telangana/g)?.length ?? 0).toBeLessThanOrEqual(2)

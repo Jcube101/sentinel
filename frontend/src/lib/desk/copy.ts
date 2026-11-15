@@ -283,7 +283,8 @@ function stateClause(s: FireStory): Clause {
 
 /** How newsworthy a fire story is: 3 a record, 2 a move said for the first time (incl. easing), 1 a state that stays. */
 function storyTier(s: FireStory): number {
-  if (s.voice !== 'now') return 1
+  // A state that set a record earlier in the same fire day outranks the other continuing items.
+  if (s.voice !== 'now') return s.record || s.tie ? 1.5 : 1
   if (s.record || s.tie) return 3
   return s.spread || s.dir !== 'hold' ? 2 : 1
 }
@@ -302,7 +303,7 @@ function groupClause(stories: FireStory[]): { clause: Clause; places: number; ti
   if (records.length > 0) return lone(records[0])
   // The record was said in an earlier edition: the state that set it is still the one to name.
   const afterRecord = pool.filter((s) => s.record || s.tie)
-  if (afterRecord.length > 0) return lone(afterRecord[0])
+  if (afterRecord.length > 0) return { ...lone(afterRecord[0]), tier: 1.5 }
   const spreads = pool.filter((s) => s.spread && s.voice === 'now').sort((a, b) => b.f.districts - a.f.districts)
   if (spreads.length > 0) return lone(spreads[0])
   if (pool.length === 1) return lone(pool[0])
@@ -857,7 +858,7 @@ interface HeadEvent {
   /** Something changed since the edition a day earlier. */
   moved: boolean
   text: string
-  /** How newsworthy: 3 a record, 2 a change said for the first time (easing included), 1 a state that continues. */
+  /** How newsworthy: 3 a record, 2 a change said for the first time (easing included), 1.5 a state after its record day, 1 a state that continues. */
   tier: number
   /** The clause without its benchmark, when two events share a headline. */
   short?: string
@@ -988,7 +989,9 @@ function headEvents(entries: DeskEntry[], ctx: CopyContext): HeadEvent[] {
   const fires = fireEvent(ctx)
   if (fires) out.push(fires)
   const rank = (c: Category) => CATEGORY_ORDER.indexOf(c)
-  return out.sort((a, b) => b.tier - a.tier || b.level - a.level || Number(b.moved) - Number(a.moved) || rank(a.category) - rank(b.category))
+  // Level 3 and up lead by level; below that, newsworthiness (record, first-time change, continuing).
+  const top = (x: HeadEvent) => (x.level >= 3 ? x.level : 0)
+  return out.sort((a, b) => top(b) - top(a) || b.tier - a.tier || b.level - a.level || Number(b.moved) - Number(a.moved) || rank(a.category) - rank(b.category))
 }
 
 /**
