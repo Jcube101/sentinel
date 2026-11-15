@@ -176,7 +176,7 @@ describe('edition 19 (Mon 26 Oct, 02:30 IST, a failed run)', () => {
   it('the same roundup, dated Saturday: the figures are last known from No. 17', () => {
     expect(item(19, 'fire:roundup').standfirst).toMatch(/^Satellites picked up more fires in Gujarat on Saturday than on any late-October day in two years, across 14 districts\. /)
     // The record was said in No. 17; this later edition of the fire day says where the states stand.
-    expect(edition(19).headline).toBe('Fires stay above usual in four states.')
+    expect(edition(19).headline).toBe('Fires stay above usual in Gujarat after record day.')
   })
 })
 
@@ -473,9 +473,13 @@ describe('roundup rules from 15 Nov 2026', () => {
     // The next edition: the same states, no change in its own run: no row for them at all.
     const later = deskEntries(calm(null), new Map())
     expect(later.some((e) => e.category === 'fire')).toBe(false)
+    // Easing alone is a headline (a move said for the first time), never the quiet-day line.
+    const complete = calm('deescalated').map((s) => ({ ...s, figures: { ...s.figures, data_to: '2026-10-27T21:40:00+00:00' } }))
+    const since = sinceYesterday(complete, w26_)
+    const entries = deskEntries(complete, since.byItem)
+    expect(pageHeadline(entries, copyContext(entries, since, { ...ed26.run, started_at: '2026-10-28T09:00:00Z' }))).toBe('Fires ease back to seasonal levels across central India.')
     // A state still above normal keeps the roundup in every edition.
     const mixed = ed26.snapshots.filter((s) => s.category === 'fire').map((s, i) => ({ ...s, severity_level: (i === 1 ? 2 : 1) as 1 | 2, change: null }))
     expect(deskEntries(mixed, new Map()).some((e) => e.category === 'fire')).toBe(true)
-    void w26_
   })
 })

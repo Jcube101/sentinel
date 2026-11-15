@@ -300,6 +300,9 @@ function groupClause(stories: FireStory[]): { clause: Clause; places: number; ti
   const lone = (s: FireStory) => ({ clause: stateClause(s), places: 1, tier: storyTier(s) })
   const records = pool.filter((s) => (s.record || s.tie) && s.voice === 'now')
   if (records.length > 0) return lone(records[0])
+  // The record was said in an earlier edition: the state that set it is still the one to name.
+  const afterRecord = pool.filter((s) => s.record || s.tie)
+  if (afterRecord.length > 0) return lone(afterRecord[0])
   const spreads = pool.filter((s) => s.spread && s.voice === 'now').sort((a, b) => b.f.districts - a.f.districts)
   if (spreads.length > 0) return lone(spreads[0])
   if (pool.length === 1) return lone(pool[0])
@@ -995,7 +998,7 @@ function headEvents(entries: DeskEntry[], ctx: CopyContext): HeadEvent[] {
  */
 export function pageHeadline(entries: DeskEntry[], ctx: CopyContext): string {
   const events = headEvents(entries, ctx)
-  if (events.length === 0 || events[0].level < 2) return quietHeadline(1)
+  if (events.length === 0 || (events[0].level < 2 && events[0].tier < 2)) return quietHeadline(1)
   const [lead, ...rest] = events
   const one = cap(lead.text)
   const first = cap(lead.short ?? lead.text)
