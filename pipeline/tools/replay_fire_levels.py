@@ -90,8 +90,10 @@ def replay(days, cfg: dict, norms: dict, places) -> dict:
     open_per_day, busiest, level4 = [], [], []
     episodes, started = [], {}
     n_days = 0
+    by_day = []                    # (day, the states with an open item after that day's run)
+    l3_list = []                   # (day, state, firms level, fire events, ratio): the state-days at FIRMS level 3+
     l3_days = l4_days = 0          # state-days at FIRMS level 3 / 4, before any cap
-    closed_on, reopen_gaps = {}, []
+    closed_on, reopen_gaps, opened_on = {}, [], []
     for day, rows in days:
         n_days += 1
         now = datetime.combine(day + timedelta(days=1), time(9), timezone.utc)
@@ -102,6 +104,8 @@ def replay(days, cfg: dict, norms: dict, places) -> dict:
         for c in candidates:
             if c.figures["fire_events"]:
                 firms_days[c.place_name][c.figures["firms_level"]] += 1
+                if c.figures["firms_level"] >= 3:
+                    l3_list.append((day, c.place_name, c.figures["firms_level"], c.figures["fire_events"], c.figures.get("ratio_to_norm")))
                 l3_days += c.figures["firms_level"] >= 3
                 l4_days += c.figures["firms_level"] >= 4
             for big in c.figures["large_fires_near_people"][:1]:
@@ -109,6 +113,7 @@ def replay(days, cfg: dict, norms: dict, places) -> dict:
         for s in snapshots:
             state = s["figures"].get("state")
             if s["change"] in ("opened", "reopened"):
+                opened_on.append((day, state, s["change"]))
                 opened[state] += 1
                 started[state] = day
                 if state in closed_on:
@@ -120,10 +125,11 @@ def replay(days, cfg: dict, norms: dict, places) -> dict:
         days_open.update(now_open)
         open_per_day.append(len(now_open))
         busiest.append((len(now_open), day, now_open))
+        by_day.append((day, now_open))
     return {"days": n_days, "firms_days": firms_days, "opened": opened, "days_open": days_open,
             "open_per_day": open_per_day, "busiest": sorted(busiest, key=lambda b: (-b[0], b[1]))[:3],
             "level4": level4, "episodes": episodes, "l3_days": l3_days, "l4_days": l4_days,
-            "reopen_gaps": reopen_gaps}
+            "reopen_gaps": reopen_gaps, "by_day": by_day, "opened_on": opened_on, "l3_list": l3_list}
 
 
 def report(r: dict, cfg: dict, years: list[int]) -> None:
