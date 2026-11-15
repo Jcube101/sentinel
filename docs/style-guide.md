@@ -216,12 +216,8 @@ angle when fires lead. The sea is named ("in the Bay of Bengal") only when the i
 mapped area is centred 150 km or more out at sea. Fire regions come from where the states
 are: one region ("across northern India"); states clustered round the middle of the
 country ("across central India"); two regions ("across western and southern India");
-otherwise a count ("in four states"). **A state is named once:** when the fire clause
-already names its states (one or two: "in Gujarat and Madhya Pradesh"), the "new" angle only
-counts them ("…, one of them new", "both new", "all new"), never "now including Gujarat"
-(No. 78 said Gujarat twice). With three or more states the clause names none, so "now
-including Telangana" stays. When nothing is above Level 1: "A quiet day across India, with
-nothing above minor."
+otherwise a count ("in four states"). When nothing is above Level 1: "A quiet day across
+India, with nothing above minor."
 
 ## Where things are
 
@@ -255,9 +251,7 @@ above normal they are.
 - **Title** otherwise: "Fires run above normal in N states, …", led by the strongest true
   angle, in this order:
   1. a record for the time of year: "led by a spike in Chhattisgarh"
-  2. new since a day earlier: "now including Telangana" (the roundup title counts its states, so
-     it can name them; the page headline names one or two states itself, and then says "one of
-     them new")
+  2. new since a day earlier: "now including Telangana"
   3. spreading, more states than a day earlier: "up from four"
   4. the largest count: "the most in Madhya Pradesh"
   5. the multiple of normal: "led by Chhattisgarh" (the multiple itself stays out)
