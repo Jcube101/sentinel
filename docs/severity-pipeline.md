@@ -420,7 +420,18 @@ First listed 21 Oct 2026, when the spec was completed; reviewed 30 Oct 2026.
 - **Hysteresis for fire items (planned, 15 Nov 2026, after the thresholds are live):** open at
   the Level 2 threshold, close only after 2 complete days below a lower one (try 1.5× and
   1.25×); replay the reopen-within-3-days rate (47-51% now), open items per day and days
-  open. Target: reopens well under 20% without many more open items.
+  open. Target: reopens well under 20% without many more open items. A held item stays at
+  Level 2 until it closes; the pipeline marks it with `figures.held` and `figures.held_since`
+  (no new `change` value, no migration), and the reason line says it is easing. Copy (frontend,
+  fire formula in docs/style-guide.md): a held item reads "Telangana fires dip after three-day
+  surge, still above usual" (or "ease" for a drop of a third or more, "dip" otherwise); the
+  roundup "Fires dip across central India, still above usual"; "dip" and "ease" only in the
+  edition where `held_since` is that fire day, then "Fires stay above usual in Telangana".
+  Tests: pipeline (2.4, 1.8, 1.7, 1.4, 1.3, 2.2 against a 1.5 close line: stays open and held
+  from day 2, quiet clock from day 4, closes after day 5, day 6 reopens; 1.8 then 2.1 clears
+  `held`); frontend (a Level 2 snapshot with `held` and a ratio of 1.7 gives the dip title and
+  "still" in the standfirst, the next edition gives "stay above usual", editions without `held`
+  read as before).
 - **Fire threshold tuning (superseded by the above):** min 25 / 2× / 4× came from an in-sample replay; recheck with
   `tools/replay_fire_levels.py` against a few weeks of live items.
 - **Static mask gaps (done 15 Nov 2026: persistence rule and exclusion file; the Dhanbad
