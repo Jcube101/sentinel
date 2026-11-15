@@ -288,9 +288,10 @@ latitude/longitude.
 
 ## Fire baseline (one-off)
 The static mask and the seasonal norm come from the FIRMS VIIRS NOAA-20 SP
-archive, the years in `fire.baseline.years` (2020-2025 since 15 Nov 2026: ~293
-five-day requests per four years, ~2,600 FIRMS transactions, paced on the key's
-transaction count; raw CSV kept outside the repo, in `<firms-archive-dir>`):
+archive: the mask from `fire.static_mask.years` (2020-2025) and the seasonal norm
+from `fire.baseline.years` (2023-2025, the recent regime; 15 Nov 2026). ~293 five-day
+requests per four years, ~2,600 FIRMS transactions for 2020-2023, paced on the key's
+transaction count; raw CSV kept outside the repo, in `<firms-archive-dir>`:
 ```bash
 PYTHONPATH=. .venv/bin/python tools/pull_firms_archive.py --start 2020-01-01 \
     --end 2025-12-31 --cache-dir <firms-archive-dir>
@@ -373,7 +374,7 @@ complete-day snapshot (`restore_complete_levels`), and their fire trend points
 in `desk_watch` are dropped. The level: the day's fire events over the state's norm for
 that week (`data/fire_baseline.csv`), counted from `fire.min_fire_events`
 events; a large fire near a city (`data/india_places.csv`) is Level 4. These
-FIRMS-derived levels are capped at `fire.ratio_level_cap` / `fire.near_people_cap` (2 each) until live
+FIRMS-derived levels are capped at `fire.ratio_level_cap` (3) / `fire.near_people_cap` (4: none) until live
 counts are calibrated against the archive; a current Orange or Red GDACS wildfire alert
 in the state (never Green) lifts the item to Level 3 regardless. Today's events so far are in
 `figures.today` (marked partial) and never set the level. `figures.state_rank` is the

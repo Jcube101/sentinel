@@ -22,10 +22,11 @@ def test_matches_spec_drafts(cfg):
     # edit shows up in review. Update both together when retuning.
     assert [cfg["quake"][f"level_{n}_min_magnitude"] for n in (2, 3, 4)] == [5.0, 6.0, 7.0]
     assert [cfg["gdacs"][k] for k in ("green", "green_rising", "orange", "red")] == [1, 2, 3, 4]
-    assert (cfg["fire"]["level_2_min_ratio"], cfg["fire"]["level_3_min_ratio"]) == (2.0, 4.0)  # Job, 21 Oct 2026
+    assert (cfg["fire"]["level_2_min_ratio"], cfg["fire"]["level_3_min_ratio"]) == (2.0, 6.0)  # Job, 21 Oct 2026; Level 3 at 6x on 15 Nov
     assert cfg["fire"]["confidence"] == ["n", "h"]
     assert cfg["fire"]["lifecycle"] == {"open_min_level": 2, "close_after_hours": 48}
-    assert (cfg["fire"]["min_fire_events"], cfg["fire"]["ratio_level_cap"], cfg["fire"]["near_people_cap"]) == (25, 2, 2)  # Job, 21 Oct 2026
+    assert (cfg["fire"]["min_fire_events"], cfg["fire"]["level_3_min_ratio"], cfg["fire"]["ratio_level_cap"],
+            cfg["fire"]["near_people_cap"], cfg["fire"]["level_4_min_hotspots"]) == (40, 6.0, 3, 4, 2)  # Job, 15 Nov 2026
     assert (cfg["air"]["level_3_min_severe_cities"], cfg["air"]["level_4_min_severe_cities"]) == (1, 3)
     assert cfg["watching"]["rising_updates"] == 3
     # data.gov.in feed (Job, 21 Oct 2026): fall back after 6 h, CPCB's 3-pollutant rule, Severe twice in a row
@@ -57,7 +58,7 @@ def _broken(cfg, dotted, value):
     "dotted, value, message",
     [
         ("quake.level_3_min_magnitude", 4.5, "quake.level_2_min_magnitude < quake.level_3"),
-        ("fire.level_2_min_ratio", 4.5, "fire.level_2_min_ratio < fire.level_3_min_ratio"),
+        ("fire.level_2_min_ratio", 7.0, "fire.level_2_min_ratio < fire.level_3_min_ratio"),
         ("air.pm25.very_poor_above", 300, "air.pm25.poor_above < air.pm25.very_poor_above"),
         ("air.level_4_min_severe_cities", 0, ">= 1"),
         ("gdacs.red", 5, "<= 4"),
@@ -67,6 +68,9 @@ def _broken(cfg, dotted, value):
         ("fire.confidence", ["x"], "fire.confidence"),
         ("air.datagov.incomplete_retries", 5, "<= 3"),
         ("air.datagov.min_complete_fraction", 1.5, "<= 1"),
+        ("fire.baseline.years", [2023, 2025], "consecutive"),
+        ("fire.static_mask.years", [], "fire.static_mask.years"),
+        ("fire.level_4_min_hotspots", 0, ">= 1"),
         ("fire.gdacs_wildfire_alert_levels", ["Amber"], "fire.gdacs_wildfire_alert_levels"),
         ("fire.min_fire_events", KeyError, "missing fire.min_fire_events"),
         ("fire.lifecycle", KeyError, "missing fire.lifecycle.open_min_level"),
@@ -94,7 +98,7 @@ def test_bool_is_not_a_number(cfg):
 
 
 def test_load_reads_given_path(tmp_path):
-    text = severity_config.CONFIG_PATH.read_text().replace("min_fire_events = 10", "min_fire_events = 25")
+    text = severity_config.CONFIG_PATH.read_text().replace("min_fire_events = 40", "min_fire_events = 25")
     path = tmp_path / "severity.toml"
     path.write_text(text)
     assert load(path)["fire"]["min_fire_events"] == 25

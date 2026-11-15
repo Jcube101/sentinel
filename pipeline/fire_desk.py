@@ -152,13 +152,14 @@ def load_places() -> tuple[tuple[str, float, float, int], ...]:
 
 
 def large_fires_near_people(events: list[dict], places, cfg: dict) -> list[dict]:
-    """Fire events at or above level_4_min_frp_mw within level_4_near_km of
-    a place of level_4_min_population people, biggest fire first."""
+    """Fire events at or above level_4_min_frp_mw (and with at least level_4_min_hotspots
+    hotspots) within level_4_near_km of a place of level_4_min_population people,
+    biggest fire first."""
     f = cfg["fire"]
     towns = [p for p in places if p[3] >= f["level_4_min_population"]]
     out = []
     for e in events:
-        if e["frp_max"] < f["level_4_min_frp_mw"]:
+        if e["frp_max"] < f["level_4_min_frp_mw"] or e.get("hotspot_count", 1) < f["level_4_min_hotspots"]:
             continue
         near = [(fire.haversine_km(e["latitude"], e["longitude"], lat, lon), name, pop)
                 for name, lat, lon, pop in towns]

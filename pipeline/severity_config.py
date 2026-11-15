@@ -136,6 +136,11 @@ def validate(cfg: dict) -> None:
     years = _get(cfg, "fire.baseline.years")
     if not isinstance(years, list) or not years or not all(isinstance(y, int) for y in years):
         raise ConfigError(f"severity.toml: fire.baseline.years must be a list of years, got {years!r}")
+    if years != list(range(min(years), max(years) + 1)):
+        raise ConfigError(f"severity.toml: fire.baseline.years must be consecutive ascending years, got {years!r}")
+    mask_years = _get(cfg, "fire.static_mask.years")
+    if not isinstance(mask_years, list) or not mask_years or not all(isinstance(y, int) for y in mask_years):
+        raise ConfigError(f"severity.toml: fire.static_mask.years must be a list of years, got {mask_years!r}")
     _number(cfg, "fire.baseline.smooth_weeks", minimum=0, maximum=4, integer=True)
     _number(cfg, "fire.level_2_min_ratio", minimum=1)
     _number(cfg, "fire.level_3_min_ratio", minimum=1)
@@ -148,6 +153,7 @@ def validate(cfg: dict) -> None:
             f"severity.toml: fire.gdacs_wildfire_alert_levels must be a list of {sorted(ALERT_COLOURS)}, got {colours!r}"
         )
     _number(cfg, "fire.level_4_min_frp_mw", minimum=0)
+    _number(cfg, "fire.level_4_min_hotspots", minimum=1, integer=True)
     _number(cfg, "fire.level_4_near_km", minimum=0)
     _number(cfg, "fire.level_4_min_population", minimum=0, integer=True)
     _number(cfg, "fire.ratio_level_cap", minimum=1, maximum=4, integer=True)

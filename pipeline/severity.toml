@@ -167,19 +167,22 @@ excluded_district_ids = ["76128533B2782141712775"]
 # One desk item per state (fire_desk.py), levelled on the last complete UTC
 # day (yesterday, once [fire.complete_day] says FIRMS holds all of it): its
 # fire events over the state's seasonal norm (mean daily fire events for that
-# calendar week, 2024-2025 baseline). Today's events so far are shown as a
+# calendar week, [fire.baseline] years). Today's events so far are shown as a
 # partial count only; they never set the level.
 # Ratio below level_2 = Level 1 ("at norm").
 # A single day's count is bursty (cloud, satellite swath): with the spec's
 # 1.25x / 2x and a minimum of 10, a replay of 2024-2025 kept ~6 fire items
 # open on an average day. 2x / 4x with a minimum of 25 keeps ~1.8 (Job,
 # 21 Oct 2026). Test changes with tools/replay_fire_levels.py.
+# 15 Nov 2026 (Job): the out-of-sample replay (norms from other years, 2020-2025) gave a
+# Level 3 rate of 0.41-0.54 a day with 4x / 25 events, against the 0.17 intended; 6x with
+# a minimum of 40 gives 0.15-0.18 and ~1.8-2.3 open items a day.
 level_2_min_ratio = 2.0
-level_3_min_ratio = 4.0
+level_3_min_ratio = 6.0
 # The ratio only counts once the state has at least this many fire events;
 # below it the state stays Level 1 however high the ratio. Stops a state
 # that averages 0.3 fires/day reading 10x norm on a 3-fire day.
-min_fire_events = 25
+min_fire_events = 40
 # Level 3 "forest fire": an active GDACS wildfire alert in the state, but only
 # at these alert colours. Every wildfire alert GDACS has sent so far was Green;
 # one held Madhya Pradesh at Level 3 for a week at 0.6-0.9x its fire norm (15 Nov
@@ -191,6 +194,9 @@ gdacs_wildfire_alert_levels = ["Orange", "Red"]
 # of a place with at least level_4_min_population people
 # (data/india_places.csv, GeoNames). Not in the spec; first guesses.
 level_4_min_frp_mw = 100
+# ...and at least this many hotspots: of the 22 Level 4 state-days in 2020-2025, five were a
+# single hotspot and three of those sat at power plants or in a coal belt (15 Nov 2026).
+level_4_min_hotspots = 2
 level_4_near_km = 10
 level_4_min_population = 100000
 # Levels derived from FIRMS are capped until live (NRT) counts are calibrated against the
@@ -198,12 +204,12 @@ level_4_min_population = 100000
 # The reason says when a cap lowers a level. A current Orange or Red GDACS wildfire alert can
 # still lift an item to gdacs_wildfire_level. Two caps (15 Nov 2026; the old single
 # calibration_cap = 2 is gone, earlier editions keep it in their stored config):
-#   ratio_level_cap   the level from a state's fire events over its seasonal norm (2 / 3 above).
-#                     The 2020-2025 replay decides when to lift it.
+#   ratio_level_cap   the level from a state's fire events over its seasonal norm. Lifted to 3
+#                     on 15 Nov 2026 (Job) once the out-of-sample Level 3 rate was <= ~0.2 a day.
 #   near_people_cap   the Level 4 "large fire near people" level, which does not depend on the
-#                     norm. 4 = no cap.
-ratio_level_cap = 2
-near_people_cap = 2
+#                     norm. Lifted to 4 on 15 Nov 2026 (with level_4_min_hotspots = 2).
+ratio_level_cap = 3
+near_people_cap = 4
 
 [fire.complete_day]
 # Yesterday sets fire levels only once FIRMS holds its night pass. NOAA-20
@@ -242,12 +248,17 @@ min_detections = 2     # static detections a cell needs over the archive years
 # by this rule.
 persistent_days = 10
 persistent_years = 2
+# The archive years the mask is built from (all six: a static source recurs whatever the trend).
+years = [2020, 2021, 2022, 2023, 2024, 2025]
 
 [fire.baseline]
 # Seasonal norm: mean daily fire events per state per calendar week, from
 # the VIIRS NOAA-20 SP archive, counted exactly like live fire_events.
 # Week = (day of year - 1) // 7 + 1, days 358-366 fold into week 52.
-years = [2020, 2021, 2022, 2023, 2024, 2025]   # SP goes back to 2018; six years steady the norm (a 2024-25 norm swung 2-4x between years)
+# The seasonal norm uses the most recent three years: Punjab's autumn fire events fell 91%
+# between 2020 and 2025 (national -70%), so a longer average would call today's Punjab
+# permanently far below normal. Consecutive years; the mask has its own list above (15 Nov 2026).
+years = [2023, 2024, 2025]
 smooth_weeks = 1       # norm for week w averages weeks w-1 .. w+1
 
 [fire.lifecycle]

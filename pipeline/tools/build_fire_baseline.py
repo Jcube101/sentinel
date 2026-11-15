@@ -48,11 +48,16 @@ def main() -> int:
 
     cfg = load_config()
     mask_cfg, base_cfg = cfg["fire"]["static_mask"], cfg["fire"]["baseline"]
-    years = sorted(base_cfg["years"])
+    # Two lists of years (15 Nov 2026): the mask uses every year in fire.static_mask.years (a static source
+    # recurs whatever the trend), the seasonal norm only fire.baseline.years (the recent regime).
+    mask_years, years = sorted(mask_cfg["years"]), sorted(base_cfg["years"])
     start, end = date(years[0], 1, 1), date(years[-1], 12, 31)
-    chunks = sorted(p for p in args.cache_dir.glob("*.csv.gz")
-                    if start <= date.fromisoformat(p.name[:10]) <= end)
-    logger.info("%d archive chunks for %s..%s", len(chunks), start, end)
+    mask_start, mask_end = date(mask_years[0], 1, 1), date(mask_years[-1], 12, 31)
+    all_chunks = sorted(args.cache_dir.glob("*.csv.gz"))
+    mask_chunks = [p for p in all_chunks if int(p.name[:4]) in set(mask_years)]
+    chunks = [p for p in all_chunks if int(p.name[:4]) in set(years)]
+    logger.info("%d archive chunks for the mask (%s), %d for the norm (%s)", len(mask_chunks),
+                f"{mask_years[0]}-{mask_years[-1]}", len(chunks), f"{years[0]}-{years[-1]}")
     t0 = time.monotonic()
 
     # Pass 1: static heat-source cells. Two rules: SP labelled the detection static (type 1/2/3, at
@@ -63,7 +68,7 @@ def main() -> int:
     covered = set()
     days_per_year = {}
     by_year = defaultdict(list)
-    for path in chunks:
+    for path in mask_chunks:
         by_year[int(path.name[:4])].append(path)
     for year, paths in sorted(by_year.items()):
         days = defaultdict(set)
@@ -84,13 +89,14 @@ def main() -> int:
     for e in exclusions:
         logger.info("excluded site %s: %d persistent cell(s) left unmasked", e["name"], len(excluded.get(e["name"], [])))
     expected_days = (end - start).days + 1
+    norm_covered = {d for d in covered if start <= date.fromisoformat(d) <= end}
     missing = sorted(set((start + timedelta(days=i)).isoformat()
-                         for i in range(expected_days)) - covered)
+                         for i in range(expected_days)) - norm_covered)
     logger.info("static mask: %d cells = %d typed (of %d with any type %s detection) + %d persistent (%d+ days in "
                 "%d+ years; %d more excluded by hand); archive has rows on %d of %d days%s",
                 len(cells), len(type_cells), len(counts), mask_cfg["mask_types"], len(persistent_kept),
                 mask_cfg["persistent_days"], mask_cfg["persistent_years"], sum(len(v) for v in excluded.values()),
-                len(covered), expected_days,
+                len(norm_covered), expected_days,
                 f" (missing, left out of the norms: {', '.join(missing)})" if missing else "")
     fire.STATIC_MASK_PATH.write_text(json.dumps({
         "cell_deg": mask_cfg["cell_deg"],
@@ -101,7 +107,7 @@ def main() -> int:
         "type_cells": len(type_cells),
         "persistent_cells": len(persistent_kept),
         "excluded_sites": {name: len(c) for name, c in sorted(excluded.items())},
-        "source": f"FIRMS VIIRS_NOAA20_SP {start}..{end}",
+        "source": f"FIRMS VIIRS_NOAA20_SP {mask_start}..{mask_end}",
         "built_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "cells": sorted([list(c) for c in cells]),
     }, separators=(",", ":")))
@@ -132,7 +138,7 @@ def main() -> int:
 
     states = sorted({p["state"] for p in districts.props})
     rows = baseline.aggregate(daily, states, start, end, base_cfg["smooth_weeks"], f"{years[0]}-{years[-1]}",
-                              covered={date.fromisoformat(d) for d in covered})
+                              covered={date.fromisoformat(d) for d in norm_covered})
     baseline.write_csv(rows)
     logger.info("wrote %s: %d rows (%d states + India, 52 weeks)", baseline.BASELINE_PATH, len(rows), len(states))
 

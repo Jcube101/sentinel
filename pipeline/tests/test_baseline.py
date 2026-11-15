@@ -100,7 +100,8 @@ def test_config_build_parameters():
     m = CFG["fire"]["static_mask"]
     assert (m["mask_types"], m["cell_deg"], m["min_detections"]) == ([1, 2, 3], 0.004, 2)
     assert (m["persistent_days"], m["persistent_years"]) == (10, 2)
-    assert CFG["fire"]["baseline"] == {"years": [2020, 2021, 2022, 2023, 2024, 2025], "smooth_weeks": 1}
+    assert CFG["fire"]["baseline"] == {"years": [2023, 2024, 2025], "smooth_weeks": 1}
+    assert CFG["fire"]["static_mask"]["years"] == [2020, 2021, 2022, 2023, 2024, 2025]
 
 
 def test_days_missing_from_the_archive_are_not_counted_as_zero():
