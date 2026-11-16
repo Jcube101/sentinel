@@ -6,7 +6,8 @@ air quality, fires), each with a level from 1 to 4, written as news for ordinary
 One responsive site: the phone is the same site at narrow width. Read-only, through the
 Supabase anon key.
 
-Live since 29 Oct 2026 at https://sentinel-frontend-8hem.onrender.com.
+Live since 29 Oct 2026, at https://sentinel.job-joseph.com since 17 Nov 2026 (a custom domain on the
+Render site, whose own address, sentinel-frontend-8hem.onrender.com, still answers).
 
 Plan, decisions and the requests to the pipeline: [docs/situation-report-plan.md](../docs/situation-report-plan.md).
 How the site writes: [docs/style-guide.md](../docs/style-guide.md). Design mock-ups:

@@ -49,7 +49,8 @@ gone.
       states their daily counts against the usual
 - [x] ~~Tighter India bbox on frontend~~: moot; the site shows only desk items, which
       the pipeline scopes to India
-- [ ] Custom subdomain (sentinel.job-joseph.com)
+- [x] Custom subdomain: sentinel.job-joseph.com (17 Nov 2026; a Cloudflare CNAME, DNS only,
+      to the Render site)
 
 ## Phase 4 — UI / IA Revamp (COMPLETE ✅, replaced by Phase 7)
 

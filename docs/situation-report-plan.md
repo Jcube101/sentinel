@@ -657,6 +657,15 @@ type comes from a header rule in Render's dashboard (path `/manifest.webmanifest
 `frontend/render.yaml` had no effect and was removed. The manifest's address stays
 `/manifest.webmanifest` for good: an installed app remembers it (Job, 17 Nov).
 
+**The site's address (17 Nov 2026).** The site is at https://sentinel.job-joseph.com, a
+custom domain on the same Render site (a Cloudflare CNAME, DNS only); Render's own
+address, sentinel-frontend-8hem.onrender.com, stays enabled for now. The manifest's
+`start_url`, `scope` and icon paths are relative, so nothing in the build names the
+origin. An install belongs to its origin: an app installed from the Render address keeps
+its own service worker and saved editions there, and the new domain is a separate
+install. There is no canonical tag: the site is one HTML file for every route, so a
+fixed one would point every edition at the front page.
+
 **Known limits**
 
 - On a slow connection the reads are chained (latest edition → edition → the comparison's

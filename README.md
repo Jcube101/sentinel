@@ -7,7 +7,7 @@
 
 **The Situation Report: natural hazards in India, as a newspaper front page.**
 
-**Live:** https://sentinel-frontend-8hem.onrender.com
+**Live:** https://sentinel.job-joseph.com
 
 Three times a day, Sentinel reads six public sources: NASA's fire satellites, NASA's event
 tracker, the global disaster alert system GDACS, the US Geological Survey, CPCB's real-time

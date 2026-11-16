@@ -92,6 +92,7 @@ shows the latest edition, and updates itself after a deploy (plan, section 9).
 | Oct 2026 | Part C: FIRMS hotspots out of Supabase's `events` (local archive only), the older tables private (migration 009), `events` vacuumed |
 | Oct 2026 | Cyclones close 24 h after their last advisory, with the latest wind next to the peak; Cyclone Arnab closed in edition 32 (30 Oct) |
 | Nov 2026 | The Situation Report is installable (PWA): opens offline with the last saved edition, says so in a banner, updates itself after a deploy |
+| Nov 2026 | The site moves to its own domain, sentinel.job-joseph.com (the Render address still answers) |
 
 ---
 

@@ -561,3 +561,23 @@ dashboard set `Content-Type: application/manifest+json` at once. The live servic
 its settings from the dashboard, so a change to that file is not a change to the site.
 Headers live in the dashboard, and the file notes the one rule that exists. Check a
 hosting setting by the response that comes back, not by the config file in the repo.
+
+---
+
+## A New Origin Is a New Install
+
+The site moved to its own domain, sentinel.job-joseph.com (17 Nov 2026), in front of the
+same Render site. Two things follow from how browsers and Render work.
+
+**An installed app belongs to its origin.** The service worker, its caches and the
+home-screen install are all tied to the address they came from. The app installed from
+the Render address keeps working there, with its own saved editions, and knows nothing of
+the new domain; the new domain has to be installed again, and the old install removed by
+hand. Nothing carries over, so settle the address before asking anyone to install.
+Because the manifest's `start_url`, `scope` and icons are relative, the same build
+works on both.
+
+**Render's certificate needs the Cloudflare record grey-cloud.** The CNAME to the Render
+site is DNS only. Render issues and renews the certificate itself and has to see the
+requests to do it; with Cloudflare's proxy on (orange cloud), it can't. This is the
+opposite of the Vercel setup behind Cloudflare Access, where the record must be proxied.

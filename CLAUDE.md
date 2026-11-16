@@ -19,7 +19,8 @@ docs/situation-report-plan.md (*Open follow-ups*) and ROADMAP.md.
 - pipeline/: Python pipeline, runs on the Raspberry Pi (jobpi) via a systemd timer at
   09:00, 15:00 and 21:00 UTC (14:30, 20:30 and 02:30 IST). Details: pipeline/CLAUDE.md
 - frontend/: the Situation Report, Vite + React, a Render static site that deploys from
-  `main` (live at sentinel-frontend-8hem.onrender.com). Details: frontend/README.md
+  `main` (live at sentinel.job-joseph.com, a custom domain on the Render site
+  sentinel-frontend-8hem.onrender.com). Details: frontend/README.md
 - docs/severity-pipeline.md: the severity desk's spec, decisions, current status and open
   follow-ups
 - docs/situation-report-plan.md: the frontend's plan, decisions and the requests to the
