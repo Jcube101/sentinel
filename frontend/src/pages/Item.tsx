@@ -12,6 +12,7 @@ import { editionQuery, itemPath } from '@/lib/desk/paths'
 import { SCALE, type Scale } from '@/lib/desk/scale'
 import type { Change, Figures, TimedSnapshot } from '@/lib/desk/types'
 import { placeOf, placeText } from '@/lib/desk/where'
+import { loadError } from '@/lib/offline'
 import PaperShell from '@/components/paper/PaperShell'
 import LevelSquares from '@/components/paper/LevelSquares'
 import MiniMap from '@/components/paper/MiniMap'
@@ -339,6 +340,13 @@ export default function Item() {
     document.title = pageTitle ? `Sentinel · ${pageTitle}` : 'Sentinel · Item'
   }, [pageTitle])
 
+  if (item.isError || edition.isError) {
+    return (
+      <PaperShell>
+        <p className="py-10 text-[18px]">{loadError("Couldn't load this item.")}</p>
+      </PaperShell>
+    )
+  }
   if (!item.isPending && (!item.data?.item || !shown)) {
     return (
       <PaperShell>
@@ -369,7 +377,7 @@ export default function Item() {
   const air = entry.category === 'air' ? airPoints([entry]) : []
 
   return (
-    <PaperShell footer={<span>{`Item ${id}`}</span>} notes={notes.length > 0 ? <PageNotes notes={notes} /> : null} scale={ctx?.scale}>
+    <PaperShell footer={<span>{`Item ${id}`}</span>} notes={notes.length > 0 ? <PageNotes notes={notes} /> : null} scale={ctx?.scale} edition={run}>
       <div className="flex flex-wrap justify-between gap-3 py-2 sm:py-2.5 border-b border-ink font-mono text-[11px] sm:text-[12px] tracking-[0.04em] uppercase">
         <span>
           <Link to={run.id === latestId ? '/' : `/edition/${run.id}`} className="hover:text-accent">

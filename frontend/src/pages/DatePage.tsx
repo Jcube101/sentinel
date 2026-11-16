@@ -5,6 +5,7 @@ import { chooseDayEdition, parseDay, slotOf } from '@/lib/desk/archive'
 import { istDate, istDay, istShortDate } from '@/lib/desk/ist'
 import PaperShell from '@/components/paper/PaperShell'
 import NoteBox from '@/components/paper/NoteBox'
+import { loadError } from '@/lib/offline'
 import Desk from './Desk'
 
 const link = 'not-italic font-mono text-[12px] uppercase border-b border-ink hover:text-accent'
@@ -36,7 +37,7 @@ export default function DatePage() {
       </Message>
     )
   }
-  if (runs.isError || !runs.data) return <Message>Couldn't load {day}.</Message>
+  if (runs.isError || !runs.data) return <Message>{loadError(`Couldn't load ${day}.`)}</Message>
 
   const { prev, next } = runs.data
   const dayName = istDate(`${day}T06:30:00Z`)

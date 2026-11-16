@@ -13,6 +13,7 @@ import { editionQuery } from '@/lib/desk/paths'
 import { FOOTER_NAMES, lateNotice, sourceLines } from '@/lib/desk/sources'
 import type { CategoryStatus, Edition } from '@/lib/desk/types'
 import PaperShell from '@/components/paper/PaperShell'
+import { NOT_SAVED } from '@/lib/offline'
 import DeskEntryRow from '@/components/paper/DeskEntryRow'
 import DeskHero from '@/components/paper/DeskHero'
 import NoteBox from '@/components/paper/NoteBox'
@@ -148,7 +149,7 @@ export default function Desk({ editionId, dayNote }: DeskProps = {}) {
     const err = (latest.error ?? edition.error) as Error | null
     body = (
       <Message>
-        Couldn't load this edition{err?.message ? `: ${err.message}` : ''}.{' '}
+        {navigator.onLine ? `Couldn't load this edition${err?.message ? `: ${err.message}` : ''}.` : NOT_SAVED}{' '}
         <button
           type="button"
           onClick={() => (latest.isError ? latest.refetch() : edition.refetch())}
@@ -280,6 +281,7 @@ export default function Desk({ editionId, dayNote }: DeskProps = {}) {
       footer={data && data.run.status !== 'running' ? <SourceFooter run={data.run} status={data.status} /> : null}
       notes={notes.length > 0 ? <PageNotes notes={notes} /> : null}
       scale={ctx?.scale}
+      edition={data?.run}
     >
       {body}
     </PaperShell>

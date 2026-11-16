@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
 import { useItemForEvent } from '@/hooks/useEdition'
 import { itemPath } from '@/lib/desk/paths'
+import { loadError } from '@/lib/offline'
 import PaperShell from '@/components/paper/PaperShell'
 
 const link = 'font-mono text-[12px] uppercase tracking-[0.06em] border-b border-ink pb-0.5 hover:text-accent'
@@ -29,7 +30,7 @@ export default function EventRedirect() {
             <h1 className="m-0 font-cond font-semibold text-[30px] sm:text-[50px] leading-[1.04] tracking-[-0.01em]">An event from the old site</h1>
             <p className="m-0 text-[17px] sm:text-[19px] leading-[1.55]">
               {item.isError
-                ? "This link is from Sentinel's old event pages, and the lookup didn't work just now."
+                ? loadError("This link is from Sentinel's old event pages, and the lookup didn't work just now.")
                 : "This link is from Sentinel's old event pages. That event never became one of the report's items: fires are now reported state by state, and NASA's event tracker isn't given levels."}
             </p>
             <p className="m-0 flex flex-wrap gap-5 pt-1">

@@ -2,6 +2,8 @@ import type { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import ScaleTable from './ScaleTable'
+import OfflineBanner from './OfflineBanner'
+import { istDate, istTime } from '@/lib/desk/ist'
 import type { Scale } from '@/lib/desk/scale'
 import { useLatestScale } from '@/hooks/useEdition'
 
@@ -125,10 +127,12 @@ interface Props {
   notes?: ReactNode
   /** The rules of the edition on the page, for the legend; else the latest edition's. */
   scale?: Scale
+  /** The edition on the page: named by the banner when the page is showing saved data. */
+  edition?: { id: number; started_at: string } | null
 }
 
 /** The newspaper frame every Situation Report page sits in. */
-export default function PaperShell({ children, footer, notes, scale }: Props) {
+export default function PaperShell({ children, footer, notes, scale, edition }: Props) {
   const { pathname } = useLocation()
   const latestScale = useLatestScale(scale === undefined && pathname !== '/about')
   return (
@@ -138,6 +142,7 @@ export default function PaperShell({ children, footer, notes, scale }: Props) {
       </a>
       <div className="max-w-[1360px] mx-auto px-5 sm:px-10 pb-6 sm:pb-14">
         <Masthead path={pathname} />
+        <OfflineBanner shown={edition ? { id: edition.id, when: `${istDate(edition.started_at)}, ${istTime(edition.started_at)} IST` } : null} />
         <div id="content" tabIndex={-1} className="focus:outline-none">
           {children}
         </div>

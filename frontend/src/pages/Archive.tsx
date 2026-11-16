@@ -10,6 +10,7 @@ import { itemPath } from '@/lib/desk/paths'
 import { closedSummaries } from '@/lib/desk/quiet'
 import type { Level } from '@/lib/desk/types'
 import { numberWord } from '@/lib/desk/words'
+import { loadError } from '@/lib/offline'
 import PaperShell from '@/components/paper/PaperShell'
 import LevelSquares from '@/components/paper/LevelSquares'
 
@@ -84,7 +85,7 @@ export default function Archive() {
       </section>
 
       {!month ? (
-        <p className="py-10 font-mono text-[13px] uppercase tracking-[0.06em] text-ink-muted">{span.isError ? "Couldn't load the archive." : 'Loading…'}</p>
+        <p className="py-10 font-mono text-[13px] uppercase tracking-[0.06em] text-ink-muted">{span.isError ? loadError("Couldn't load the archive.") : 'Loading…'}</p>
       ) : (
         <main className="max-w-[1000px] pb-4">
           <div className="flex justify-between items-baseline gap-3 pt-8 pb-2.5 border-b border-ink">
@@ -106,7 +107,7 @@ export default function Archive() {
           {data.isPending ? (
             <p className="py-6 font-mono text-[12px] uppercase text-ink-muted">Loading…</p>
           ) : data.isError ? (
-            <p className="py-6 text-[16px]">Couldn't load {monthName(month)}.</p>
+            <p className="py-6 text-[16px]">{loadError(`Couldn't load ${monthName(month)}.`)}</p>
           ) : (
             <ol className="m-0 p-0 list-none">
               {rows.map((r) => (

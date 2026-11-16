@@ -12,6 +12,8 @@ import type { Scale } from '@/lib/desk/scale'
 import type { AirBand, Category, Level } from '@/lib/desk/types'
 import PaperShell from '@/components/paper/PaperShell'
 import PaperMap from '@/components/paper/PaperMap'
+import { useConnection } from '@/hooks/useConnection'
+import { NOT_SAVED } from '@/lib/offline'
 import LevelSquares from '@/components/paper/LevelSquares'
 import { SourceLine } from '@/components/paper/DeskEntryRow'
 import { AIR_TINT, EMBER, badgeHtml, symbolSize, symbolSvg } from '@/components/paper/mapSymbols'
@@ -167,6 +169,7 @@ export default function MapPage() {
   const fireDay = fireLayer?.day ?? null
   const fires = useFirePoints(fireLayer)
   const strip = useEditionStrip(run)
+  const connection = useConnection()
   const closed = useRecentClosed(run, withClosed)
 
   const items = useMemo(() => (ctx ? mapItems(entries, ctx) : []), [entries, ctx])
@@ -192,7 +195,7 @@ export default function MapPage() {
     document.title = run ? `Sentinel · Map, No. ${run.id}` : 'Sentinel · Map'
   }, [run])
 
-  if (error) return <PaperShell><p className="py-10 text-[18px]">Couldn't load the map: {(error as Error).message}</p></PaperShell>
+  if (error) return <PaperShell><p className="py-10 text-[18px]">{navigator.onLine ? `Couldn't load the map: ${(error as Error).message}` : NOT_SAVED}</p></PaperShell>
   if (pending || !data || !run || !ctx) {
     return (
       <PaperShell scale={scale}>
@@ -202,7 +205,7 @@ export default function MapPage() {
   }
 
   return (
-    <PaperShell scale={scale}>
+    <PaperShell scale={scale} edition={run}>
       <h1 className="sr-only">The map, No. {run.id}</h1>
       <div className="flex flex-wrap justify-between items-center gap-3 py-2 sm:py-2.5 border-b border-ink font-mono text-[11px] sm:text-[12px] tracking-[0.04em] uppercase">
         <span>
@@ -319,6 +322,9 @@ export default function MapPage() {
               className="h-full w-full"
             />
           </div>
+          {connection === 'offline' && (
+            <p className="m-0 font-mono text-[11px] text-ink-muted">The map background may be missing offline.</p>
+          )}
           {strip.data && strip.data.length > 0 && (
             <div>
               <div className="flex items-end gap-[3px] h-[40px]" aria-label="The last 21 editions, highest level in each">

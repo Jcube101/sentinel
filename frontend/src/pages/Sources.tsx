@@ -17,6 +17,7 @@ import {
 import { scaleFrom } from '@/lib/desk/scale'
 import type { Edition } from '@/lib/desk/types'
 import { lastKnownWords } from '@/lib/desk/words'
+import { loadError } from '@/lib/offline'
 import PaperShell from '@/components/paper/PaperShell'
 
 const head = 'm-0 font-mono font-normal text-[11px] sm:text-[12px] tracking-[0.08em] uppercase pb-2 sm:pb-2.5 border-b border-ink flex justify-between gap-3'
@@ -165,7 +166,7 @@ export default function Sources() {
   }, [])
 
   return (
-    <PaperShell scale={scale}>
+    <PaperShell scale={scale} edition={run}>
       <section className="py-8 sm:py-11 border-b border-ink flex flex-col gap-4 max-w-[860px]">
         <h1 className="m-0 font-cond font-semibold text-[32px] sm:text-[50px] leading-[1.04] tracking-[-0.01em]">Sources</h1>
         <p className="m-0 text-[17px] sm:text-[19px] leading-[1.55]">
@@ -174,7 +175,7 @@ export default function Sources() {
         </p>
       </section>
       {!run ? (
-        <p className="py-10 font-mono text-[13px] uppercase tracking-[0.06em] text-ink-muted">{edition.isError ? "Couldn't load the sources." : 'Loading…'}</p>
+        <p className="py-10 font-mono text-[13px] uppercase tracking-[0.06em] text-ink-muted">{latest.isError || edition.isError ? loadError("Couldn't load the sources.") : 'Loading…'}</p>
       ) : (
         <main className="max-w-[1100px] pb-4">
           <Section
