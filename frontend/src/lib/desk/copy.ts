@@ -155,6 +155,8 @@ function stateFacts(e: DeskEntry, ctx: CopyContext): StateFacts {
 
 /** The edition's own run recorded this change (the first edition to report it), not just the day's comparison. */
 const isFresh = (c: Change | null | undefined) => c === 'opened' || c === 'reopened' || c === 'escalated' || c === 'deescalated'
+/** The first report of an item (a storm, a quake): "forms", "strikes". An escalated or de-escalated one was already known. */
+const isNew = (c: Change | null | undefined) => c === 'opened' || c === 'reopened'
 const isRise = (c: Change | null | undefined) => c === 'opened' || c === 'reopened' || c === 'escalated'
 
 /** The pipeline reads fire days at its 09:00 UTC run; the two runs after it repeat that day. */
@@ -907,6 +909,7 @@ function cycloneEvent(e: DeskEntry, ctx: CopyContext): HeadEvent {
     text = `${name} ${fading ? 'weakens' : 'moves'} inland${land.state ? ` over ${land.state}` : ''}`
     places = land.state ? 1 : 0
   } else if (fading) text = `${name} weakens`
+  else if (e.runChange === 'opened') text = `${name} forms`
   else if (isRise(e.runChange)) text = `${name} strengthens`
   else {
     const colour = String(f.episode_alert_level ?? f.alert_level ?? '').toLowerCase()
@@ -962,12 +965,12 @@ function airEvent(e: DeskEntry, ctx: CopyContext): HeadEvent {
 function quakeEvent(e: DeskEntry, ctx: CopyContext): HeadEvent {
   const move = ctx.since?.byItem.get(e.key)
   const f = e.figures
-  const fresh = isFresh(e.runChange)
+  const fresh = isNew(e.runChange)
   const text =
     e.members.length > 0
-      ? `${numberWord(e.members.length)} small earthquakes ${fresh || e.members.some((m) => isFresh(m.runChange)) ? 'strike' : 'struck'} near India's borders`
+      ? `${numberWord(e.members.length)} small earthquakes ${fresh || e.members.some((m) => isNew(m.runChange)) ? 'strike' : 'struck'} near India's borders`
       : `a ${quakeStrength(f.magnitude ?? e.strength)} earthquake ${fresh ? 'strikes' : 'struck'} ${quakeWhere(e)}`
-  return { category: 'earthquake', level: e.level, moved: !!move && move.kind !== 'closed', tier: fresh || e.members.some((m) => isFresh(m.runChange)) ? 2 : 1, text, places: /near (?!India)/.test(text) ? 1 : 0 }
+  return { category: 'earthquake', level: e.level, moved: !!move && move.kind !== 'closed', tier: fresh || e.members.some((m) => isNew(m.runChange)) ? 2 : 1, text, places: /near (?!India)/.test(text) ? 1 : 0 }
 }
 
 /** A flood as a clause: "flooding in Assam is on an orange alert", "worsens" only in the edition that reports it. */
@@ -976,7 +979,7 @@ function floodEvent(e: DeskEntry, ctx: CopyContext): HeadEvent {
   const colour = String(e.figures.episode_alert_level ?? e.figures.alert_level ?? '').toLowerCase()
   const verb = e.runChange === 'escalated' ? 'worsens' : e.runChange === 'deescalated' ? 'eases' : 'is on'
   const text = verb === 'is on' ? `${midName(floodName(e))} is on ${/^[aeiou]/.test(colour) ? 'an' : 'a'} ${colour} alert` : `${midName(floodName(e))} ${verb}`
-  return { category: 'flood', level: e.level, moved: !!move && move.kind !== 'closed', tier: verb === 'is on' ? 1 : 2, text, places: 1 }
+  return { category: 'flood', level: e.level, moved: !!move && move.kind !== 'closed', tier: verb === 'is on' && !isNew(e.runChange) ? 1 : 2, text, places: 1 }
 }
 
 /** Every event of the edition that is worth a headline, most newsworthy first: level, then what moved, then category order. */

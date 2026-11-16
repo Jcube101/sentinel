@@ -253,6 +253,11 @@ Rules:
    Every edition after says where things stand, in ongoing wording: fires "stay above usual in
    Maharashtra"; air "stays severe in Ballabgarh"; a storm "weakens inland over Andhra
    Pradesh" (or "moves inland"), or "holds at red alert" when nothing moved; a quake "struck".
+   A verb never claims an earlier state the item did not have: a storm that appears in this
+   edition "forms in the Bay of Bengal" ("strengthens" only for one already on the desk that
+   rose a level), and a quake "strikes" only in the edition it opens ("struck" for a revised
+   one). A flood that opens is a first report and ranks as one; "worsens" and "eases" are for
+   one already on the desk.
    Easing ("fires ease …", air "eases to …") is also said once. For fire the verbs are
    climb, surge, dip, ease, spread (see Fire); a fire clause may run to fourteen words when
    it is the headline alone, and is cut to its short form (no benchmark) when it shares the
