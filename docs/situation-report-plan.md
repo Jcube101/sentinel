@@ -665,6 +665,10 @@ origin. An install belongs to its origin: an app installed from the Render addre
 its own service worker and saved editions there, and the new domain is a separate
 install. There is no canonical tag: the site is one HTML file for every route, so a
 fixed one would point every edition at the front page.
+Checked on the new domain after the deploy (17 Nov): `sw.js` and `index.html` come with
+`max-age=0`, the manifest is the real file as `application/manifest+json` (the dashboard's
+header rule covers both addresses), Chrome reports no installability errors, the worker
+activates, an offline reload shows the banner, and `/edition/80` opens directly.
 
 **Known limits**
 
