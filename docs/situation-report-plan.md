@@ -587,6 +587,71 @@ reliability, the cyclone reopen path).
   including a closed cyclone's news line. That's how it was built; unfolding them hasn't
   been asked for.
 
+## 9. The installable app (PWA, 17 Nov 2026)
+
+The site can be installed to a phone's home screen and opens offline. It is the same site:
+nothing changes for a reader in a browser tab with a working connection. Built with
+`vite-plugin-pwa` 2 (`injectManifest`); the service worker is `frontend/src/sw.ts`.
+
+**Decisions (Job, 17 Nov 2026)**
+
+- Manifest: name "Sentinel — Situation Report", short name "Sentinel", `standalone`, no
+  orientation lock, `start_url` `/`, theme and background the paper colour `#F3F0E8`.
+- Icons: PNG from the favicon's level squares (`frontend/scripts/gen-icons.mjs`): 192 and
+  512, a separate maskable 512 with the squares inside the safe zone, and a 180 Apple
+  touch icon. The SVG favicon stays for the tab.
+- Edition data is network first with a 4 s timeout and a saved copy as the fallback,
+  never stale-while-revalidate: a normal open always shows the latest edition.
+- Saved data is never shown as current: a banner names the edition and its time.
+- Updates are automatic. No push notifications.
+
+**Cache rules**
+
+| What | Rule |
+|---|---|
+| The app shell (JS, CSS, HTML, icons; 28 files, about 860 KiB) | Precached; every navigation gets the precached `index.html`, so deep links open offline |
+| Supabase reads: `GET https://<project>.supabase.co/rest/v1/…` (exact origin, from `VITE_SUPABASE_URL`) | `NetworkFirst`, 4 s timeout, cache `supabase-rest`, 400 entries, 30 days. A 5xx counts as a failure and falls back; a 4xx is passed on |
+| Google Fonts | Stylesheet stale-while-revalidate, font files cache first for a year |
+| Map tiles (Esri) | Not cached by the service worker |
+
+Every read the site makes is a PostgREST `GET` (no `rpc`, POST or HEAD), so every read is
+covered. Only pages that were opened are saved.
+
+**How the page knows.** The service worker adds `X-Sentinel-Cache: failed | timeout |
+error` to a response it had to take from its cache. The Supabase client's `fetch` reads it
+(`lib/supabase.ts`) and `lib/offline.ts` keeps the state: "since the last check, at least
+one response came from the cache". A check refetches every query; it runs when the device
+comes back online, when the app returns to the front, every minute while the banner
+shows, and from "Try again". `navigator.onLine` is trusted only when it says offline.
+
+**The banner** (`OfflineBanner`, under the masthead; tests in `offline.test.ts`):
+
+| Case | When | Copy |
+|---|---|---|
+| Offline | the fetch failed and the browser says offline | "You're offline. Showing No. 83, Tue 17 Nov 2026, 14:30 IST. There may be a newer edition." |
+| Slow | no answer in 4 s | "The connection is slow. Showing the saved copy of No. 83, … There may be a newer edition." |
+| Didn't answer | the fetch failed while online, or a 5xx | "Sentinel's data didn't answer. Showing the saved copy of No. 83, … There may be a newer edition." |
+
+On a page with no edition of its own (Archive, About) the second sentence is "Saved pages
+may be out of date." A page with no saved copy says "You're offline, and this page isn't
+saved on this device." The map adds "The map background may be missing offline."
+
+**Updates.** A new version shows on the first open after a deploy: the old shell appears,
+the new service worker installs and takes over, and the page reloads itself once (3.7 s
+in the local test). Render serves every file with `max-age=0`, so nothing holds an old
+`sw.js`.
+
+**Known limits**
+
+- On a slow connection the reads are chained (latest edition → edition → the comparison's
+  two steps), each waiting 4 s, so the full saved page took about 16 s in the test.
+  Accepted for now.
+- Offline behind a network that still reports "online" (Wi-Fi with no internet), a page
+  with no saved copy takes about 25 s to reach its error line (worked out, not measured):
+  supabase-js retries each failed read three times, and React Query tries three times.
+- The service worker and manifest are checked by hand (DevTools → Application), not by
+  the test suite.
+
 ## Decisions (Job, 28 Oct 2026)
 
 1. Preview locally: `vite preview` on the Pi, bound to the LAN. No second Render site.

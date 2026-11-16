@@ -96,6 +96,8 @@ read-only through the anon key. Plan and decisions: docs/situation-report-plan.m
 - Leaflet (react-leaflet v5), raster tiles, no WebGL
 - React Query (@tanstack/react-query) + @supabase/supabase-js, React Router 7
 - Vitest for the desk logic (`npm test`)
+- vite-plugin-pwa 2 (`injectManifest`) + Workbox: the installable app, service worker in
+  `src/sw.ts`
 
 ### Dev
 ```bash
@@ -154,6 +156,13 @@ symbol (not linked, noindex).
   docs/design/MapSymbols.dc.html; air squares per city from the air figures (P5, edition 30
   on); India's outline from `src/lib/desk/geo/india-coast.json`. Leaflet loads lazily,
   after the page's text.
+- **Installable app (PWA; plan section 9):** the shell is precached and every navigation
+  gets `index.html`. Supabase reads are network first (4 s timeout, a 5xx falls back too),
+  never stale-while-revalidate. The service worker marks a response from its cache
+  (`X-Sentinel-Cache`); `lib/supabase.ts` reports it, `lib/offline.ts` holds the state and
+  `OfflineBanner` says which edition is showing. Saved data is never shown as current; a
+  page with no saved copy shows an error line. Any new read must stay a `GET` to be
+  saved. `autoUpdate`: a deploy shows on the first open. No service worker in `npm run dev`.
 - **Design tokens:** the paper palette in `src/index.css` `:root` (`--paper`, `--ink`,
   `--ink-muted`, `--rule`, `--fill`, `--fill-strong`, `--panel`, `--note`, `--accent`),
   aliased in `tailwind.config.js`.

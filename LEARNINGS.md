@@ -513,3 +513,40 @@ database, mostly bloat. Hotspots now go straight to the local
 archive, the four older tables are private (migration 009), and `events` was vacuumed to
 under 1 MB. When a reader goes away, take its access and its data with it.
 
+
+---
+
+## A Cache Fallback Is Invisible Unless the Service Worker Says So
+
+Making the site installable (17 Nov 2026) meant showing the last saved edition offline
+without ever passing it off as current. Four things were not what the PWA reference or
+the libraries suggested.
+
+**The page can't see a fallback.** Workbox's `NetworkFirst` hands the page a normal 200
+from its cache, and supabase-js can't tell. The service worker now rebuilds a cached
+response with an `X-Sentinel-Cache` header saying why the network lost, and the Supabase
+client's `fetch` reads it. `navigator.onLine` only helps in one direction: false is
+certain, true proves nothing. So "You're offline" needs both a failed fetch and
+`onLine === false`; a timeout is "slow" and anything else "didn't answer".
+
+**`NetworkFirst` passes a 5xx on.** Any response counts as the network answering, a 503
+included. A plugin that throws in `fetchDidSucceed` for 500 and above turns it into a
+failure, so the saved copy is used. A 4xx is left alone.
+
+**Two libraries retry underneath you.** React Query pauses every query while the browser
+reports offline (`networkMode: 'online'`), so the page sat on "Loading…" and never
+reached the cache; it is now `always`. And supabase-js retries a failed read three times
+(1 s, 2 s, 4 s) by itself, which, with React Query's own two retries, kept a page with no saved copy on "Loading…"
+for more than 15 s in the offline test.
+It doesn't retry an abort, so the client's `fetch` throws one when the browser is surely
+offline.
+
+**Chained reads multiply the timeout.** The Desk reads the latest edition, then the
+edition, then the comparison in two steps. On a slow connection each waits its own 4 s
+before falling back, so the saved page took about 16 s to appear in full, not 4.
+Accepted for now; a shared "the network is slow, stop waiting" signal would fix it.
+
+Also: `autoUpdate` shows a deploy on the first open only if the registration reloads the
+page (`virtual:pwa-register` does; a plain registration script needs a second open). And
+the first visit's reads happen before the service worker controls the page, so they are
+read again once it takes control, or the first offline open would have nothing saved.

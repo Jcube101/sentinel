@@ -41,6 +41,7 @@ the plan, *Delivered by the pipeline session*.
 - Tailwind CSS 3 (the paper palette in `src/index.css`)
 - Leaflet + react-leaflet v5 (raster tiles, no WebGL)
 - Supabase client + React Query, React Router 7
+- vite-plugin-pwa 2 + Workbox (the installable app; service worker in `src/sw.ts`)
 - Vitest
 
 ## Local dev
@@ -65,6 +66,30 @@ npm run build:preview  # the same, with /dev/symbols included (VITE_DEV_PAGES=1)
 Render builds `main` as a static site (`render.yaml`: `npm install && npm run build` in
 `frontend/`, publish `dist/`, every path rewritten to `index.html` for the router). A push
 to `main` is live about a minute later.
+
+## The installable app (PWA)
+
+The build also emits `manifest.webmanifest` and `sw.js` (from `src/sw.ts`). Decisions, cache
+rules and banner copy: `docs/situation-report-plan.md`, section 9.
+
+- **Precache:** the app shell (28 files, about 860 KiB). Every navigation gets the
+  precached `index.html`, so deep links open offline.
+- **Edition data:** `GET`s to Supabase's REST API are network first with a 4 s timeout;
+  the saved copy is the fallback, also on a 5xx. Never stale-while-revalidate.
+- **Saved data says so:** the service worker marks a cached response
+  (`X-Sentinel-Cache`), `lib/supabase.ts` reports it, `lib/offline.ts` holds the state
+  and `OfflineBanner` prints it. A page with no saved copy shows an error line.
+- **Fonts** are cached; **map tiles** are not.
+- **Updates:** `autoUpdate`. The new version shows on the first open after a deploy,
+  after one automatic reload.
+- **Icons:** `node scripts/gen-icons.mjs` redraws the PNGs in `public/` from the palette.
+- **No service worker under `npm run dev`.** Check it on a build: `npm run build`, then
+  `npx vite preview` (localhost counts as secure; over the LAN by IP it does not).
+- **Checking by hand:** Chrome DevTools → Application → Manifest (no installability
+  errors), Service Workers, Cache Storage; Network → Offline, or custom throttling with
+  more than 4 s of latency, then reload.
+- **Stuck on an old version while developing:** DevTools → Application → Storage → Clear
+  site data.
 
 ## Working on the frontend
 
@@ -119,7 +144,9 @@ item made from that event (else a short note).
 ```
 src/
 ├── App.tsx              — routes; every page but the Desk loads lazily
+├── sw.ts                — the service worker: precache, network-first edition data, the cache mark
 ├── hooks/useEdition.ts  — every read: editions, snapshots, comparisons, items, fires, archive
+├── lib/offline.ts       — whether the page shows saved data, and the banner's words
 ├── lib/desk/            — the desk logic, pure and tested:
 │   ├── entries.ts       —   snapshots → ranked desk rows (quake group, fire roundup)
 │   ├── changes.ts       —   Since yesterday: the comparison with the edition a day earlier

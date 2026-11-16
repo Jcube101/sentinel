@@ -57,6 +57,10 @@ state's national rank, the cyclone's own position, latest wind and closing line,
 collapsed map key. Plan, decisions and the requests to the pipeline (P1–P8, all delivered):
 [docs/situation-report-plan.md](docs/situation-report-plan.md).
 
+Added on 17 Nov: the site is an installable app (PWA). It opens offline with the last
+saved edition under a banner that names it, goes to the network first so a normal open
+shows the latest edition, and updates itself after a deploy (plan, section 9).
+
 ---
 
 ## Build Log
@@ -87,6 +91,7 @@ collapsed map key. Plan, decisions and the requests to the pipeline (P1–P8, al
 | Oct 2026 | The Situation Report (Phase 7) replaces the old site on 29 Oct: the desk as a newspaper front page, an archive of every edition, hazard map symbols, copy written to a style guide |
 | Oct 2026 | Part C: FIRMS hotspots out of Supabase's `events` (local archive only), the older tables private (migration 009), `events` vacuumed |
 | Oct 2026 | Cyclones close 24 h after their last advisory, with the latest wind next to the peak; Cyclone Arnab closed in edition 32 (30 Oct) |
+| Nov 2026 | The Situation Report is installable (PWA): opens offline with the last saved edition, says so in a banner, updates itself after a deploy |
 
 ---
 
