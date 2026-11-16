@@ -15,6 +15,12 @@ services:
       - type: rewrite
         source: /*
         destination: /index.html
+    # The app manifest's own media type (Render serves .webmanifest as
+    # binary/octet-stream otherwise).
+    headers:
+      - path: /manifest.webmanifest
+        name: Content-Type
+        value: application/manifest+json
     envVars:
       - key: VITE_SUPABASE_URL
         sync: false
