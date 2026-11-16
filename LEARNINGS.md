@@ -550,3 +550,14 @@ Also: `autoUpdate` shows a deploy on the first open only if the registration rel
 page (`virtual:pwa-register` does; a plain registration script needs a second open). And
 the first visit's reads happen before the service worker controls the page, so they are
 read again once it takes control, or the first offline open would have nothing saved.
+
+---
+
+## The Render Service Doesn't Read `render.yaml`
+
+Render served `manifest.webmanifest` as `binary/octet-stream`. A `headers` rule added to
+`frontend/render.yaml` and deployed changed nothing; the same rule added in Render's
+dashboard set `Content-Type: application/manifest+json` at once. The live service takes
+its settings from the dashboard, so a change to that file is not a change to the site.
+Headers live in the dashboard, and the file notes the one rule that exists. Check a
+hosting setting by the response that comes back, not by the config file in the repo.

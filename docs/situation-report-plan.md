@@ -650,10 +650,12 @@ installed profile showed the new version after 4.3 s and one reload. Render's CD
 (`s-maxage=300`) did not delay that update; right after the first deploy `/` did come
 back once from the CDN as the old page, so allow a few minutes at worst.
 
-**Open:** Render serves `manifest.webmanifest` as `binary/octet-stream`. Chrome accepts
-it, but the right type is `application/manifest+json`. The `headers` rule in
-`frontend/render.yaml` had no effect (the service doesn't seem to read the file), so the
-rule has to be added in Render's dashboard, or the file renamed to `manifest.json`.
+**The manifest's type.** `/manifest.webmanifest` is served as `application/manifest+json`
+(checked live, 17 Nov 2026). Render's default for the file is `binary/octet-stream`; the
+type comes from a header rule in Render's dashboard (path `/manifest.webmanifest`,
+`Content-Type: application/manifest+json`), which Job added. A `headers` rule in
+`frontend/render.yaml` had no effect and was removed. The manifest's address stays
+`/manifest.webmanifest` for good: an installed app remembers it (Job, 17 Nov).
 
 **Known limits**
 

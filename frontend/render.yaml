@@ -15,12 +15,10 @@ services:
       - type: rewrite
         source: /*
         destination: /index.html
-    # The app manifest's own media type (Render serves .webmanifest as
-    # binary/octet-stream otherwise).
-    headers:
-      - path: /manifest.webmanifest
-        name: Content-Type
-        value: application/manifest+json
+    # Response headers are set in Render's dashboard, not here: a `headers`
+    # rule in this file had no effect on the live service (17 Nov 2026). The
+    # dashboard has one rule: /manifest.webmanifest, Content-Type:
+    # application/manifest+json (Render's default is binary/octet-stream).
     envVars:
       - key: VITE_SUPABASE_URL
         sync: false
