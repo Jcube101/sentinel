@@ -25,6 +25,12 @@ syntax); --config replays another copy of the file. Caveats:
 so the rates are out of sample: "what would a normal year have looked like". --nrt-archive replays
 the live NRT hotspots in sentinel_archive.db (the only out-of-sample year there is) with the
 norms of data/fire_baseline.csv.
+
+--hysteresis R [R ...] (17 Nov 2026) adds the close-line test to --leave-one-out, --trailing and --nrt-archive:
+an open item whose day is under the open level but at or above R times the norm is "held" (stays open, quiet
+clock off); only a day under R (or too few events to count) starts the 48 h clock. It is simulated on the
+per-day levels the live desk code gives (`simulate`), so nothing in fire_desk.py changes; "today" is the same
+simulation with no close line, and must match the desk's own open/close counts.
 """
 import argparse
 import copy
@@ -94,6 +100,7 @@ def replay(days, cfg: dict, norms: dict, places) -> dict:
     l3_list = []                   # (day, state, firms level, fire events, ratio): the state-days at FIRMS level 3+
     l3_days = l4_days = 0          # state-days at FIRMS level 3 / 4, before any cap
     closed_on, reopen_gaps, opened_on = {}, [], []
+    series = []                    # (day, {state: (level, ratio, counted)}): what `simulate` replays
     for day, rows in days:
         n_days += 1
         now = datetime.combine(day + timedelta(days=1), time(9), timezone.utc)
@@ -101,6 +108,8 @@ def replay(days, cfg: dict, norms: dict, places) -> dict:
                                                 norms=norms, places=places, gdacs_checked=True, data_to=None)
         items, snapshots = fire_desk.reconcile_items(existing, candidates, cfg=cfg, day=day, now=now, run_id=None)
         existing.update({i["id"]: i for i in items})
+        series.append((day, {c.place_name: (c.level, c.figures.get("ratio_to_norm"), bool(c.figures.get("ratio_counted")))
+                             for c in candidates}))
         for c in candidates:
             if c.figures["fire_events"]:
                 firms_days[c.place_name][c.figures["firms_level"]] += 1
@@ -129,7 +138,67 @@ def replay(days, cfg: dict, norms: dict, places) -> dict:
     return {"days": n_days, "firms_days": firms_days, "opened": opened, "days_open": days_open,
             "open_per_day": open_per_day, "busiest": sorted(busiest, key=lambda b: (-b[0], b[1]))[:3],
             "level4": level4, "episodes": episodes, "l3_days": l3_days, "l4_days": l4_days,
-            "reopen_gaps": reopen_gaps, "by_day": by_day, "opened_on": opened_on, "l3_list": l3_list}
+            "reopen_gaps": reopen_gaps, "by_day": by_day, "opened_on": opened_on, "l3_list": l3_list, "series": series}
+
+
+def simulate(series, cfg: dict, close_ratio: float | None) -> dict:
+    """The fire lifecycle over per-day (level, ratio, counted) by state, with an optional close line.
+
+    Today's rule (close_ratio None): an open item whose day is under the open level starts a quiet clock,
+    and closes once `close_after_hours` of complete days have passed; a day at the open level resets it.
+    With a close line, a day under the open level but counted and at or above close_ratio is *held*: the
+    item stays open, at Level 2, and the clock stays off.
+    """
+    lc = cfg["fire"]["lifecycle"]
+    open_level, hours = lc["open_min_level"], lc["close_after_hours"]
+    is_open, quiet, started, closed_on = {}, {}, {}, {}
+    out = {"days": len(series), "opens": 0, "closes": 0, "reopens": 0, "reopen_within_3d": 0, "held_days": 0,
+           "open_days": 0, "episodes": [], "max_open": 0}
+    for day, states in series:
+        for state in sorted(set(states) | set(is_open)):
+            level, ratio, counted = states.get(state, (1, None, False))
+            if level >= open_level:
+                if state not in is_open:
+                    is_open[state] = True
+                    started[state] = day
+                    out["opens"] += 1
+                    if state in closed_on:
+                        out["reopens"] += 1
+                        out["reopen_within_3d"] += (day - closed_on.pop(state)).days <= 3
+                quiet.pop(state, None)
+            elif state in is_open:
+                if close_ratio is not None and counted and ratio is not None and ratio >= close_ratio:
+                    quiet.pop(state, None)
+                    out["held_days"] += 1
+                    continue
+                since = quiet.setdefault(state, day)
+                if ((day - since).days + 1) * 24 >= hours:
+                    del is_open[state]
+                    quiet.pop(state, None)
+                    out["closes"] += 1
+                    out["episodes"].append((day - started.pop(state)).days)
+                    closed_on[state] = day
+        out["open_days"] += len(is_open)
+        out["max_open"] = max(out["max_open"], len(is_open))
+    return out
+
+
+def hysteresis_table(results: list, cfg: dict, ratios: list[float], title: str) -> None:
+    """results: [(label, replay result)]. One row per close line, summed over the replays."""
+    print(f"\n{title}")
+    print(f"{'close line':>12s}{'days':>7s}{'open/day':>9s}{'opens/yr':>9s}{'days open':>10s}{'closes':>7s}"
+          f"{'reopens':>8s}{'<=3 d':>6s}{'<=3d/closes':>12s}{'held d':>7s}")
+    for ratio in [None, *ratios]:
+        sims = [simulate(r["series"], cfg, ratio) for _, r in results]
+        days = sum(x["days"] for x in sims)
+        eps = [e for x in sims for e in x["episodes"]]
+        closes = sum(x["closes"] for x in sims)
+        within = sum(x["reopen_within_3d"] for x in sims)
+        label = "today" if ratio is None else f"{ratio:g}x"
+        print(f"{label:>12s}{days:7d}{sum(x['open_days'] for x in sims) / max(days, 1):9.2f}"
+              f"{sum(x['opens'] for x in sims) / (days / 365.25):9.0f}{(sum(eps) / len(eps) if eps else 0):10.1f}"
+              f"{closes:7d}{sum(x['reopens'] for x in sims):8d}{within:6d}{within / max(closes, 1):12.0%}"
+              f"{sum(x['held_days'] for x in sims):7d}")
 
 
 def report(r: dict, cfg: dict, years: list[int]) -> None:
@@ -216,7 +285,8 @@ def norms_from(per_year: dict, use: list[int], years: list[int], cfg: dict, stat
     return {(r["state"], r["week"]): r for r in rows}
 
 
-def leave_one_out(cache_dir: Path, years: list[int], cfg: dict, districts, mask, places, trailing: int | None = None) -> list[dict]:
+def leave_one_out(cache_dir: Path, years: list[int], cfg: dict, districts, mask, places, trailing: int | None = None,
+                  collect: list | None = None) -> list[dict]:
     """Replay each year with norms from the other years (a normal year, out of sample), or with
     trailing=N from the N years before it (only years that have N before them)."""
     per_year = {y: daily_counts(cache_dir, y, cfg, districts, mask) for y in years}
@@ -231,6 +301,8 @@ def leave_one_out(cache_dir: Path, years: list[int], cfg: dict, districts, mask,
         result = replay(archive_days(cache_dir, [held], cfg, districts, mask), cfg, norms, places)
         logger.info("held out %d: %d days in %.0f s", held, result["days"], clock.monotonic() - t0)
         out.append(summary(result, f"{held} ({rest[0]}-{rest[-1]})" if trailing else str(held)))
+        if collect is not None:
+            collect.append((str(held), result))
     return out
 
 
@@ -263,6 +335,8 @@ def main() -> int:
                         help="replay each year with norms from the other years only (out of sample)")
     parser.add_argument("--trailing", type=int, metavar="N",
                         help="replay each year with norms from the N years before it (instead of the other years)")
+    parser.add_argument("--hysteresis", type=float, nargs="+", metavar="R",
+                        help="with --leave-one-out / --trailing / --nrt-archive: also simulate closing only below R x the norm")
     parser.add_argument("--nrt-norm-years", type=int, nargs="+", metavar="YEAR",
                         help="for --nrt-archive: build the norms from these archive years instead of using data/fire_baseline.csv")
     parser.add_argument("--nrt-archive", type=Path, metavar="SQLITE",
@@ -292,7 +366,8 @@ def main() -> int:
               f"(L3+/L4: the FIRMS level before any cap)")
         places = fire_desk.load_places()
         if args.leave_one_out or args.trailing:
-            rows = leave_one_out(args.cache_dir, years, cfg, districts, mask, places, args.trailing)
+            collected: list = []
+            rows = leave_one_out(args.cache_dir, years, cfg, districts, mask, places, args.trailing, collected)
             n = len(rows)
             rows.append({"label": "mean", "days": sum(x["days"] for x in rows),
                          **{k: sum(x[k] for x in rows) / n for k in ("open_per_day", "opens_per_year", "l3_per_day")},
@@ -300,6 +375,8 @@ def main() -> int:
                          "reopens": sum(x["reopens"] for x in rows), "reopen_within_3d": sum(x["reopen_within_3d"] for x in rows)})
             print_summaries(rows, f"Trailing {args.trailing}-year norms, years {years[0]}-{years[-1]}" if args.trailing
                             else f"Leave-one-year-out, years {years[0]}-{years[-1]} (norms from the other years)")
+            if args.hysteresis:
+                hysteresis_table(collected, cfg, args.hysteresis, "Close line (simulated), summed over the years above")
         if args.nrt_archive:
             norms = baseline.load()
             if args.nrt_norm_years:
@@ -310,6 +387,8 @@ def main() -> int:
                             norms, places)
             print_summaries([summary(result, f"live {args.nrt_from:%d %b}-{args.nrt_to:%d %b}")],
                             "Live NRT archive, norms from data/fire_baseline.csv (out of sample)")
+            if args.hysteresis:
+                hysteresis_table([("live", result)], cfg, args.hysteresis, "Close line (simulated), live NRT archive")
         return 0
     result = replay(archive_days(args.cache_dir, years, cfg, districts, mask), cfg, baseline.load(),
                     fire_desk.load_places())
