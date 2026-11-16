@@ -641,6 +641,20 @@ the new service worker installs and takes over, and the page reloads itself once
 in the local test). Render serves every file with `max-age=0`, so nothing holds an old
 `sw.js`.
 
+**Live checks (17 Nov 2026, about 01:35 IST).** On the live origin: Chrome reports no
+installability errors, the worker is activated, an offline reload shows the banner with
+the edition, and it clears when the connection returns. `sw.js`, `index.html` and the
+manifest are served with `max-age=0, s-maxage=300`. A follow-up deploy was live 46 s after
+the push, with `sw.js` and `index.html` new at the same moment, and one open of an
+installed profile showed the new version after 4.3 s and one reload. Render's CDN copy
+(`s-maxage=300`) did not delay that update; right after the first deploy `/` did come
+back once from the CDN as the old page, so allow a few minutes at worst.
+
+**Open:** Render serves `manifest.webmanifest` as `binary/octet-stream`. Chrome accepts
+it, but the right type is `application/manifest+json`. The `headers` rule in
+`frontend/render.yaml` had no effect (the service doesn't seem to read the file), so the
+rule has to be added in Render's dashboard, or the file renamed to `manifest.json`.
+
 **Known limits**
 
 - On a slow connection the reads are chained (latest edition → edition → the comparison's
