@@ -124,6 +124,8 @@ strip. Districts are the number the copy may print.
    "Surge" is a jump (a rise of three-quarters or more); a run of rises is "climb".
 2. **The benchmark is the contrast after a comma:** the usual for the season, in words:
    "double the usual for late October", "still above usual", "back to seasonal levels".
+   "Above usual" is only said of a state above its norm; one at or below it (a Level 3 state
+   on a wildfire alert alone) "continues", with "close to" or "below the usual" as benchmark.
    No decimals and no "1.7×" in reader copy. Multiples round to "one and a half times",
    "double", "three times".
 3. **Past years only when it is a record:** "busiest late-October fire day in three years",
@@ -268,8 +270,9 @@ Rules:
    the first time (a one-time verb, easing included: "Fires ease back to seasonal levels …",
    "Air turns very poor …"); continuing items, where a state "after record day" (same fire
    day) outranks the others ("holds", "stays"). Within the same kind, the higher level, then
-   what moved since yesterday, then category order (cyclone, flood, earthquake, air, fire)
-   breaks the tie. When two events don't fit, the more newsworthy one is kept. The fire event is
+   category order (cyclone, flood, earthquake, air, fire) breaks the tie. Whether an item has
+   a line in Since yesterday never counts: it is bookkeeping, not news (two Level 2 items that
+   both continue lead with air, not with fire because a state reopened). When two events don't fit, the more newsworthy one is kept. The fire event is
    the fire states that are news (see Fire; a busy state within its usual range has no
    headline): "Fires climb in Gujarat for a third day, double the usual for late October";
    "Fires climb across western India, double the usual in Gujarat and Maharashtra"; "Fires

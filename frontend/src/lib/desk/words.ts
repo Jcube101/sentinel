@@ -40,6 +40,7 @@ export function theUsual(r: number): string {
 
 /** A fire title's benchmark, no decimals: "double the usual", "three times the usual". */
 export function benchmark(r: number): string {
+  if (r < 0.8) return 'below the usual'
   if (r < 1.25) return 'close to the usual'
   if (r < 1.75) return 'one and a half times the usual'
   if (r < 2.5) return 'double the usual'

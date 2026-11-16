@@ -242,6 +242,8 @@ function fireStory(e: DeskEntry, ctx: CopyContext): FireStory {
 const forDay = (n: number, from = 2) => (n >= from ? ` for a ${ordinal(n)} day` : '')
 
 /** The benchmark after the comma: "double the usual for late October". */
+/** "Above usual" is only said of a state above its norm; a Level 3 state on a wildfire alert alone can sit at or below it. */
+const aboveNorm = (e: DeskEntry): boolean => typeof e.figures.ratio_to_norm !== 'number' || e.figures.ratio_to_norm > 1
 const benchFor = (s: FireStory) => (s.f.r !== null ? `${benchmark(s.f.r)} for ${s.f.period}` : 'above the usual')
 
 interface Clause {
@@ -273,11 +275,11 @@ function stateClause(s: FireStory): Clause {
     if (s.dir === 'down' && s.e.level >= 2) {
       const surge = s.surgeBefore >= 3 ? ` after ${numberWord(s.surgeBefore)}-day surge` : ''
       const short = `${state} fires ${s.deep ? 'ease' : 'dip'}${surge}`
-      return { short, full: `${short}, still above usual` }
+      return aboveNorm(s.e) ? { short, full: `${short}, still above usual` } : same(short)
     }
   }
   // A Level 3 state is well above usual: its benchmark stays in the title.
-  const stay = `Fires stay above usual in ${state}${s.record || s.tie ? ' after record day' : forDay(s.aboveRun, 3)}`
+  const stay = `Fires ${aboveNorm(s.e) ? 'stay above usual' : 'continue'} in ${state}${s.record || s.tie ? ' after record day' : forDay(s.aboveRun, 3)}`
   return s.e.level >= 3 ? { short: stay, full: `${stay}, ${benchFor(s)}` } : same(stay)
 }
 
@@ -325,10 +327,11 @@ function groupClause(stories: FireStory[]): { clause: Clause; places: number; ti
   }
   if (downs.length > 0) {
     const short = `Fires dip ${whereStates(names(downs)).inText}`
-    return { clause: { short, full: `${short}, still above usual` }, places: placesOf(names(downs)), tier: 2 }
+    const allAbove = downs.every((s) => aboveNorm(s.e))
+    return { clause: { short, full: allAbove ? `${short}, still above usual` : short }, places: placesOf(names(downs)), tier: 2 }
   }
   const where = whereStates(names(pool)).inText
-  const t = `Fires stay above usual ${where}`
+  const t = `Fires ${pool.every((s) => aboveNorm(s.e)) ? 'stay above usual' : 'continue'} ${where}`
   return { clause: { full: t, short: t }, places: placesOf(names(pool)), tier: 1 }
 }
 
@@ -465,13 +468,13 @@ function fireMoveText(m: Movement, e: DeskEntry): string {
   const state = stateName(e)
   switch (m.kind) {
     case 'new':
-      return `Fires climb above usual in ${state}`
+      return aboveNorm(e) ? `Fires climb above usual in ${state}` : `Fires climb in ${state}`
     case 'reopened':
       return `Fires climb again in ${state}`
     case 'escalated':
       return `Fires climb further in ${state}`
     case 'deescalated':
-      return (m.to ?? 1) >= 2 ? `Fires dip in ${state}, still above usual` : `Fires in ${state} ease back to seasonal levels`
+      return (m.to ?? 1) >= 2 ? `Fires dip in ${state}${aboveNorm(e) ? ', still above usual' : ''}` : `Fires in ${state} ease back to seasonal levels`
     case 'closed':
       return `Fires in ${state} have stayed at seasonal levels for two days`
   }
@@ -762,10 +765,10 @@ function groupLine(ms: Movement[], es: DeskEntry[]): Omit<SinceLine, 'key' | 'ki
   if (ms[0].category === 'fire') {
     const where = whereStates(es.map(stateName)).inText
     const text = {
-      new: `Fires climb above usual ${where}`,
+      new: `Fires climb ${es.every(aboveNorm) ? 'above usual ' : ''}${where}`,
       reopened: `Fires climb again ${where}`,
       escalated: `Fires climb further ${where}`,
-      deescalated: ms.every((m) => m.to === 1) ? `Fires ease back to seasonal levels ${where}` : `Fires dip ${where}, still above usual`,
+      deescalated: ms.every((m) => m.to === 1) ? `Fires ease back to seasonal levels ${where}` : `Fires dip ${where}${es.every(aboveNorm) ? ', still above usual' : ''}`,
       closed: `Fires have stayed at seasonal levels for two days ${where}`,
     }[kind]
     return { tag: MOVE_TAGS[kind], text, levels: groupLevels(ms) }
@@ -837,7 +840,7 @@ function itemClause(e: DeskEntry): string {
       return `${midName(name)} is on a ${colour} alert`
     }
     case 'fire':
-      return `fires stay above usual in ${stateName(e)}`
+      return `fires ${aboveNorm(e) ? 'stay above usual' : 'continue'} in ${stateName(e)}`
   }
 }
 
@@ -977,7 +980,7 @@ function floodEvent(e: DeskEntry, ctx: CopyContext): HeadEvent {
 }
 
 /** Every event of the edition that is worth a headline, most newsworthy first: level, then what moved, then category order. */
-function headEvents(entries: DeskEntry[], ctx: CopyContext): HeadEvent[] {
+export function headEvents(entries: DeskEntry[], ctx: CopyContext): HeadEvent[] {
   const out: HeadEvent[] = []
   for (const e of entries) {
     if (e.level < 2 || e.category === 'fire') continue
@@ -991,7 +994,7 @@ function headEvents(entries: DeskEntry[], ctx: CopyContext): HeadEvent[] {
   const rank = (c: Category) => CATEGORY_ORDER.indexOf(c)
   // Level 3 and up lead by level; below that, newsworthiness (record, first-time change, continuing).
   const top = (x: HeadEvent) => (x.level >= 3 ? x.level : 0)
-  return out.sort((a, b) => top(b) - top(a) || b.tier - a.tier || b.level - a.level || Number(b.moved) - Number(a.moved) || rank(a.category) - rank(b.category))
+  return out.sort((a, b) => top(b) - top(a) || b.tier - a.tier || b.level - a.level || rank(a.category) - rank(b.category))
 }
 
 /**

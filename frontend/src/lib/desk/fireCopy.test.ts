@@ -5,6 +5,8 @@ import { deskEntries } from './entries'
 import { fireHistoryFrom, stepDirection, type FireDay } from './fireHistory'
 import type { ChangeWindow, EditionData } from './types'
 import e25 from './__fixtures__/edition-25.json'
+import e82 from './__fixtures__/edition-82.json'
+import w82 from './__fixtures__/window-82.json'
 
 // The fire copy framework (docs/style-guide.md, Fire): place + direction + benchmark. Synthetic states built on
 // edition 25's Telangana snapshot, so every line here is a rule, not a recording.
@@ -292,5 +294,36 @@ describe('a Level 1 fire state is a status line, not a story', () => {
     expect(quiet).toEqual({ title: 'Madhya Pradesh: fires at seasonal levels', standfirst: null })
     const eased = run([{ state: 'Madhya Pradesh', n: 12, ratio: 0.9, level: 1, change: 'deescalated', before: [{ events: 50 }] }]).fires[0]
     expect(eased.title).toBe('Fires in Madhya Pradesh ease back to seasonal levels')
+  })
+})
+
+describe('edition 82: equal footing, category order breaks the tie', () => {
+  // Air and the Maharashtra fire state were both Level 2 and both continuing. Fire had Since-yesterday moves
+  // (a reopened state, closed items), air had none, and "moved" decided the order. It is bookkeeping, not news.
+  it('air leads fires when both are Level 2 and continuing', () => {
+    const data = e82 as unknown as EditionData
+    const since = sinceYesterday(data.snapshots, w82 as unknown as ChangeWindow)
+    expect(since.moves.some((m) => m.category === 'fire')).toBe(true)
+    const entries = deskEntries(data.snapshots, since.byItem)
+    expect(pageHeadline(entries, copyContext(entries, since, data.run))).toMatch(/^Air stays very poor in four cities/)
+  })
+})
+
+describe('"above usual" is only said of a state above its norm', () => {
+  const mp: Spec = { state: 'Madhya Pradesh', n: 535, ratio: 0.88, max: 900, level: 3, alert: 'Green', before: [{ events: 530, ratio: 0.9 }, { events: 520, ratio: 0.87 }] }
+
+  it('a Level 3 state at 0.88 of its norm "continues"; its benchmark says close to the usual', () => {
+    const { fires, headline } = run([mp], LATER_SLOT)
+    expect(fires[0].title).toBe('Fires continue in Madhya Pradesh, close to the usual for late October')
+    expect(headline).not.toMatch(/above usual/)
+  })
+
+  it('a state above its norm keeps "stay above usual"', () => {
+    expect(run([{ ...mp, ratio: 2.4, level: 2 }], LATER_SLOT).fires[0].title).not.toMatch(/continue/)
+  })
+
+  it('a dip below the norm does not say "still above usual"', () => {
+    const { fires } = run([{ ...mp, n: 400, ratio: 0.9, before: [30, 55, 90, 140].map((events) => ({ events, ratio: 0.95 })) }])
+    expect(fires[0].title).not.toMatch(/above usual/)
   })
 })
