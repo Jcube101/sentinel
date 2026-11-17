@@ -264,6 +264,11 @@ smooth_weeks = 1       # norm for week w averages weeks w-1 .. w+1
 [fire.lifecycle]
 # Spec: opens at level 2+, escalates on any level increase, closes after
 # this many hours at Level 1 or with no detections. Hours of data, counted
-# in whole complete days: 48 = two days in a row below open_min_level.
+# in whole complete days: 120 = five days in a row below open_min_level.
+# 120 (17 Nov 2026, was 48): replayed on 2020-2025 and the live NRT data, items that
+# closed and reopened within 3 days fell from 40% to 15% of closes (live: 10 of 22
+# to 0 of 12), at about 3.1 open items a day instead of 1.8. A close line (closing only
+# below 1.5x the norm) was tested and rejected: it made the reader-visible flicker worse
+# (docs/severity-pipeline.md, Fire hysteresis: tested, rejected).
 open_min_level = 2
-close_after_hours = 48
+close_after_hours = 120

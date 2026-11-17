@@ -18,7 +18,7 @@ from tests.test_fire import DISTRICTS, _row as _hotspot_row
 CFG = load()
 CFG["fire"].update(min_fire_events=10, level_2_min_ratio=1.25, level_3_min_ratio=2.0, ratio_level_cap=2, near_people_cap=2,
                    level_4_min_frp_mw=100, level_4_min_hotspots=1, level_4_near_km=10, level_4_min_population=100_000)
-CFG["fire"]["lifecycle"].update(open_min_level=2, close_after_hours=48)
+CFG["fire"]["lifecycle"].update(open_min_level=2, close_after_hours=120)
 NOW = datetime(2026, 10, 21, 9, 0, tzinfo=timezone.utc)   # first run of 21 Oct: complete day = 20 Oct
 DAY, TODAY = date(2026, 10, 20), date(2026, 10, 21)
 NORMS = {(state, week): {"mean_daily_events": mean, "max_daily_events": 40, "years": "2024-2025"}
@@ -308,7 +308,8 @@ def test_later_runs_on_the_same_day_are_not_new_data():
     assert snap["figures"]["today"]["fire_events"] == 40 and snap["severity_level"] == 2
 
 
-def test_closes_after_two_complete_days_below_level_2():
+def test_closes_after_five_complete_days_below_level_2():
+    # close_after_hours 120 (17 Nov 2026; was 48): five days in a row below Level 2.
     db = FakeSupabase()
     _run(db, _events(15), run_id=5)                                        # 20 Oct: 1.5x, opens
 
@@ -318,11 +319,16 @@ def test_closes_after_two_complete_days_below_level_2():
     assert (item["status"], item["severity_level"]) == ("open", 1)
     assert item["figures"]["quiet_since"] == "2026-10-21" and _snap(db, 6)["change"] == "deescalated"
 
-    now, day = _day(2)
-    _run(db, [], now=now, run_id=7)                                        # 22 Oct: no fire events
+    for n in (2, 3, 4):                                                    # 22-24 Oct: quiet days 2-4, still open
+        now, day = _day(n)
+        _run(db, [], now=now, run_id=5 + n)
+        assert _item(db)["status"] == "open" and _snap(db, 5 + n)["change"] is None
+
+    now, day = _day(5)
+    _run(db, [], now=now, run_id=11)                                       # 25 Oct: the fifth quiet day
     item = _item(db)
-    assert item["status"] == "closed" and _snap(db, 7)["change"] == "closed"
-    assert item["severity_reason"] == "No fire events on 22 Oct" and item["title"] == "No fire activity in Punjab"
+    assert item["status"] == "closed" and _snap(db, 11)["change"] == "closed"
+    assert item["severity_reason"] == "No fire events on 25 Oct" and item["title"] == "No fire activity in Punjab"
 
 
 def test_back_above_level_2_resets_the_quiet_clock():
@@ -342,13 +348,13 @@ def test_back_above_level_2_resets_the_quiet_clock():
 def test_closed_item_reopens():
     db = FakeSupabase()
     _run(db, _events(15), run_id=5)
-    for n, run_id in ((1, 6), (2, 7)):
+    for n in range(1, 6):
         now, day = _day(n)
-        _run(db, [], now=now, run_id=run_id)
+        _run(db, [], now=now, run_id=5 + n)
     assert _item(db)["status"] == "closed"
-    now, day = _day(3)
-    _run(db, _events(20, day=day), now=now, run_id=8)
-    assert _item(db)["status"] == "open" and _snap(db, 8)["change"] == "reopened"
+    now, day = _day(6)
+    _run(db, _events(20, day=day), now=now, run_id=11)
+    assert _item(db)["status"] == "open" and _snap(db, 11)["change"] == "reopened"
 
 
 @pytest.mark.parametrize("kw, note", [
@@ -454,9 +460,13 @@ def test_items_levelled_on_an_incomplete_day_go_back_to_the_last_complete_day():
     _run(db, _events(2, day=day), now=now, run_id=8)                       # 22 Oct, complete and quiet
     item = _item(db)
     assert (item["status"], item["severity_level"], item["figures"]["quiet_since"]) == ("open", 1, "2026-10-22")
-    assert _snap(db, 8)["change"] == "deescalated"                        # the old rule would have closed it here
-    now, day = _day(3)
-    _run(db, [], now=now, run_id=9)                                        # 23 Oct: two complete quiet days
+    assert _snap(db, 8)["change"] == "deescalated"
+    for n in (3, 4, 5):                                                    # 23-25 Oct: quiet days 2-4, still open
+        now, day = _day(n)
+        _run(db, [], now=now, run_id=6 + n)
+        assert _item(db)["status"] == "open"
+    now, day = _day(6)
+    _run(db, [], now=now, run_id=12)                                       # 26 Oct: the fifth complete quiet day
     assert _item(db)["status"] == "closed"
 
 

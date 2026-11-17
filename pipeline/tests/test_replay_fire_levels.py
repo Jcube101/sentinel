@@ -4,8 +4,11 @@ from datetime import date
 import pytest
 
 from severity_config import ConfigError
-from tests.test_fire_desk import CFG, NORMS, PLACES, _events
+from tests.test_fire_desk import CFG as _CFG, NORMS, PLACES, _events
 from tools import replay_fire_levels as replay
+
+# The replay mechanics are tested on the old 48 h rule (two quiet days), whatever severity.toml says now.
+CFG = {**_CFG, "fire": {**_CFG["fire"], "lifecycle": {**_CFG["fire"]["lifecycle"], "close_after_hours": 48}}}
 
 
 def test_set_overrides_existing_keys_only():

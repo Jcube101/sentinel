@@ -41,6 +41,7 @@ which no longer does).
 | Missed-edition alert: the first run after a gap names the scheduled slots with no `pipeline_runs` row (`runs.missed_slots`) | 15 Nov | Offline tests; checked against all 78 editions: it flags only the 6 Nov outage (14:30 and 20:30 IST). Live check: editions 80-82 ran with no false alert; a real gap hasn't happened since |
 | data.gov.in completeness guard (`air.datagov.min_complete_fraction`, `typical_runs`) and `stale` / `incomplete` DATAGOV statuses (migration 010) | 15 Nov (migration 010 applied the same day) | Offline tests. Evidence: 8 of 42 data.gov.in editions (30 Oct - 15 Nov) had 47-442 stations against ~540; edition 37 (117 stations) closed the air item on a false all-clear, edition 60 (80) read "2 cities". Includes one re-read after 90 s (15 Nov, 15:35: 737 records, a minute later 3,228). Live check: edition 83 (17 Nov, 02:30 IST) |
 | Fire baseline 2023-2025 (mask from 2020-2025, persistence rule, exclusion file), 40 events / 6× Level 3, `level_4_min_hotspots` 2, `ratio_level_cap` 3, `near_people_cap` 4 (*Decisions (15 Nov 2026)*) | 17 Nov (`fire_baseline` uploaded: 1,924 rows, norm years 2023-2025) | Offline tests; replays (above); dry run on the merged code (Maharashtra L2 at 2.36×, Gujarat L1, no Level 3/4, no cap in play). Live check: edition 83 (02:30 IST) is the first under it |
+| Fire items close after 5 complete days below Level 2 (`fire.lifecycle.close_after_hours` 120, was 48); close-line hysteresis tested and rejected (*Follow-ups*) | 17 Nov | Replays 2020-2025 and live NRT: reopens within 3 days 40% -> 15% of closes, open items a day 1.8 -> 3.1. Dry run. Live check: items stay open through five quiet days; first closes from 22 Nov |
 | Only Orange and Red GDACS wildfire alerts lift a fire state to Level 3 (`fire.gdacs_wildfire_alert_levels`); Green alerts are dropped | 15 Nov | Dry run: Madhya Pradesh (Level 3 since edition 59 on Green alerts, 0.88× norm) de-escalates to Level 1. Live check: pending |
 
 ## The problem
@@ -417,21 +418,25 @@ First listed 21 Oct 2026, when the spec was completed; reviewed 30 Oct 2026.
   `events`. Then decide whether to raise `fire.calibration_cap` from 2. Until then
   FIRMS-derived fire items never show above Level 2 (Level 4 "large fire near people"
   included); only a GDACS wildfire alert lifts a state to Level 3.
-- **Hysteresis for fire items (planned, 15 Nov 2026, after the thresholds are live):** open at
-  the Level 2 threshold, close only after 2 complete days below a lower one (try 1.5× and
-  1.25×); replay the reopen-within-3-days rate (47-51% now), open items per day and days
-  open. Target: reopens well under 20% without many more open items. A held item stays at
-  Level 2 until it closes; the pipeline marks it with `figures.held` and `figures.held_since`
-  (no new `change` value, no migration), and the reason line says it is easing. Copy (frontend,
-  fire formula in docs/style-guide.md): a held item reads "Telangana fires dip after three-day
-  surge, still above usual" (or "ease" for a drop of a third or more, "dip" otherwise); the
-  roundup "Fires dip across central India, still above usual"; "dip" and "ease" only in the
-  edition where `held_since` is that fire day, then "Fires stay above usual in Telangana".
-  Tests: pipeline (2.4, 1.8, 1.7, 1.4, 1.3, 2.2 against a 1.5 close line: stays open and held
-  from day 2, quiet clock from day 4, closes after day 5, day 6 reopens; 1.8 then 2.1 clears
-  `held`); frontend (a Level 2 snapshot with `held` and a ratio of 1.7 gives the dip title and
-  "still" in the standfirst, the next edition gives "stay above usual", editions without `held`
-  read as before).
+- **Fire hysteresis (decided 17 Nov 2026): tested, rejected; the fix is a longer close clock.**
+  Do not rebuild the close line ("held" items, "dip" / "ease" copy). Replayed with
+  `tools/replay_fire_levels.py --hysteresis` (2020-2025 leave-one-out, norms 2023-2025
+  thresholds, and the live NRT data 24 Jul - 15 Nov; tables in `sentinel-data/review/`):
+
+  | rule | open/day | opens/yr | days open | reopened within 3 d (of closes) | Level 2 drops that return within 3 d |
+  |---|---|---|---|---|---|
+  | 48 h (before) | 1.81 | 185 | 3.6 | 40% (live 10 of 22) | 35% (451 over 2020-2025; live 2 of 22) |
+  | 48 h + close line 1.5x | 2.04 | 167 | 4.5 | 38% | 38% |
+  | 96 h + close line 1.5x | 3.05 | 119 | 9.2 | 24% (live 5 of 16) | **46%** (592; live 6 of 22) |
+  | **120 h, no close line (chosen)** | 3.14 | 110 | 10.2 | **15%** (live 0 of 12) | 35% (same as before) |
+
+  The close line holds a state at Level 2 while it sits between 1.5x and 2x. That delays the
+  drop but not the return, so it makes the reader-visible flicker *worse* (a Level 2 story that
+  drops to Level 1 and is back within 3 days: 35% of drops before, 46% with 96 h + 1.5x). The quiet
+  clock never changes the level a reader sees. So: `fire.lifecycle.close_after_hours` 48 -> 120
+  (five complete days below Level 2), nothing else; no `held` marker, no new copy. What stays
+  open: the flicker itself (live: 2 in 115 days). Untested idea, revisit after a month of fire
+  season with the replay tool: keep the Level 2 story until two days in a row are under 2x.
 - **Fire threshold tuning (superseded by the above):** min 25 / 2× / 4× came from an in-sample replay; recheck with
   `tools/replay_fire_levels.py` against a few weeks of live items.
 - **Static mask gaps (done 15 Nov 2026: persistence rule and exclusion file; the Dhanbad

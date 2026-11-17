@@ -380,7 +380,7 @@ in the state (never Green) lifts the item to Level 3 regardless. Today's events 
 `figures.today` (marked partial) and never set the level. `figures.state_rank` is the
 state's national rank by fire events that day among every state with fires
 (`states_with_fires`; equal counts share a rank, `rank_shared`). Items close after
-`fire.lifecycle.close_after_hours` of complete days below Level 2
+`fire.lifecycle.close_after_hours` (120: five days) of complete days below Level 2
 (`figures.quiet_since`). If FIRMS fails, has no rows for yesterday, or
 yesterday is incomplete, open items stay last-known; if GDACS fails, they keep
 their last known alerts.

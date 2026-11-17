@@ -24,7 +24,7 @@ def test_matches_spec_drafts(cfg):
     assert [cfg["gdacs"][k] for k in ("green", "green_rising", "orange", "red")] == [1, 2, 3, 4]
     assert (cfg["fire"]["level_2_min_ratio"], cfg["fire"]["level_3_min_ratio"]) == (2.0, 6.0)  # Job, 21 Oct 2026; Level 3 at 6x on 15 Nov
     assert cfg["fire"]["confidence"] == ["n", "h"]
-    assert cfg["fire"]["lifecycle"] == {"open_min_level": 2, "close_after_hours": 48}
+    assert cfg["fire"]["lifecycle"] == {"open_min_level": 2, "close_after_hours": 120}
     assert (cfg["fire"]["min_fire_events"], cfg["fire"]["level_3_min_ratio"], cfg["fire"]["ratio_level_cap"],
             cfg["fire"]["near_people_cap"], cfg["fire"]["level_4_min_hotspots"]) == (40, 6.0, 3, 4, 2)  # Job, 15 Nov 2026
     assert (cfg["air"]["level_3_min_severe_cities"], cfg["air"]["level_4_min_severe_cities"]) == (1, 3)
