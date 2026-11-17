@@ -423,3 +423,13 @@ item they are not a failure: no late notice, no red, and the phone wire does not
 as late. The footer then shows a stale feed by the age of its snapshot ("26 hours old") and
 an incomplete one as "partial data"; the Sources grid has its own "old data" and "partial
 data" cells.
+
+From No. 87 (18 Nov 2026), a source that didn't answer or sent nothing is said only when
+its failure reached an item: a category it feeds is last-known ("NASA's fire satellites
+didn't answer this time, so fire news is as last reported."), or it is the category's main
+source and another one set the item ("The pollution control board's live feed didn't
+answer this time." while OpenAQ set the air item). A backup that failed while the main
+source covered (OpenAQ while CPCB answered) is not said: not in the late notice, not in the
+footer, not counted late on the phone wire. The Sources page shows it. Earlier editions keep
+what they printed: No. 85 says "NASA's natural-event tracker didn't answer this time."
+(`FELT_FROM` in `sources.ts`.)

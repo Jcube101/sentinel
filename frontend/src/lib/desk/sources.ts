@@ -45,6 +45,29 @@ const STATUS_WORDS: Record<string, string> = {
 const REJECTED = new Set(['stale', 'incomplete'])
 
 /**
+ * From this edition (18 Nov 2026, 14:30 IST), a source that failed is on the Desk (the late
+ * notice, the footer, the phone wire) only when its failure reached an item: a category it
+ * feeds is last-known, or it is a category's main source and another source set that
+ * category (CPCB down, OpenAQ set the air item). A backup that failed while the main source
+ * covered (OpenAQ while CPCB answered) is only on the Sources page. Earlier editions keep
+ * what they printed: every failure said.
+ */
+export const FELT_FROM = 87
+
+/**
+ * Whether a failed source's failure reached the desk in this edition (FELT_FROM). Before
+ * the rule, or with no category status to tell by (the run's quiet stage failed): yes.
+ */
+function felt(run: Edition, id: string, status: CategoryStatus[] | undefined): boolean {
+  if (run.id < FELT_FROM || !status?.length) return true
+  return CATEGORY_SOURCE_MAP.some((m) => {
+    if (m.main !== id && m.also !== id) return false
+    const st = status.find((c) => c.category === m.category)
+    return !!st && (st.last_known || (m.main === id && !!st.source && st.source !== id))
+  })
+}
+
+/**
  * Whether the category a source mainly feeds is last-known in this edition, i.e. nothing
  * else covered for it. A rejected feed whose category was covered (OpenAQ set the air
  * item) is not a failure to the reader: it isn't red and doesn't count as late.
@@ -101,6 +124,7 @@ export function sourceLines(run: Edition, status?: CategoryStatus[]): SourceLine
     const name = SOURCE_NAMES[id]
     const rejected = REJECTED.has(r.status)
     if (r.status !== 'ok' && !(rejected && !uncovered(id, status))) {
+      if (!felt(run, id, status)) continue // a failed backup the desk didn't need: the Sources page says it
       const words = r.status === 'empty' ? 'sent nothing' : rejected ? `sent ${STATUS_WORDS[r.status]}` : "didn't answer"
       out.push({ id, name, failed: true, text: (STATUS_WORDS[r.status] ?? r.status).toUpperCase(), words })
       continue
@@ -138,6 +162,7 @@ export function lateNotice(run: Edition, status: CategoryStatus[]): string | nul
       if (uncovered(id, status)) (r.status === 'stale' ? old : partial).push(SOURCE_WORDS[id] ?? id)
       continue
     }
+    if (!felt(run, id, status)) continue
     ;(r.status === 'empty' ? empty : silent).push(SOURCE_WORDS[id] ?? id)
   }
   const stale = status

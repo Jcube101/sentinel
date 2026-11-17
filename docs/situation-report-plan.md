@@ -705,6 +705,14 @@ request returned HTTP 500, while every desk item was written fresh. Decisions:
    something the desk depends on failed (a desk source, OpenAQ when the air item fell
    back to it, a severity stage, the edition's record). Other failures still alert Job but
    leave the edition ok. Editions up to No. 85 keep the status they were given.
+4. **The late notice says only failures readers can feel** (from No. 87, Job, 18 Nov):
+   a source is on the Desk (late notice, footer, phone wire's late count) only if its
+   failure left a desk item last-known or changed the item's source (CPCB down, OpenAQ set
+   the air item). A backup that failed while the main source covered (OpenAQ while CPCB
+   answered) is only on the Sources page. Editions up to No. 86 keep what they printed
+   (`FELT_FROM` in `sources.ts`; No. 85's "NASA's natural-event tracker didn't answer
+   this time" is held in `desk.test.ts`). A CPCB snapshot rejected as old or partial while
+   OpenAQ set the air item stays unsaid, as before (style guide, *The late notice*).
 
 ## Decisions (Job, 28 Oct 2026)
 

@@ -2,13 +2,14 @@ import { describe, expect, it } from 'vitest'
 import { compareEntries, deskEntries, editionTitle, type DeskEntry } from './entries'
 import { istDate, istTime, shortAge } from './ist'
 import { splitReason } from './levels'
-import { CELL_WORDS, SOURCE_ORDER, cellState, lateNotice, sourceLines, sourcesFor } from './sources'
-import type { Edition, EditionData } from './types'
+import { CELL_WORDS, FELT_FROM, SOURCE_ORDER, cellState, lateNotice, sourceLines, sourcesFor } from './sources'
+import type { CategoryStatus, Edition, EditionData } from './types'
 import { lastKnownWords } from './words'
 import e14 from './__fixtures__/edition-14.json'
 import e17 from './__fixtures__/edition-17.json'
 import e19 from './__fixtures__/edition-19.json'
 import e25 from './__fixtures__/edition-25.json'
+import e85 from './__fixtures__/edition-85.json'
 
 // Real editions, saved with read-only anon-key requests (same selects as useEdition).
 //  14: an M7.0 quake (Level 4) and an M4.6 (Level 1); GDACS timed out
@@ -141,6 +142,68 @@ describe('sources', () => {
       "NASA's fire satellites and the global disaster monitors didn't answer this time, so cyclone, flood and fire news is as last reported.",
     )
     expect(lateNotice(editions[25].run, editions[25].status)).toBeNull()
+  })
+})
+
+describe('the late notice says only failures that reached an item (from No. 87)', () => {
+  // 85: EONET returned HTTP 500 (it fed no item); every desk item fresh, air from CPCB.
+  const ed85 = e85 as unknown as EditionData
+  const failed = { status: 'error', rows: 0, new_data: false, newest_observation_at: null, error: '500 Server Error' }
+  /** Edition 85's record without EONET (as from No. 86), numbered `id`, with these sources failed. */
+  const run = (id: number, ...ids: string[]): Edition => {
+    const sources = Object.fromEntries(Object.entries(ed85.run.sources ?? {}).filter(([s]) => s !== 'EONET'))
+    for (const s of ids) sources[s] = { ...sources[s], ...failed }
+    return { ...ed85.run, id, status: 'ok', sources } as Edition
+  }
+  const withStatus = (category: string, change: Partial<CategoryStatus>) =>
+    ed85.status.map((c) => (c.category === category ? { ...c, ...change } : c))
+  const ids = (r: Edition, status: CategoryStatus[]) => sourceLines(r, status).map((l) => l.id)
+
+  it('keeps what past editions printed: No. 85 said EONET, which fed no item', () => {
+    expect(FELT_FROM).toBe(87)
+    expect(lateNotice(ed85.run, ed85.status)).toBe("NASA's natural-event tracker didn't answer this time.")
+    expect(sourceLines(ed85.run, ed85.status).find((l) => l.id === 'EONET')).toMatchObject({ failed: true, words: "didn't answer" })
+    // the same failure under the rule is not said
+    const after = { ...ed85.run, id: FELT_FROM }
+    expect(lateNotice(after, ed85.status)).toBeNull()
+    expect(ids(after, ed85.status)).not.toContain('EONET')
+  })
+
+  it('leaves out a backup that failed while the main source covered (OpenAQ while CPCB answered)', () => {
+    expect(ed85.status.find((c) => c.category === 'air')).toMatchObject({ source: 'DATAGOV', last_known: false })
+    expect(lateNotice(run(87, 'OPENAQ'), ed85.status)).toBeNull()
+    expect(ids(run(87, 'OPENAQ'), ed85.status)).toEqual(['FIRMS', 'USGS', 'GDACS', 'DATAGOV']) // footer and phone wire
+    expect(sourceLines(run(87, 'OPENAQ'), ed85.status).some((l) => l.failed)).toBe(false)
+    // No. 86 and earlier said it
+    expect(lateNotice(run(86, 'OPENAQ'), ed85.status)).toBe("OpenAQ's public air monitors didn't answer this time.")
+  })
+
+  it('says a main source whose failure changed the item\'s source (CPCB down, OpenAQ set the air item)', () => {
+    const status = withStatus('air', { source: 'OPENAQ', last_known: false })
+    expect(lateNotice(run(87, 'DATAGOV'), status)).toBe("The pollution control board's live feed didn't answer this time.")
+    expect(sourceLines(run(87, 'DATAGOV'), status).find((l) => l.id === 'DATAGOV')).toMatchObject({ failed: true })
+  })
+
+  it('says every source whose failure left an item last-known', () => {
+    const air = withStatus('air', { source: 'OPENAQ', last_known: true })
+    expect(lateNotice(run(87, 'OPENAQ', 'DATAGOV'), air)).toBe(
+      "OpenAQ's public air monitors and the pollution control board's live feed didn't answer this time, so air quality news is as last reported.",
+    )
+    const fire = withStatus('fire', { last_known: true })
+    expect(lateNotice(run(87, 'FIRMS'), fire)).toBe("NASA's fire satellites didn't answer this time, so fire news is as last reported.")
+    const gdacs = ed85.status.map((c) => (c.category === 'cyclone' || c.category === 'flood' ? { ...c, last_known: true } : c))
+    expect(lateNotice(run(87, 'GDACS'), gdacs)).toBe(
+      "The global disaster monitors didn't answer this time, so cyclone and flood news is as last reported.",
+    )
+  })
+
+  it('says the failure when the edition has no category status to tell by', () => {
+    expect(lateNotice(run(87, 'OPENAQ'), [])).toBe("OpenAQ's public air monitors didn't answer this time.")
+  })
+
+  it('still shows the failed backup on the Sources page', () => {
+    expect(cellState(run(87, 'OPENAQ').sources?.OPENAQ)).toBe('failed')
+    expect(sourceLines(run(87, 'OPENAQ')).find((l) => l.id === 'OPENAQ')).toMatchObject({ failed: true }) // ThisRun: no status passed
   })
 })
 
