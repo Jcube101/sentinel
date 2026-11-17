@@ -465,6 +465,17 @@ function roundupCopy(e: DeskEntry, ctx: CopyContext): ItemCopy {
   return { title: clause.full, standfirst: sentences.join(' ') }
 }
 
+/**
+ * How long a closed fire state stayed at seasonal levels, from its closing snapshot: the days from `quiet_since` to
+ * the day assessed. The rule was two days until 17 Nov 2026, five after (close_after_hours 48, then 120); an older
+ * snapshot without the figures says two.
+ */
+function quietDays(e: DeskEntry): string {
+  const { quiet_since: since, day } = e.figures
+  const n = typeof since === 'string' && typeof day === 'string' ? Math.round((Date.parse(day) - Date.parse(since)) / 86_400_000) + 1 : 2
+  return numberWord(n >= 2 ? n : 2)
+}
+
 /** A fire state's Since yesterday line: the move in words. */
 function fireMoveText(m: Movement, e: DeskEntry): string {
   const state = stateName(e)
@@ -478,7 +489,7 @@ function fireMoveText(m: Movement, e: DeskEntry): string {
     case 'deescalated':
       return (m.to ?? 1) >= 2 ? `Fires dip in ${state}${aboveNorm(e) ? ', still above usual' : ''}` : `Fires in ${state} ease back to seasonal levels`
     case 'closed':
-      return `Fires in ${state} have stayed at seasonal levels for two days`
+      return `Fires in ${state} have stayed at seasonal levels for ${quietDays(e)} days`
   }
 }
 
@@ -697,7 +708,7 @@ function cycloneClosedLine(e: DeskEntry): string {
 export function closedLine(e: DeskEntry): string {
   switch (e.category) {
     case 'fire':
-      return `Fires in ${stateName(e)} have stayed at seasonal levels for two days`
+      return `Fires in ${stateName(e)} have stayed at seasonal levels for ${quietDays(e)} days`
     case 'earthquake':
       return `Two days have passed since the ${quakeStrength(e.figures.magnitude ?? e.strength)} earthquake ${quakeWhere(e)}`
     case 'cyclone':
@@ -771,7 +782,7 @@ function groupLine(ms: Movement[], es: DeskEntry[]): Omit<SinceLine, 'key' | 'ki
       reopened: `Fires climb again ${where}`,
       escalated: `Fires climb further ${where}`,
       deescalated: ms.every((m) => m.to === 1) ? `Fires ease back to seasonal levels ${where}` : `Fires dip ${where}${es.every(aboveNorm) ? ', still above usual' : ''}`,
-      closed: `Fires have stayed at seasonal levels for two days ${where}`,
+      closed: `Fires have stayed at seasonal levels for ${quietDays(es[0])} days ${where}`,
     }[kind]
     return { tag: MOVE_TAGS[kind], text, levels: groupLevels(ms) }
   }

@@ -27,8 +27,8 @@ describe('item history (Madhya Pradesh fires, editions 14 to 26)', () => {
   it('lists every change, the last-known runs and the latest, newest first, each with a plain note', () => {
     expect(itemHistory(snaps).map((h) => `${h.runId} ${h.kind} L${h.level}: ${h.note}`)).toEqual([
       '26 latest L2: 145 fires on 27 Oct, about twice the usual',
-      '19 last_known L2: 185 fires on 24 Oct, about three times usual',
-      '17 reopened L2: 185 fires on 24 Oct, about three times usual',
+      '19 last_known L2: 185 fires on 24 Oct, about two and a half times the usual',
+      '17 reopened L2: 185 fires on 24 Oct, about two and a half times the usual',
       "14 closed L1: Fires in Madhya Pradesh have stayed at seasonal levels for two days",
     ])
   })

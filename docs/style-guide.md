@@ -73,11 +73,14 @@ nine times the usual for late October".
 | 9.07× the norm | about nine times the late-October average (standfirst); nine times the usual (title, within range) |
 | 2.1× | about double the late-October average; twice the usual (title) |
 | 1.5× | about one and a half times the average |
+| 2.55× | about two and a half times the usual (title and standfirst); 2.0× is "double", 3.0× "three times" |
 | 347.9 km | about 350 km (nearest 5 under 100 km, nearest 10 above) |
 | 222.2 km/h | 222 km/h (measurements keep their figure) |
 | AQI 293 (very poor from 301) | an index of 293, just short of 'very poor' (within 5% of the next band) |
 
-- Multiples are words ("three times"); 20 and over round to the nearest 5.
+- Multiples are words ("three times"). Under 5 they round to the nearest half (2.55× is "about two and a half
+  times", 2.9× "three times"), up to 20 to the nearest whole, then to the nearest 5. "About" goes before a
+  half that is not the ratio itself; "double" and "three times" stand alone.
 - Spell out one to nine for counts of places and people ("four states", "six cities",
   "nine districts", "eight people", "two small earthquakes"); 10 and up in figures.
 - Fires and readings are measurements: always figures ("27 fires", "an index of 301",
@@ -126,8 +129,8 @@ strip. Districts are the number the copy may print.
    "double the usual for late October", "still above usual", "back to seasonal levels".
    "Above usual" is only said of a state above its norm; one at or below it (a Level 3 state
    on a wildfire alert alone) "continues", with "close to" or "below the usual" as benchmark.
-   No decimals and no "1.7×" in reader copy. Multiples round to "one and a half times",
-   "double", "three times".
+   No decimals and no "1.7×" in reader copy. Multiples round to the nearest half: "about one and
+   a half times", "double", "about two and a half times", "three times".
 3. **Past years only when it is a record:** "busiest late-October fire day in three years",
    the years being those the edition's own norm covers (`norm_years`, else its config):
    never a fixed "two". Said once, in the first edition that reports it (the 14:30 IST edition of that fire day); the
@@ -196,7 +199,8 @@ page shows it is the lead. Not "A severe cyclone is the top story today", but "C
 Arnab holds at red alert" (No. 25). Not
 "nothing in this report is above minor", but "A quiet day across India, with nothing above
 minor". Closed items say what happened, not that they left a list: "Gujarat's fires have
-stayed at seasonal levels for two days".
+stayed at seasonal levels for five days" (the days the closing rule
+needed: five since 17 Nov 2026, two before; read from the closing snapshot).
 
 ### Sources in the story
 A source's own alert is reported as theirs, in words: "Global disaster monitors give it

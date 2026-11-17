@@ -26,42 +26,49 @@ export function possessive(name: string): string {
   return name.endsWith('s') ? `${name}'` : `${name}'s`
 }
 
+/** A multiple to the nearest half under five, the nearest whole under 20, then the nearest five: 2.55 → 2.5, 9.4 → 9. */
 function roundMultiple(r: number): number {
+  if (r < 5) return Math.round(r * 2) / 2
   return r < 20 ? Math.round(r) : Math.round(r / 5) * 5
 }
+
+/** "double" / "twice", "three times", "one and a half times", "two and a half times". */
+function timesWord(v: number, two: 'double' | 'twice'): string {
+  if (v === 2) return two
+  if (Number.isInteger(v)) return `${numberWord(v)} times`
+  return `${numberWord(Math.floor(v))} and a half times`
+}
+
+/** A half that isn't the ratio itself ("two and a half" for 2.36) needs an "about"; a whole word ("double") reads as round. */
+const roughHalf = (r: number, v: number) => !Number.isInteger(v) && Math.abs(r - v) > 0.02
 
 /** A plain multiple for titles: "twice the usual", "six times the usual". */
 export function theUsual(r: number): string {
   if (r < 1.25) return 'the usual'
-  if (r < 1.75) return 'one and a half times the usual'
-  if (r < 2.5) return 'twice the usual'
-  return `${numberWord(roundMultiple(r))} times the usual`
+  const v = roundMultiple(r)
+  return `${roughHalf(r, v) ? 'about ' : ''}${timesWord(v, 'twice')} the usual`
 }
 
-/** A fire title's benchmark, no decimals: "double the usual", "three times the usual". */
+/** A fire title's benchmark, no decimals: "double the usual", "three times the usual", "about two and a half times the usual". */
 export function benchmark(r: number): string {
   if (r < 0.8) return 'below the usual'
   if (r < 1.25) return 'close to the usual'
-  if (r < 1.75) return 'one and a half times the usual'
-  if (r < 2.5) return 'double the usual'
-  return `${numberWord(roundMultiple(r))} times the usual`
+  const v = roundMultiple(r)
+  return `${roughHalf(r, v) ? 'about ' : ''}${timesWord(v, 'double')} the usual`
 }
 
 /** The same against the time of year, for a standfirst: "about double what late October usually sees". */
 export function aboutWhatSees(r: number, period: string): string {
   const what = `what ${period} usually sees`
   if (r < 1.25) return `about ${what}`
-  if (r < 1.75) return `about one and a half times ${what}`
-  if (r < 2.5) return `about double ${what}`
-  return `about ${numberWord(roundMultiple(r))} times ${what}`
+  return `about ${timesWord(roundMultiple(r), 'double')} ${what}`
 }
 
-/** A multiple for standfirsts: "about nine times usual", "about twice the usual". */
+/** A multiple for standfirsts: "about nine times the usual", "about twice the usual". */
 export function timesUsual(r: number): string {
   if (r < 1.25) return 'about usual'
-  if (r < 1.75) return 'about one and a half times usual'
-  if (r < 2.5) return 'about twice the usual'
-  return `about ${numberWord(roundMultiple(r))} times usual`
+  const v = roundMultiple(r)
+  return `about ${timesWord(v, 'twice')} the usual`
 }
 
 /**
@@ -71,9 +78,8 @@ export function timesUsual(r: number): string {
 export function timesAverage(r: number, period: string): string {
   const avg = `the ${period.replace(' ', '-')} average`
   if (r < 1.25) return `about ${avg}`
-  if (r < 1.75) return `about one and a half times ${avg}`
-  if (r < 2.5) return `about double ${avg}`
-  return `about ${numberWord(roundMultiple(r))} times ${avg}`
+  const v = roundMultiple(r)
+  return v === 2 ? `about double ${avg}` : `about ${timesWord(v, 'double')} ${avg}`
 }
 
 /** A distance, rounded: 48 → 50, 348 → 350, 1,234 → 1,250. */

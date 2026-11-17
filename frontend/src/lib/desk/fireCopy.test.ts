@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { sinceYesterday } from './changes'
-import { copyContext, itemCopy, pageHeadline } from './copy'
+import { closedLine, copyContext, itemCopy, pageHeadline } from './copy'
 import { deskEntries } from './entries'
 import { fireHistoryFrom, stepDirection, type FireDay } from './fireHistory'
 import type { ChangeWindow, EditionData } from './types'
 import e25 from './__fixtures__/edition-25.json'
 import e82 from './__fixtures__/edition-82.json'
 import w82 from './__fixtures__/window-82.json'
+import e84 from './__fixtures__/edition-84.json'
+import w84 from './__fixtures__/window-84.json'
 
 // The fire copy framework (docs/style-guide.md, Fire): place + direction + benchmark. Synthetic states built on
 // edition 25's Telangana snapshot, so every line here is a rule, not a recording.
@@ -325,5 +327,31 @@ describe('"above usual" is only said of a state above its norm', () => {
   it('a dip below the norm does not say "still above usual"', () => {
     const { fires } = run([{ ...mp, n: 400, ratio: 0.9, before: [30, 55, 90, 140].map((events) => ({ events, ratio: 0.95 })) }])
     expect(fires[0].title).not.toMatch(/above usual/)
+  })
+})
+
+describe('edition 84: a multiple of 2.55 is "about two and a half times", not "three times"', () => {
+  it('Uttar Pradesh, 2.55x the usual for mid-November', () => {
+    const data = e84 as unknown as EditionData
+    const since = sinceYesterday(data.snapshots, w84 as unknown as ChangeWindow)
+    const entries = deskEntries(data.snapshots, since.byItem)
+    const ctx = copyContext(entries, since, data.run)
+    const up = entries.find((e) => e.category === 'fire')!
+    expect(itemCopy(up, ctx).title).toBe('Fires climb in Uttar Pradesh, about two and a half times the usual for mid-November')
+    expect(itemCopy(up, ctx).standfirst).toMatch(/about two and a half times what mid-November usually sees/)
+  })
+})
+
+describe('a closed fire state says how long it stayed at seasonal levels', () => {
+  const closed = (quietSince: string | null) => {
+    const snap = snapshot({ state: 'Telangana', n: 5, level: 1, ratio: 0.5 })
+    const [entry] = deskEntries([snap] as unknown as EditionData['snapshots'], new Map())
+    return closedLine({ ...entry, figures: { ...snap.figures, day: '2026-10-25', quiet_since: quietSince } })
+  }
+
+  it('five days under the 120 h rule, two under the old 48 h rule, two when the snapshot has no clock', () => {
+    expect(closed('2026-10-21')).toBe('Fires in Telangana have stayed at seasonal levels for five days')
+    expect(closed('2026-10-24')).toBe('Fires in Telangana have stayed at seasonal levels for two days')
+    expect(closed(null)).toBe('Fires in Telangana have stayed at seasonal levels for two days')
   })
 })

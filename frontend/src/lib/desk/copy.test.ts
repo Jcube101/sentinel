@@ -5,6 +5,8 @@ import { deskEntries } from './entries'
 import type { ChangeWindow, EditionData } from './types'
 import { placeOf, placeText } from './where'
 import {
+  aboutWhatSees,
+  benchmark,
   partOfMonth,
   relativeDay,
   roundKm,
@@ -301,13 +303,38 @@ describe('words', () => {
       'one and a half times the usual',
       '25 times the usual',
     ])
-    expect(timesUsual(2.91)).toBe('about three times usual')
+    expect(timesUsual(2.91)).toBe('about three times the usual')
     expect([2.109, 9.07, 1.5].map((r) => timesAverage(r, 'late October'))).toEqual([
       'about double the late-October average',
       'about nine times the late-October average',
       'about one and a half times the late-October average',
     ])
     expect([47.8, 347.9, 1234].map(roundKm)).toEqual([50, 350, 1250])
+  })
+
+  it('rounds a multiple to the nearest half and says it plainly (17 Nov 2026)', () => {
+    // 2.0 is "double", 3.0 "three times"; a half that isn't the ratio itself gets an "about".
+    expect([2.0, 2.1, 2.36, 2.55, 2.74, 2.9, 3.0, 3.3, 1.6, 1.5, 9.4].map(benchmark)).toEqual([
+      'double the usual',
+      'double the usual',
+      'about two and a half times the usual',
+      'about two and a half times the usual',
+      'about two and a half times the usual',
+      'three times the usual',
+      'three times the usual',
+      'about three and a half times the usual',
+      'about one and a half times the usual',
+      'one and a half times the usual',
+      'nine times the usual',
+    ])
+    expect([2.55, 2.0, 3.0, 4.2].map((r) => aboutWhatSees(r, 'mid-November'))).toEqual([
+      'about two and a half times what mid-November usually sees',
+      'about double what mid-November usually sees',
+      'about three times what mid-November usually sees',
+      'about four times what mid-November usually sees',
+    ])
+    expect(timesUsual(2.55)).toBe('about two and a half times the usual')
+    expect(timesAverage(2.55, 'mid-November')).toBe('about two and a half times the mid-November average')
   })
 
   it('dates relative to the edition, not the reader', () => {
