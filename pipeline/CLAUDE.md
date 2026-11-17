@@ -35,11 +35,19 @@ failed (so it alerts) while the others still run.
 8. `watch.py`: watching list and `category_status`
 9. `archive.run()` and `archive.store_hotspots()` (the run's FIRMS hotspots, local only),
    then `_cleanup()` only if `archive.run()` succeeded
-10. `_check_staleness()`, then `runs.finish_run()` closes the edition as ok or failed
+10. `_check_staleness()`, then `runs.finish_run()` closes the edition as ok or failed (see
+    *Alerts*: failed only when something the desk depends on failed)
 
 ## Alerts
-- **Failed run:** `pipeline.py` exits 1 when any source or stage failed, or the run record
-  couldn't be created; systemd then runs `sentinel-pipeline-alert.service`
+- **Failed edition** (`pipeline_runs.status`, since 17 Nov 2026): only when something the
+  desk depends on failed: a fetch of FIRMS, GDACS (its floods and cyclones query) or USGS
+  (`DESK_SOURCES`), OpenAQ's when the air item fell back to it from data.gov.in, a severity
+  stage, or the edition's own record (run row, `severity_config`, sources). Anything else
+  (the `events` / `aqi_readings` writes, the local archive, OpenAQ while data.gov.in set the
+  air item) leaves the edition ok and still alerts. The run's last log line says which:
+  `run: edition N failed (...)` or `run: edition N ok (the desk is complete); alerting for: ...`.
+- **Failed run:** `pipeline.py` exits 1 when anything failed (a failed edition or any of the
+  above), or the run record couldn't be created; systemd then runs `sentinel-pipeline-alert.service`
   (`notify_failure.py`, `OnFailure=` on the service). That alert is a POST to
   `NOTIFY_WEBHOOK_URL`, so it cannot be delivered while the Pi's own network or DNS is down:
   on 6 Nov 2026 two editions (14:30 and 20:30 IST) were lost that way with no message.
@@ -481,7 +489,8 @@ created_at: timestamptz
   read from its `sources.last_status`); other sources fail at once. Any other
   fetch error fails the run at once; for GDACS that means only its floods and
   cyclones query (the wildfire and earthquake queries never fail the run).
-- A run that fails, or where FIRMS/USGS/OpenAQ go stale, sends an alert via
+- A run that fails (exit 1; see *Alerts* for what marks the edition failed), or where
+  FIRMS/USGS/OpenAQ go stale, sends an alert via
   notify.py if NOTIFY_WEBHOOK_URL is set (FIRMS's age: its newest observation on its
   `sources` row; USGS's: its newest row in `events`; OpenAQ's: `aqi_readings`); GDACS is event-driven and
   is never alerted on row age, only on the fetch itself failing

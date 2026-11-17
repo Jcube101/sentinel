@@ -216,14 +216,66 @@ def test_fetcher_error_marks_run_failed_and_redacts(harness, monkeypatch):
     assert "firms-secret-key" not in firms["last_error"]
 
 
-def test_events_write_failure_is_recorded_per_source(harness):
+def test_events_write_failure_is_recorded_per_source(harness, caplog):
     harness.db.missing = {"events"}
-    assert harness.run() == 1
+    assert harness.run() == 1                          # it alerts
     by_id = {r["id"]: r for r in harness.db.rows("sources")}
     assert by_id["USGS"]["last_status"] == "error"
     assert by_id["FIRMS"]["last_status"] == "ok"   # not stored in events
     assert by_id["OPENAQ"]["last_status"] == "ok"  # aqi_readings write still worked
+    # The site doesn't read events: the edition is complete, so it isn't marked failed.
+    assert harness.db.rows("pipeline_runs")[0]["status"] == "ok"
+    assert caplog.messages[-1] == "run: edition 1 ok (the desk is complete); alerting for: events upsert"
+
+
+def test_aqi_readings_write_failure_alerts_but_the_edition_is_ok(harness):
+    harness.db.missing = {"aqi_readings"}
+    assert harness.run() == 1
+    assert harness.db.rows("pipeline_runs")[0]["status"] == "ok"
+
+
+def test_local_archive_failure_alerts_but_the_edition_is_ok(harness, monkeypatch):
+    monkeypatch.setattr(pipeline.archive, "run", lambda: 1)
+    assert harness.run() == 1
+    assert harness.db.rows("pipeline_runs")[0]["status"] == "ok"
+
+
+@pytest.mark.parametrize("source", ["USGS", "GDACS"])
+def test_a_desk_source_error_fails_the_edition(harness, caplog, source):
+    harness.fetchers[source] = _fetcher(exc=RuntimeError("500 Server Error"))
+    assert harness.run() == 1
     assert harness.db.rows("pipeline_runs")[0]["status"] == "failed"
+    assert caplog.messages[-1] == f"run: edition 1 failed (desk sources failed: {source})"
+
+
+def _air_summary(source_id):
+    return {"items": [], "watch": [], "level": None, "reason": None, "source_good": True, "note": None,
+            "source": "data.gov.in" if source_id == "DATAGOV" else "OpenAQ", "source_id": source_id,
+            "source_status": "ok", "fallback_reason": None if source_id == "DATAGOV" else "feed failed",
+            "datagov": None, "change": None, "requests": 0, "counts": None, "stations": 0,
+            "fresh_cities": 0, "severe_unconfirmed": []}
+
+
+def test_openaq_error_fails_the_edition_when_the_air_item_fell_back_to_it(harness):
+    # tests block data.gov.in, so the air stage falls back to OpenAQ
+    harness.fetchers["OpenAQ"] = _fetcher(exc=RuntimeError("500 Server Error"))
+    assert harness.run() == 1
+    assert harness.db.rows("pipeline_runs")[0]["status"] == "failed"
+
+
+def test_openaq_error_alerts_but_the_edition_is_ok_when_data_gov_in_set_the_air_item(harness, monkeypatch, caplog):
+    import air
+    monkeypatch.setattr(air, "run_air", lambda *a, **k: _air_summary("DATAGOV"))
+    harness.fetchers["OpenAQ"] = _fetcher(exc=RuntimeError("500 Server Error"))
+    assert harness.run() == 1
+    run = harness.db.rows("pipeline_runs")[0]
+    assert run["status"] == "ok" and run["sources"]["OPENAQ"]["status"] == "error"
+    assert caplog.messages[-1] == "run: edition 1 ok (the desk is complete); alerting for: OpenAQ fetch"
+
+
+def test_a_clean_run_logs_no_closing_failure_line(harness, caplog):
+    assert harness.run() == 0
+    assert not any(m.startswith("run: ") for m in caplog.messages)
 
 
 def test_dry_run_writes_nothing(harness):
@@ -247,13 +299,13 @@ def test_firms_hotspots_go_to_the_local_archive_not_to_events(harness):
     assert _archived_ids() == ["FIRMS-1"]
 
 
-def test_failing_to_archive_hotspots_fails_the_run(harness, monkeypatch):
+def test_failing_to_archive_hotspots_alerts_but_the_edition_is_ok(harness, monkeypatch):
     def broken(rows):
         raise sqlite3.OperationalError("disk I/O error")
 
     monkeypatch.setattr(pipeline.archive, "store_hotspots", broken)
     assert harness.run() == 1
-    assert harness.db.rows("pipeline_runs")[0]["status"] == "failed"
+    assert harness.db.rows("pipeline_runs")[0]["status"] == "ok"
 
 
 def _quake_row(qid="us1", mag=5.1):

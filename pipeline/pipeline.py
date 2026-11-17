@@ -110,6 +110,14 @@ FETCHERS = (
 # which is all the site's map uses. FIRMS's freshness comes from its sources row.
 EVENT_SOURCES = ("GDACS", "USGS")
 
+# What fails an edition (pipeline_runs.status, since 17 Nov 2026): only what the desk
+# depends on. A failed fetch of one of these sources (for GDACS, its floods and cyclones
+# query), OpenAQ's when the air item fell back to it from data.gov.in, a severity stage,
+# or the edition's own record (run row, severity_config, sources). Anything else (the
+# events / aqi_readings writes, the local archive, OpenAQ while data.gov.in set the air
+# item) leaves the edition ok, but the run still exits 1, so it alerts as before.
+DESK_SOURCES = ("FIRMS", "GDACS", "USGS")
+
 
 def _run_fetcher(name: str, module) -> runs.FetchResult:
     """Call module.fetch() and classify the outcome. Never raises.
@@ -348,9 +356,11 @@ def run(dry_run: bool = False):
     started_at = datetime.now(tz=timezone.utc)
     supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
-    # Run record + source freshness (runs.py). A failure here fails the run,
-    # so it alerts, but never stops the events / aqi_readings writes.
+    # Run record + source freshness (runs.py) and the severity stages. A failure here
+    # fails the edition, so it alerts, but never stops the events / aqi_readings writes.
     runs_ok = True
+    # Failures the desk doesn't depend on: they alert (exit 1), the edition stays ok.
+    alert_only: list[str] = []
 
     # The thresholds this edition runs with: stored on its run record and
     # handed to every severity stage, so the record is exactly what they used.
@@ -383,7 +393,7 @@ def run(dry_run: bool = False):
     # --- Run fetchers ---
     results = {name: _run_fetcher(name, module) for name, module in FETCHERS}
     _tolerate_first_timeouts(supabase, results)
-    any_failure = not all(result.ok for result in results.values())
+    failed_sources = [name for name, result in results.items() if not result.ok]
     # For the staleness alerts' "last fetch" line: whether data came back, even when a
     # timeout didn't fail the run.
     fetch_results = {name: result.status in ("ok", "empty") for name, result in results.items()}
@@ -402,7 +412,7 @@ def run(dry_run: bool = False):
         except Exception as exc:
             logger.error("events: upsert failed — %s", exc)
             events_upserted = 0
-            any_failure = True
+            alert_only.append("events upsert")
 
     # --- Write AQI readings ---
     openaq_rows = results["OpenAQ"].rows
@@ -418,7 +428,7 @@ def run(dry_run: bool = False):
         except Exception as exc:
             logger.error("aqi_readings: upsert failed — %s", exc)
             aqi_upserted = 0
-            any_failure = True
+            alert_only.append("aqi_readings upsert")
 
     # --- Source freshness (last good fetch, newest observation, new data) ---
     sources_summary = None
@@ -590,7 +600,7 @@ def run(dry_run: bool = False):
         archive_ok = False
 
     if not archive_ok:
-        any_failure = True
+        alert_only.append("local archive")
 
     # FIRMS hotspots skip Supabase's events table; the local archive keeps them for
     # the NRT vs SP calibration. Local and idempotent like archive.run(), so dry runs too.
@@ -599,7 +609,7 @@ def run(dry_run: bool = False):
         logger.info("archive: %d FIRMS hotspots stored locally", stored)
     except Exception as exc:
         logger.error("archive: FIRMS hotspots not stored locally — %s", exc)
-        any_failure = True
+        alert_only.append("FIRMS hotspots to the local archive")
 
     if dry_run:
         logger.info("dry-run: skipping cleanup")
@@ -610,12 +620,19 @@ def run(dry_run: bool = False):
 
     _check_staleness(supabase, fetch_results)
 
+    # --- Whether the edition failed: only what the desk depends on (DESK_SOURCES) ---
+    air_summary = stages["air"]
+    openaq_needed = air_summary is None or air_summary.get("source_id") == "OPENAQ"
+    desk_failed = [n for n in failed_sources if n in DESK_SOURCES or (n == "OpenAQ" and openaq_needed)]
+    alert_only[:0] = [f"{n} fetch" for n in failed_sources if n not in desk_failed]
+    edition_failed = bool(desk_failed) or not runs_ok
+
     # --- Close the run record ---
     if run_id is not None:
         try:
             runs.finish_run(
                 supabase, run_id,
-                status="failed" if (any_failure or not runs_ok) else "ok",
+                status="failed" if edition_failed else "ok",
                 finished_at=datetime.now(tz=timezone.utc),
                 duration_s=time.monotonic() - start,
                 events_upserted=events_upserted,
@@ -626,7 +643,17 @@ def run(dry_run: bool = False):
             logger.error("runs: could not close run record %d — %s", run_id, exc)
             runs_ok = False
 
-    return 1 if (any_failure or not runs_ok) else 0
+    # The last log line, so the failure alert's log tail says what failed.
+    edition = f"edition {run_id}" if run_id is not None else "dry run" if dry_run else "run (no edition record)"
+    if edition_failed:
+        logger.error("run: %s failed (%s)%s", edition,
+                     f"desk sources failed: {', '.join(desk_failed)}" if desk_failed
+                     else "a severity stage or the run record failed, see above",
+                     f"; also {', '.join(alert_only)}" if alert_only else "")
+    elif alert_only:
+        logger.error("run: %s ok (the desk is complete); alerting for: %s", edition, ", ".join(alert_only))
+
+    return 1 if (edition_failed or alert_only or not runs_ok) else 0
 
 
 if __name__ == "__main__":

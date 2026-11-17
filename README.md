@@ -75,7 +75,10 @@ A systemd timer on a Raspberry Pi runs the pipeline at 09:00, 15:00 and 21:00 UT
 9. Archives old rows and the run's FIRMS hotspots to local SQLite, then cleans up (only if
    the archive succeeded).
 10. Checks each source's freshness, alerts if one has gone stale, and closes the edition as
-    ok or failed.
+    ok or failed. An edition fails only when something the desk depends on failed: FIRMS,
+    GDACS or USGS, OpenAQ when the air item needed it, a severity stage or the edition's own
+    record. Any other failure (a write to `events` or `aqi_readings`, the local archive)
+    leaves the edition ok and still alerts.
 
 Each severity stage (4–8) is isolated: if one fails, the run is marked failed and alerts,
 but the other stages still run. When a source doesn't answer, its items keep their last
@@ -376,7 +379,8 @@ thresholds.
 
 ## Alerting
 
-A failed run or a stale dense source (FIRMS, USGS, OpenAQ) sends an alert
+A failed run (any failure, including ones that leave the edition ok, see step 10 under
+*How a run works*) or a stale dense source (FIRMS, USGS, OpenAQ) sends an alert
 through `notify.py`: a POST of `{source, subject, body}` JSON to
 `NOTIFY_WEBHOOK_URL`. If `NOTIFY_WEBHOOK_URL` isn't set, the attempt is
 logged and skipped rather than raising, so a missing alert channel can't

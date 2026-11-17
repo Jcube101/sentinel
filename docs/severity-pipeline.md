@@ -43,6 +43,7 @@ which no longer does).
 | Fire baseline 2023-2025 (mask from 2020-2025, persistence rule, exclusion file), 40 events / 6× Level 3, `level_4_min_hotspots` 2, `ratio_level_cap` 3, `near_people_cap` 4 (*Decisions (15 Nov 2026)*) | 17 Nov (`fire_baseline` uploaded: 1,924 rows, norm years 2023-2025) | Offline tests; replays (above); dry run on the merged code (Maharashtra L2 at 2.36×, Gujarat L1, no Level 3/4, no cap in play). Live check: edition 83 (02:30 IST) is the first under it |
 | Fire items close after 5 complete days below Level 2 (`fire.lifecycle.close_after_hours` 120, was 48); close-line hysteresis tested and rejected (*Follow-ups*) | 17 Nov | Replays 2020-2025 and live NRT: reopens within 3 days 40% -> 15% of closes, open items a day 1.8 -> 3.1. Dry run. Live check: items stay open through five quiet days; first closes from 22 Nov |
 | EONET retired: not fetched, its 201 `events` rows kept for good (*Decisions (17 Nov 2026)*) | 17 Nov | Offline tests; dry run (no EONET request, every stage as in edition 85). Live check: edition 86 (18 Nov, 02:30 IST) |
+| An edition fails only when something the desk depends on failed (`DESK_SOURCES`, OpenAQ when the air item fell back to it, a severity stage, the edition's record); other failures still alert (*Decisions (17 Nov 2026)*) | 17 Nov | Offline tests; dry run (exit 0, no closing failure line). Live check: edition 86 |
 | Only Orange and Red GDACS wildfire alerts lift a fire state to Level 3 (`fire.gdacs_wildfire_alert_levels`); Green alerts are dropped | 15 Nov | Dry run: Madhya Pradesh (Level 3 since edition 59 on Green alerts, 0.88× norm) de-escalates to Level 1. Live check: pending |
 
 ## The problem
@@ -405,7 +406,7 @@ run of 16 Nov checks out); numbers from `tools/replay_fire_levels.py`.
    and 0.41 (leave-one-out) a day: over the 0.2 Job asked for. Reopening within 3 days is
    unchanged by thresholds: that is the next job (hysteresis, planned).
 
-## Decisions (17 Nov 2026): EONET retired
+## Decisions (17 Nov 2026): EONET retired; what fails an edition
 
 Edition 85 (17 Nov, 20:30 IST) failed on one EONET request (HTTP 500 from
 eonet.gsfc.nasa.gov; it answered again ten minutes later), with every desk item written
@@ -419,6 +420,18 @@ migration 009 nothing on the site reads `events`.
    deleting EONET rows on 24 Nov 2026). Its `sources` row keeps its last fetch.
 3. **Past editions as they ran.** Editions 1-85 keep EONET in `pipeline_runs.sources`;
    the Sources page lists it only for editions that read it.
+4. **What fails an edition** (`pipeline_runs.status`): only what the desk depends on. A
+   failed fetch of FIRMS, GDACS (floods and cyclones query) or USGS (`DESK_SOURCES`);
+   OpenAQ's when the air item fell back to it (the air stage's `source_id` is `OPENAQ`);
+   a severity stage; or the edition's own record (run row, `severity_config`, sources).
+   Everything else (the `events` and `aqi_readings` writes, the local archive and FIRMS
+   hotspots in it, OpenAQ while data.gov.in set the air item) leaves the edition ok.
+5. **The alert is unchanged.** Any failure, whether it fails the edition or not, still
+   exits 1 and sends the OnFailure alert; the run's last log line (in the alert's log tail)
+   says which: `run: edition N failed (desk sources failed: GDACS)` or `run: edition N ok
+   (the desk is complete); alerting for: events upsert`.
+6. **The site** no longer prints the run's status in the masthead; readers get the late
+   notice, the last-known markers and the Sources page (docs/situation-report-plan.md).
 
 ## Follow-ups (not scheduled)
 First listed 21 Oct 2026, when the spec was completed; reviewed 30 Oct 2026.

@@ -54,7 +54,10 @@ earlier writes stand.
 8. Quiet-day desk (`watch.py`): watching list and per-category status
 9. Archive old rows and the run's FIRMS hotspots to local SQLite, then cleanup (only if
    the archive succeeded)
-10. Staleness check, then the run record is closed as ok or failed
+10. Staleness check, then the run record is closed as ok or failed. Failed only when
+    something the desk depends on failed (a desk source, a severity stage, the edition's own
+    record); any other failure (the `events` / `aqi_readings` writes, the local archive)
+    leaves it ok but still alerts (pipeline/CLAUDE.md, *Alerts*)
 
 ## Working rules
 - **Worktrees:** the timer runs whatever is checked out in the main checkout, so it stays
