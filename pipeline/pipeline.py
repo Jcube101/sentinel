@@ -15,7 +15,7 @@ import notify
 import runs
 import severity_config
 from config import LONG_RETENTION_DAYS, SHORT_RETENTION_DAYS, SUPABASE_SERVICE_KEY, SUPABASE_URL
-from fetchers import eonet, firms, gdacs, openaq, usgs
+from fetchers import firms, gdacs, openaq, usgs
 
 # journald on this host evicts entries after a few hours (unrelated services
 # flood it), so a once- or thrice-daily job's logs are gone before anyone can
@@ -60,16 +60,15 @@ DENSE_STALENESS_THRESHOLDS = {
 }
 AQI_STALENESS_THRESHOLD = timedelta(hours=48)
 
-# EONET and GDACS are genuinely event-driven: a real quiet stretch and a
-# broken fetcher produce an identical "no new rows" signal, so row age is
-# not a reliable tripwire for them (EONET's own history has a 28-day gap
-# between active days with nothing wrong; the current ~50-day gap was
-# confirmed live to be a real lull, not a bug, see AUDIT.md). For these,
-# the reliable signal is whether the fetch itself succeeded, which is
-# already what fails the run and fires the OnFailure alert; row age is
-# still logged for visibility but never triggers a WARNING or a
-# staleness notification.
-SPARSE_SOURCES = {"EONET", "GDACS"}
+# GDACS is genuinely event-driven: a real quiet stretch and a broken fetcher
+# produce an identical "no new rows" signal, so row age is not a reliable
+# tripwire for it (nor was it for EONET, read until 17 Nov 2026, whose history
+# had a 28-day gap between active days with nothing wrong, see AUDIT.md). For
+# GDACS the reliable signal is whether the fetch itself succeeded, which is
+# already what fails the run and fires the OnFailure alert; row age is still
+# logged for visibility but never triggers a WARNING or a staleness
+# notification.
+SPARSE_SOURCES = {"GDACS"}
 
 
 def _chunks(lst: list, size: int):
@@ -97,9 +96,11 @@ SOFT_TIMEOUT_SOURCES = {"GDACS"}
 # the 2-day FIRMS staleness alert. HTTP/parse errors still fail at once.
 FAIL_ON_SECOND_TIMEOUT = {"FIRMS"}
 
+# EONET (NASA's natural-event tracker) was read until edition 85 (17 Nov 2026): it fed
+# no desk item and carried the same storms and fires as GDACS. Its rows stay in `events`
+# (_cleanup never deletes them) and its sources row keeps its last fetch.
 FETCHERS = (
     ("FIRMS", firms),
-    ("EONET", eonet),
     ("GDACS", gdacs),
     ("USGS", usgs),
     ("OpenAQ", openaq),
@@ -107,7 +108,7 @@ FETCHERS = (
 # Sources whose rows go to `events`. FIRMS hotspots don't (since 29 Oct 2026): the fire
 # stages read them from the fetch result and store fire_events and fire_day_points,
 # which is all the site's map uses. FIRMS's freshness comes from its sources row.
-EVENT_SOURCES = ("EONET", "GDACS", "USGS")
+EVENT_SOURCES = ("GDACS", "USGS")
 
 
 def _run_fetcher(name: str, module) -> runs.FetchResult:
@@ -193,11 +194,12 @@ def _cleanup(supabase) -> None:
     except Exception as exc:
         logger.error("cleanup: events (FIRMS/GDACS) delete failed — %s", exc)
 
+    # USGS only: EONET's rows (read until 17 Nov 2026) are kept in events for good.
     try:
-        resp = supabase.table(EVENTS_TABLE).delete().in_("source", ["EONET", "USGS"]).lt("started_at", cutoff_365).execute()
-        logger.info("cleanup: deleted %d low-volume events (EONET/USGS >365 days)", len(resp.data))
+        resp = supabase.table(EVENTS_TABLE).delete().eq("source", "USGS").lt("started_at", cutoff_365).execute()
+        logger.info("cleanup: deleted %d low-volume events (USGS >365 days)", len(resp.data))
     except Exception as exc:
-        logger.error("cleanup: events (EONET/USGS) delete failed — %s", exc)
+        logger.error("cleanup: events (USGS) delete failed — %s", exc)
 
     try:
         resp = supabase.table(AQI_TABLE).delete().lt("recorded_at", cutoff_7).execute()
@@ -566,7 +568,6 @@ def run(dry_run: bool = False):
     print("")
     print("=== Sentinel Pipeline Run ===" + (" (DRY RUN)" if dry_run else ""))
     print(f"  FIRMS:   {len(results['FIRMS'].rows)} hotspots (to fire_events, not events)")
-    print(f"  EONET:   {len(results['EONET'].rows)} events")
     print(f"  GDACS:   {len(results['GDACS'].rows)} events")
     print(f"  USGS:    {len(results['USGS'].rows)} earthquakes")
     print(f"  OpenAQ:  {len(openaq_rows)} readings")

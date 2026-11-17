@@ -15,7 +15,7 @@ DATA_GOV_IN_API_KEY = (os.getenv("DATA_GOV_IN_API_KEY") or "").strip() or None
 # deletes it (the local SQLite archive keeps it). Fetchers that can return
 # older rows skip them, so they aren't written only to be deleted again.
 SHORT_RETENTION_DAYS = 60   # FIRMS, GDACS
-LONG_RETENTION_DAYS = 365   # EONET, USGS
+LONG_RETENTION_DAYS = 365   # USGS (EONET's rows, read until 17 Nov 2026, are kept)
 
 # Read timeout (s) per GDACS request; other fetchers keep fetchers.http's 30 s.
 # GDACS's search is slow to answer a query it hasn't cached. A page usually

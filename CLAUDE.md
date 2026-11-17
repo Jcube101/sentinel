@@ -1,6 +1,6 @@
 # Sentinel Monorepo
 
-Sentinel tracks natural hazards in India. A Python pipeline on a Raspberry Pi reads six
+Sentinel tracks natural hazards in India. A Python pipeline on a Raspberry Pi reads five
 public sources three times a day and writes to Supabase: raw `events` and `aqi_readings`,
 and a **severity desk**, where every item (quake, flood, cyclone, fire activity per state,
 national air quality) has a level from 1 to 4 and a reason. Each run is an **edition**,
@@ -42,8 +42,9 @@ if one fails, the run is marked failed and alerts, but the other stages still ru
 earlier writes stand.
 1. Run record: a `pipeline_runs` row; its id is the edition number, and it keeps the
    thresholds (severity.toml) the edition runs with
-2. Fetchers: FIRMS, EONET, GDACS, USGS, OpenAQ
-3. Writes: `events` (EONET, GDACS, USGS; FIRMS hotspots go only to the fire stages and
+2. Fetchers: FIRMS, GDACS, USGS, OpenAQ (EONET was retired on 17 Nov 2026; its rows stay
+   in `events`)
+3. Writes: `events` (GDACS, USGS; FIRMS hotspots go only to the fire stages and
    the local archive), `aqi_readings`, then each source's freshness on `sources`
 4. Fire events (`fire.py`): FIRMS hotspots clustered into `fire_events` by district
 5. Fire desk (`fire_desk.py`): one item per state, levelled on its ratio to the seasonal norm

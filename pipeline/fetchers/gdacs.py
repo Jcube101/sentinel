@@ -36,9 +36,10 @@ MAX_PAGES = 50
 # filter is ignored again.
 
 # WF and unknown types map to None → excluded from results.
-# WF (wildfire) is kept out of `events`: EONET already carries the same
-# GDACS wildfire alerts (same ids), so they would show twice on the map.
-# The severity stage uses GDACS WF alerts only as the forest-fire trigger.
+# WF (wildfire) is kept out of `events`: EONET, read until 17 Nov 2026, carried
+# the same GDACS wildfire alerts (same ids), and nothing reads them from there
+# (the site reads the desk tables). The severity stage uses GDACS WF alerts only
+# as the forest-fire trigger.
 CATEGORY_MAP = {
     "EQ": "earthquake",
     "TC": "cyclone",

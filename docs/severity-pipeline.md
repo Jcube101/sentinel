@@ -42,6 +42,7 @@ which no longer does).
 | data.gov.in completeness guard (`air.datagov.min_complete_fraction`, `typical_runs`) and `stale` / `incomplete` DATAGOV statuses (migration 010) | 15 Nov (migration 010 applied the same day) | Offline tests. Evidence: 8 of 42 data.gov.in editions (30 Oct - 15 Nov) had 47-442 stations against ~540; edition 37 (117 stations) closed the air item on a false all-clear, edition 60 (80) read "2 cities". Includes one re-read after 90 s (15 Nov, 15:35: 737 records, a minute later 3,228). Live check: edition 83 (17 Nov, 02:30 IST) |
 | Fire baseline 2023-2025 (mask from 2020-2025, persistence rule, exclusion file), 40 events / 6× Level 3, `level_4_min_hotspots` 2, `ratio_level_cap` 3, `near_people_cap` 4 (*Decisions (15 Nov 2026)*) | 17 Nov (`fire_baseline` uploaded: 1,924 rows, norm years 2023-2025) | Offline tests; replays (above); dry run on the merged code (Maharashtra L2 at 2.36×, Gujarat L1, no Level 3/4, no cap in play). Live check: edition 83 (02:30 IST) is the first under it |
 | Fire items close after 5 complete days below Level 2 (`fire.lifecycle.close_after_hours` 120, was 48); close-line hysteresis tested and rejected (*Follow-ups*) | 17 Nov | Replays 2020-2025 and live NRT: reopens within 3 days 40% -> 15% of closes, open items a day 1.8 -> 3.1. Dry run. Live check: items stay open through five quiet days; first closes from 22 Nov |
+| EONET retired: not fetched, its 201 `events` rows kept for good (*Decisions (17 Nov 2026)*) | 17 Nov | Offline tests; dry run (no EONET request, every stage as in edition 85). Live check: edition 86 (18 Nov, 02:30 IST) |
 | Only Orange and Red GDACS wildfire alerts lift a fire state to Level 3 (`fire.gdacs_wildfire_alert_levels`); Green alerts are dropped | 15 Nov | Dry run: Madhya Pradesh (Level 3 since edition 59 on Green alerts, 0.88× norm) de-escalates to Level 1. Live check: pending |
 
 ## The problem
@@ -133,8 +134,8 @@ changed in *Decisions (21 Oct 2026)*, and air reads CPCB's AQI from data.gov.in 
    24 h mean of OpenAQ readings, not official CPCB AQI, so it is marked **approximate**
    in the data (a flag plus the reason string) for the UI to label. (Since 23 Oct this
    describes only the OpenAQ fallback; see *Decisions (21 Oct 2026): air source*.)
-5. **GDACS wildfire alerts:** kept **out of `events`** (EONET already carries the same
-   alerts). Used only as the **forest-fire trigger for Level 3**. GDACS has never issued an
+5. **GDACS wildfire alerts:** kept **out of `events`** (EONET carried the same alerts
+   until it was retired on 17 Nov 2026; nothing reads them from `events`). Used only as the **forest-fire trigger for Level 3**. GDACS has never issued an
    Orange/Red wildfire alert for India (2023–2026, all Green), so it cannot replace the
    FIRMS-derived level. **Since 15 Nov 2026 only Orange and Red alerts lift**
    (`fire.gdacs_wildfire_alert_levels`): a Green alert held Madhya Pradesh at Level 3 from
@@ -403,6 +404,21 @@ run of 16 Nov checks out); numbers from `tools/replay_fire_levels.py`.
    With the earlier thresholds (25 events, 4×) the same tests gave Level 3+ of 0.54 (trailing)
    and 0.41 (leave-one-out) a day: over the 0.2 Job asked for. Reopening within 3 days is
    unchanged by thresholds: that is the next job (hysteresis, planned).
+
+## Decisions (17 Nov 2026): EONET retired
+
+Edition 85 (17 Nov, 20:30 IST) failed on one EONET request (HTTP 500 from
+eonet.gsfc.nasa.gov; it answered again ten minutes later), with every desk item written
+fresh. EONET fed no desk item: its storms and wildfires are GDACS's (same ids), and since
+migration 009 nothing on the site reads `events`.
+
+1. **Not fetched** from edition 86. `fetchers/eonet.py` and the backfill source are gone;
+   GDACS is the only event-driven source in the staleness check.
+2. **Its history stays.** The 201 EONET rows in `events` (24 Nov 2025 to 6 Nov 2026) are
+   kept for good: `_cleanup()`'s 365-day rule is now USGS only (it would have started
+   deleting EONET rows on 24 Nov 2026). Its `sources` row keeps its last fetch.
+3. **Past editions as they ran.** Editions 1-85 keep EONET in `pipeline_runs.sources`;
+   the Sources page lists it only for editions that read it.
 
 ## Follow-ups (not scheduled)
 First listed 21 Oct 2026, when the spec was completed; reviewed 30 Oct 2026.

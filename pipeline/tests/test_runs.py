@@ -26,7 +26,6 @@ def _firms_row(hours_ago):
     ("FIRMS", [], None, False, False, (True, "empty")),     # dense source, nothing back
     ("OpenAQ", [], None, False, False, (True, "empty")),
     ("GDACS", [], None, False, True, (True, "ok")),         # event-driven: quiet is fine
-    ("EONET", [], None, False, False, (True, "ok")),
     ("GDACS", [], TimeoutError(), True, True, (True, "timeout")),    # soft timeout
     ("USGS", [], TimeoutError(), True, False, (False, "timeout")),
     ("USGS", [], ValueError("bad json"), False, False, (False, "error")),

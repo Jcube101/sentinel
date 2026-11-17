@@ -27,14 +27,13 @@ SOURCES_TABLE = "sources"
 # Pipeline fetcher name -> sources.id
 SOURCE_IDS = {
     "FIRMS": "FIRMS",
-    "EONET": "EONET",
     "GDACS": "GDACS",
     "USGS": "USGS",
     "OpenAQ": "OPENAQ",
 }
 
 # Sources that always return rows when healthy, so an empty fetch is not a
-# good fetch (the "OpenAQ empty pull" case). EONET and GDACS can be quiet.
+# good fetch (the "OpenAQ empty pull" case). GDACS can be quiet.
 DENSE_SOURCES = {"FIRMS", "USGS", "OpenAQ"}
 
 ERROR_TEXT_LIMIT = 500

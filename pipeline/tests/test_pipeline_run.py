@@ -15,6 +15,7 @@ import pipeline
 from tests.fakes import FakeSupabase
 
 NOW_ISO = datetime.now(timezone.utc).isoformat()
+# EONET's row stays in the live sources table (not read since 17 Nov 2026).
 SOURCES = [{"id": sid, "name": sid, "newest_observation_at": None}
            for sid in ("FIRMS", "EONET", "GDACS", "USGS", "OPENAQ")]
 
@@ -30,7 +31,6 @@ def _fetcher(rows=None, exc=None):
 def _default_fetchers():
     return {
         "FIRMS": _fetcher([{"id": "FIRMS-1", "started_at": NOW_ISO}]),
-        "EONET": _fetcher([]),
         "GDACS": _fetcher([{"id": "GDACS-FL-1", "started_at": NOW_ISO, "raw": {}}]),
         "USGS": _fetcher([{"id": "USGS-1", "started_at": NOW_ISO}]),
         "OpenAQ": _fetcher([{"location_id": "1", "parameter": "pm25", "recorded_at": NOW_ISO}]),
@@ -68,12 +68,31 @@ def test_happy_path_writes_data_run_record_and_freshness(harness):
     (run,) = db.rows("pipeline_runs")
     assert run["id"] == 1 and run["status"] == "ok"
     assert run["events_upserted"] == 2 and run["aqi_upserted"] == 1
-    assert set(run["sources"]) == {"FIRMS", "EONET", "GDACS", "USGS", "OPENAQ", "DATAGOV"}  # DATAGOV: the air feed
+    assert set(run["sources"]) == {"FIRMS", "GDACS", "USGS", "OPENAQ", "DATAGOV"}  # DATAGOV: the air feed
     assert run["sources"]["FIRMS"]["new_data"] is True
 
     by_id = {r["id"]: r for r in db.rows("sources")}
+    assert "last_run_id" not in by_id.pop("EONET")   # retired: its row keeps its last fetch
     assert all(r["last_run_id"] == 1 and r["last_status"] == "ok" for r in by_id.values())
     assert by_id["OPENAQ"]["last_success_at"] is not None
+
+
+def test_eonet_is_no_longer_read():
+    assert "EONET" not in dict(pipeline.FETCHERS)
+    assert "EONET" not in pipeline.EVENT_SOURCES and "EONET" not in pipeline.SPARSE_SOURCES
+
+
+def test_cleanup_keeps_eonet_rows_for_good():
+    now = datetime.now(timezone.utc)
+    ago = lambda days: (now - timedelta(days=days)).isoformat()
+    db = FakeSupabase({"events": [
+        {"id": "EONET-old", "source": "EONET", "started_at": ago(400)},
+        {"id": "USGS-old", "source": "USGS", "started_at": ago(400)},
+        {"id": "USGS-new", "source": "USGS", "started_at": ago(10)},
+        {"id": "GDACS-old", "source": "GDACS", "started_at": ago(70)},
+    ], "aqi_readings": []})
+    pipeline._cleanup(db)
+    assert {r["id"] for r in db.rows("events")} == {"EONET-old", "USGS-new"}
 
 
 def test_second_run_with_same_data_is_not_new_data(harness):

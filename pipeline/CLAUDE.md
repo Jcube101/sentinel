@@ -1,7 +1,7 @@
 # Sentinel Pipeline
 
-Python data pipeline for the Sentinel natural disaster tracker. Five fetchers (FIRMS,
-EONET, GDACS, USGS, OpenAQ); all but FIRMS write `events` and `aqi_readings` (FIRMS
+Python data pipeline for the Sentinel natural disaster tracker. Four fetchers (FIRMS,
+GDACS, USGS, OpenAQ; EONET was retired on 17 Nov 2026, see *Data Sources*); all but FIRMS write `events` and `aqi_readings` (FIRMS
 hotspots go to the fire stages and the local archive only, since 29 Oct 2026). The
 severity stages build the severity desk from the fetch results, plus CPCB's real-time AQI from
 data.gov.in for the air item. It runs on the Raspberry Pi (jobpi) from a systemd timer at
@@ -24,9 +24,9 @@ stored). Edition 25, before the GDACS split, took 662 s, 499 s of it GDACS.
 `pipeline.run()`, in order. Stages 4-8 are each isolated: one that fails marks the run
 failed (so it alerts) while the others still run.
 1. `runs.start_run()`: the `pipeline_runs` row (edition); skipped by `--dry-run`
-2. Fetchers: FIRMS, EONET, GDACS, USGS, OpenAQ (`FETCHERS`), then the FIRMS timeout rule
+2. Fetchers: FIRMS, GDACS, USGS, OpenAQ (`FETCHERS`), then the FIRMS timeout rule
    (`_tolerate_first_timeouts`, see *Key Rules*)
-3. Upserts to `events` (EONET, GDACS, USGS) and `aqi_readings`; `runs.record_sources()`
+3. Upserts to `events` (GDACS, USGS) and `aqi_readings`; `runs.record_sources()`
    writes freshness on `sources` (FIRMS included)
 4. `fire.py`: fire events
 5. `fire_desk.py`: fire desk items, one per state
@@ -65,7 +65,6 @@ PYTHONPATH=. .venv/bin/python pipeline.py
 Individual fetchers:
 ```bash
 PYTHONPATH=. python -m fetchers.firms
-PYTHONPATH=. python -m fetchers.eonet
 PYTHONPATH=. python -m fetchers.gdacs
 PYTHONPATH=. python -m fetchers.usgs
 PYTHONPATH=. python -m fetchers.openaq
@@ -200,7 +199,8 @@ and the Windows scheduled task has been disabled.
 `_cleanup()` runs at the end of every `pipeline.run()`:
 - FIRMS / GDACS events: keep 60 days (no FIRMS rows are written any more; the rule
   clears any stray ones)
-- EONET / USGS events: keep 365 days
+- USGS events: keep 365 days
+- EONET events: kept for good (not read since 17 Nov 2026; no rule deletes them)
 - AQI readings: keep 7 days
 
 The severity stages keep their own windows: `fire_events` 14 days
@@ -231,7 +231,11 @@ The severity stages keep their own windows: `fire_events` 14 days
 - FIRMS: fire hotspots (India bbox: 68.7,8.4,97.4,37.1); read by the fire stages from
   the fetch, stored as `fire_events` / `fire_day_points` and in the local archive, not
   in `events`
-- EONET: cyclones + wildfires (category filter + India bbox)
+- EONET (NASA's natural-event tracker): retired on 17 Nov 2026, after edition 85. It fed
+  no desk item and carried the same storms and wildfires as GDACS (same ids). Its 201
+  rows in `events` (24 Nov 2025 to 6 Nov 2026) and its `sources` row stay, and nothing
+  deletes them; editions 1-85 keep it in `pipeline_runs.sources`, editions from 86 don't
+  have it
 - GDACS: three queries a run on the search API (`fetchers/gdacs.py`), filtered with
   `eventlist` (the API ignores `eventtypes`): floods and cyclones first (~11
   features, one page; what the desk levels, and the only one that can fail GDACS
@@ -247,7 +251,8 @@ The severity stages keep their own windows: `fire_events` 14 days
   read by the air stage only (not a fetcher, writes no rows of its own)
 
 ## Supabase Tables
-- events: disaster events from EONET, GDACS and USGS (FIRMS hotspots until 29 Oct 2026);
+- events: disaster events from GDACS and USGS (EONET until 17 Nov 2026, FIRMS hotspots
+  until 29 Oct 2026);
   service role only since migration 009
 - aqi_readings: air quality readings; service role only since migration 009
 - pipeline_runs: one row per non-dry run; id is the edition number (runs.py);
@@ -428,7 +433,7 @@ check queries when applied.
 ## Schema — events table
 id: text (primary key, deterministic)
 external_id: text
-source: text (EONET | GDACS | USGS; FIRMS until 29 Oct 2026)
+source: text (GDACS | USGS; EONET until 17 Nov 2026, FIRMS until 29 Oct 2026)
 category: text (fire | flood | cyclone | earthquake)
 title: text
 description: text
@@ -478,5 +483,5 @@ created_at: timestamptz
   cyclones query (the wildfire and earthquake queries never fail the run).
 - A run that fails, or where FIRMS/USGS/OpenAQ go stale, sends an alert via
   notify.py if NOTIFY_WEBHOOK_URL is set (FIRMS's age: its newest observation on its
-  `sources` row; USGS's: its newest row in `events`; OpenAQ's: `aqi_readings`); EONET/GDACS are event-driven and
-  are never alerted on row age, only on the fetch itself failing
+  `sources` row; USGS's: its newest row in `events`; OpenAQ's: `aqi_readings`); GDACS is event-driven and
+  is never alerted on row age, only on the fetch itself failing

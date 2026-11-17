@@ -3,12 +3,12 @@ One-time historical data loader for the Sentinel pipeline.
 
 Usage:
     python backfill.py --source all --days 90
-    python backfill.py --source eonet --days 365
     python backfill.py --source usgs  --days 365
     python backfill.py --source gdacs --days 180
 
 FIRMS isn't backfilled: its hotspots no longer go to `events` (29 Oct 2026). Older
-fire data comes from the SP archive (tools/pull_firms_archive.py).
+fire data comes from the SP archive (tools/pull_firms_archive.py). EONET isn't read since
+17 Nov 2026 (its rows stay in `events`).
 """
 
 import argparse
@@ -20,7 +20,7 @@ from datetime import datetime, timedelta, timezone
 from supabase import Client, create_client
 
 from config import SUPABASE_SERVICE_KEY, SUPABASE_URL
-from fetchers import eonet, gdacs, usgs
+from fetchers import gdacs, usgs
 
 logging.basicConfig(
     level=logging.INFO,
@@ -63,13 +63,6 @@ def _upsert(supabase: Client, rows: list) -> int:
 # Per-source backfill functions
 # ---------------------------------------------------------------------------
 
-def _backfill_eonet(start: datetime, end: datetime) -> list[dict]:
-    return eonet.fetch(
-        start_date=start.strftime("%Y-%m-%d"),
-        end_date=end.strftime("%Y-%m-%d"),
-    )
-
-
 def _backfill_gdacs(start: datetime, end: datetime) -> list[dict]:
     return gdacs.fetch(
         start_date=start.strftime("%Y-%m-%d"),
@@ -106,7 +99,6 @@ def _backfill_usgs(start: datetime, end: datetime) -> list[dict]:
 
 
 SOURCES = {
-    "eonet": _backfill_eonet,
     "gdacs": _backfill_gdacs,
     "usgs":  _backfill_usgs,
 }
@@ -165,7 +157,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Sentinel historical data backfill")
     parser.add_argument(
         "--source",
-        choices=["all", "eonet", "gdacs", "usgs"],
+        choices=["all", "gdacs", "usgs"],
         default="all",
         help="Data source to backfill (default: all)",
     )

@@ -6,7 +6,7 @@ import pipeline
 from tests.fakes import FakeSupabase
 
 NOW = datetime.now(timezone.utc)
-FETCHED = {"FIRMS": True, "EONET": True, "GDACS": True, "USGS": True, "OpenAQ": True}
+FETCHED = {"FIRMS": True, "GDACS": True, "USGS": True, "OpenAQ": True}
 
 
 def _ago(**kw):
@@ -25,6 +25,15 @@ def _alerts(monkeypatch):
     sent = []
     monkeypatch.setattr(pipeline.notify, "send_alert", lambda subject, body: sent.append(subject))
     return sent
+
+
+def test_eonet_is_not_checked_any_more(monkeypatch):
+    # Not read since 17 Nov 2026: no EONET rows at all must not alert "never ingested".
+    db = _db(_ago(hours=6))
+    db.tables["events"] = [r for r in db.rows("events") if r["source"] != "EONET"]
+    sent = _alerts(monkeypatch)
+    pipeline._check_staleness(db, FETCHED)
+    assert sent == []
 
 
 def test_fresh_firms_from_its_sources_row_with_no_firms_rows_in_events(monkeypatch):

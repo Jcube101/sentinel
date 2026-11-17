@@ -9,9 +9,9 @@
 
 **Live:** https://sentinel.job-joseph.com
 
-Three times a day, Sentinel reads six public sources: NASA's fire satellites, NASA's event
-tracker, the global disaster alert system GDACS, the US Geological Survey, CPCB's real-time
-air quality index and OpenAQ. It turns what they report into a **severity desk**. Every hazard
+Three times a day, Sentinel reads five public sources: NASA's fire satellites, the global
+disaster alert system GDACS, the US Geological Survey, CPCB's real-time air quality index
+and OpenAQ. It turns what they report into a **severity desk**. Every hazard
 becomes an item with a level from 1 (minor) to 4 (severe) on one shared scale, and a reason.
 A cyclone, a state's fires and a bad air day can then be ranked against each other, instead of
 by raw counts (one run can hold ~2,000 fire hotspots and a single cyclone).
@@ -63,8 +63,8 @@ A systemd timer on a Raspberry Pi runs the pipeline at 09:00, 15:00 and 21:00 UT
 
 1. Opens the edition: a `pipeline_runs` row, whose id is the edition number, with the
    thresholds it runs with.
-2. Fetches FIRMS, EONET, GDACS, USGS and OpenAQ.
-3. Writes EONET, GDACS and USGS events to `events` and OpenAQ readings to `aqi_readings`,
+2. Fetches FIRMS, GDACS, USGS and OpenAQ.
+3. Writes GDACS and USGS events to `events` and OpenAQ readings to `aqi_readings`,
    then each source's freshness to `sources`. FIRMS hotspots aren't stored in Supabase; they
    go to the fire stages and a local archive.
 4. Clusters the fire hotspots into fire events by district.
@@ -97,7 +97,7 @@ writes: [docs/style-guide.md](docs/style-guide.md).
 | [USGS Earthquake Hazards](https://earthquake.usgs.gov/fdsnws/event/1/) | Earthquakes, M4.0+ | None | Real-time |
 | [CPCB real-time AQI on data.gov.in](https://data.gov.in/resource/real-time-air-quality-index-various-locations) | The air item's primary source: station AQI sub-indices (read each run, not stored) | API key | Hourly |
 | [OpenAQ v3](https://api.openaq.org/) | The air item's fallback (24 h means at reference monitors) | API key | Hourly |
-| [NASA EONET](https://eonet.gsfc.nasa.gov/) | Wildfire and storm events, stored in `events`; not on the desk | None | Real-time |
+| [NASA EONET](https://eonet.gsfc.nasa.gov/) | Retired on 17 Nov 2026: it fed no desk item and repeated GDACS's storms and fires. Its rows stay in `events` | None | Not read |
 
 Map data: geoBoundaries (district boundaries, ODbL 1.0), DataMeet / Election Commission of
 India (state boundaries, CC BY 2.5 IN), GeoNames (populated places, CC BY 4.0) and an Esri
@@ -112,7 +112,7 @@ page.
 sentinel/
 ├── pipeline/              — Python pipeline (runs on the Pi)
 │   ├── pipeline.py        — one run: fetch → write → severity stages → archive → cleanup
-│   ├── fetchers/          — FIRMS, EONET, GDACS, USGS, OpenAQ
+│   ├── fetchers/          — FIRMS, GDACS, USGS, OpenAQ
 │   ├── runs.py            — editions and per-source freshness
 │   ├── fire.py            — FIRMS hotspots clustered into fire events by district
 │   ├── fire_desk.py       — one fire item per state, against the seasonal norm
@@ -180,7 +180,7 @@ PYTHONPATH=. python pipeline.py --dry-run
 `PYTHONPATH=. python pipeline.py` is a real run: it creates an edition. On the Pi only the
 timer does that.
 
-A single fetcher: `PYTHONPATH=. python -m fetchers.usgs` (also `firms`, `eonet`, `gdacs`,
+A single fetcher: `PYTHONPATH=. python -m fetchers.usgs` (also `firms`, `gdacs`,
 `openaq`).
 
 Backfill `events` (FIRMS isn't backfilled: its hotspots no longer go to Supabase):
@@ -215,7 +215,8 @@ More in [frontend/README.md](frontend/README.md).
 | Fire events (`fire_events`) | Supabase | 14 days |
 | Watch subjects (`desk_watch`) | Supabase | Until not updated for 14 days |
 | GDACS events | Supabase | 60 days |
-| EONET and USGS events | Supabase | 365 days |
+| USGS events | Supabase | 365 days |
+| EONET events (not read since 17 Nov 2026) | Supabase | For good |
 | OpenAQ readings (`aqi_readings`) | Supabase | 7 days |
 | FIRMS hotspots | Local SQLite archive on the Pi | For good (they never go to Supabase) |
 
@@ -366,8 +367,8 @@ staleness: FIRMS newest row is 35 days, 10:18:27 old (threshold 2 days, 0:00:00)
 means that source's newest data is older than expected for how often that API updates, and
 also fires an alert (see Alerting below). This applies to FIRMS (its newest observation, as
 recorded on its `sources` row), USGS (its newest row in `events`) and OpenAQ (its newest
-`aqi_readings` row). EONET and GDACS log their row age at `INFO` and never alert on it,
-because both are event-driven and a real quiet month looks identical to a broken fetcher
+`aqi_readings` row). GDACS logs its row age at `INFO` and never alerts on it,
+because it is event-driven and a real quiet month looks identical to a broken fetcher
 from row age alone; see LEARNINGS.md for the reasoning and the real gaps that set these
 thresholds.
 

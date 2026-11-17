@@ -3,7 +3,7 @@
 ## Phase 1 — Core Pipeline (COMPLETE ✅)
 - [x] Supabase schema (events, aqi_readings, sources, categories)
 - [x] NASA FIRMS fetcher
-- [x] NASA EONET fetcher
+- [x] NASA EONET fetcher (retired 17 Nov 2026: it fed no desk item and repeated GDACS)
 - [x] GDACS fetcher
 - [x] USGS fetcher
 - [x] OpenAQ fetcher
