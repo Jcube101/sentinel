@@ -69,3 +69,11 @@ def test_uncounted_days_never_hold_an_item():
     series = [(date(2026, 11, 1), {"Punjab": (2, 2.4, True)}), (date(2026, 11, 2), {"Punjab": (1, 1.8, False)}),
               (date(2026, 11, 3), {"Punjab": (1, 1.8, False)})]
     assert replay.simulate(series, CFG, 1.5)["closes"] == 1
+
+
+def test_flicker_counts_a_level_2_story_that_drops_and_returns_within_3_days():
+    ratios = [2.4, 1.8, 2.2, 1.2, 1.1, 1.0, 1.0, 2.5]    # one dip a day (1.8), then a real fall, then a late return
+    today = replay.simulate(_series(ratios), CFG, None)
+    held = replay.simulate(_series(ratios), CFG, 1.5)
+    assert (today["drops"], today["flickers"]) == (2, 1)   # the 1.8 dip returns next day; the fall to 1.2 doesn't return in 3 d
+    assert (held["drops"], held["flickers"]) == (1, 0)     # 1.8 is held at Level 2: the reader sees no dip

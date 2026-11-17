@@ -26,7 +26,8 @@ so the rates are out of sample: "what would a normal year have looked like". --n
 the live NRT hotspots in sentinel_archive.db (the only out-of-sample year there is) with the
 norms of data/fire_baseline.csv.
 
---hysteresis R [R ...] (17 Nov 2026) adds the close-line test to --leave-one-out, --trailing and --nrt-archive:
+--hysteresis R [R ...] (17 Nov 2026; flicker columns 18 Nov: a state's Level 2 story drops to Level 1 and is
+back at Level 2 within 3 days, open or not) adds the close-line test to --leave-one-out, --trailing and --nrt-archive:
 an open item whose day is under the open level but at or above R times the norm is "held" (stays open, quiet
 clock off); only a day under R (or too few events to count) starts the 48 h clock. It is simulated on the
 per-day levels the live desk code gives (`simulate`), so nothing in fire_desk.py changes; "today" is the same
@@ -153,10 +154,21 @@ def simulate(series, cfg: dict, close_ratio: float | None) -> dict:
     open_level, hours = lc["open_min_level"], lc["close_after_hours"]
     is_open, quiet, started, closed_on = {}, {}, {}, {}
     out = {"days": len(series), "opens": 0, "closes": 0, "reopens": 0, "reopen_within_3d": 0, "held_days": 0,
-           "open_days": 0, "episodes": [], "max_open": 0}
+           "open_days": 0, "episodes": [], "max_open": 0, "drops": 0, "flickers": 0}
+    shown, dropped_on = {}, {}      # what the reader sees: is the state's Level 2 story on the page that day?
     for day, states in series:
         for state in sorted(set(states) | set(is_open)):
             level, ratio, counted = states.get(state, (1, None, False))
+            held = (state in is_open and level < open_level and close_ratio is not None and counted
+                    and ratio is not None and ratio >= close_ratio)
+            level2 = level >= open_level or held
+            if shown.get(state) and not level2:             # the Level 2 story drops to Level 1 ...
+                out["drops"] += 1
+                dropped_on[state] = day
+            elif level2 and state in dropped_on:            # ... and comes back
+                out["flickers"] += (day - dropped_on[state]).days <= 3
+                del dropped_on[state]
+            shown[state] = level2
             if level >= open_level:
                 if state not in is_open:
                     is_open[state] = True
@@ -167,7 +179,7 @@ def simulate(series, cfg: dict, close_ratio: float | None) -> dict:
                         out["reopen_within_3d"] += (day - closed_on.pop(state)).days <= 3
                 quiet.pop(state, None)
             elif state in is_open:
-                if close_ratio is not None and counted and ratio is not None and ratio >= close_ratio:
+                if held:
                     quiet.pop(state, None)
                     out["held_days"] += 1
                     continue
@@ -187,7 +199,7 @@ def hysteresis_table(results: list, cfg: dict, ratios: list[float], title: str) 
     """results: [(label, replay result)]. One row per close line, summed over the replays."""
     print(f"\n{title}")
     print(f"{'close line':>12s}{'days':>7s}{'open/day':>9s}{'opens/yr':>9s}{'days open':>10s}{'closes':>7s}"
-          f"{'reopens':>8s}{'<=3 d':>6s}{'<=3d/closes':>12s}{'held d':>7s}")
+          f"{'reopens':>8s}{'<=3 d':>6s}{'<=3d/closes':>12s}{'held d':>7s}{'L2 drops':>9s}{'flicker':>8s}{'/yr':>5s}{'of drops':>9s}")
     for ratio in [None, *ratios]:
         sims = [simulate(r["series"], cfg, ratio) for _, r in results]
         days = sum(x["days"] for x in sims)
@@ -198,7 +210,9 @@ def hysteresis_table(results: list, cfg: dict, ratios: list[float], title: str) 
         print(f"{label:>12s}{days:7d}{sum(x['open_days'] for x in sims) / max(days, 1):9.2f}"
               f"{sum(x['opens'] for x in sims) / (days / 365.25):9.0f}{(sum(eps) / len(eps) if eps else 0):10.1f}"
               f"{closes:7d}{sum(x['reopens'] for x in sims):8d}{within:6d}{within / max(closes, 1):12.0%}"
-              f"{sum(x['held_days'] for x in sims):7d}")
+              f"{sum(x['held_days'] for x in sims):7d}{sum(x['drops'] for x in sims):9d}"
+              f"{sum(x['flickers'] for x in sims):8d}{sum(x['flickers'] for x in sims) / (days / 365.25):5.0f}"
+              f"{sum(x['flickers'] for x in sims) / max(sum(x['drops'] for x in sims), 1):9.0%}")
 
 
 def report(r: dict, cfg: dict, years: list[int]) -> None:
