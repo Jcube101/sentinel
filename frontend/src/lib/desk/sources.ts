@@ -9,6 +9,17 @@ import { SOURCE_WORDS, cap, listText } from './words'
 
 export const SOURCE_ORDER = ['FIRMS', 'USGS', 'GDACS', 'EONET', 'OPENAQ', 'DATAGOV'] as const
 
+/** Sources no longer read: EONET, read up to No. 85 (17 Nov 2026). */
+const RETIRED = new Set<string>(['EONET'])
+
+/**
+ * The sources to list for these editions (the Sources page): every current source, and a
+ * retired one only where one of the editions read it, so a past edition shows what it ran with.
+ */
+export function sourcesFor(runs: Edition[]): string[] {
+  return SOURCE_ORDER.filter((id) => !RETIRED.has(id) || runs.some((r) => r.sources?.[id]))
+}
+
 export const SOURCE_NAMES: Record<string, string> = {
   FIRMS: 'FIRMS',
   USGS: 'USGS',
@@ -157,7 +168,7 @@ export const SOURCE_ROLES: Record<string, string> = {
   FIRMS: 'Fire detections from the VIIRS instrument on the NOAA-20 satellite',
   USGS: 'Earthquakes of magnitude 4 and above, worldwide',
   GDACS: 'Cyclone, flood and forest-fire alerts',
-  EONET: 'Natural events; shown on no item, kept for the record',
+  EONET: 'Natural events; shown on no item, and not read after No. 85',
   OPENAQ: 'Readings from public air monitors; the backup for air',
   DATAGOV: "India's live air quality index; the main source for air",
 }

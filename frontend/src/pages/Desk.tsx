@@ -44,7 +44,6 @@ function EditionLine({ run, latestId }: { run: Edition; latestId: number | null 
           </Link>{' '}
           · {istTime(run.started_at)} IST
         </span>
-        {run.status === 'failed' && <span className="text-accent font-semibold"> · Run failed</span>}
       </span>
       <span className="flex gap-4">
         {prev !== null && (

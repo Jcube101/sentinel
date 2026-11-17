@@ -7,11 +7,11 @@ import {
   CATEGORY_SOURCE_MAP,
   CELL_WORDS,
   SOURCE_NAMES,
-  SOURCE_ORDER,
   SOURCE_ROLES,
   SOURCE_TITLES,
   cellState,
   sourceLines,
+  sourcesFor,
   type CellState,
 } from '@/lib/desk/sources'
 import { scaleFrom } from '@/lib/desk/scale'
@@ -64,7 +64,7 @@ function ThisRun({ run }: { run: Edition }) {
           </tr>
         </thead>
         <tbody>
-          {SOURCE_ORDER.map((id) => {
+          {sourcesFor([run]).map((id) => {
             const r = run.sources?.[id]
             const state = cellState(r)
             const line = lines.get(id)
@@ -106,7 +106,7 @@ function Grid({ runs, current, latestId }: { runs: Edition[]; current: number; l
             </tr>
           </thead>
           <tbody>
-            {SOURCE_ORDER.map((id) => (
+            {sourcesFor(runs).map((id) => (
               <tr key={id}>
                 <th scope="row" className="pr-3 py-[2px] font-normal text-left whitespace-nowrap">
                   {SOURCE_NAMES[id]}
@@ -170,7 +170,7 @@ export default function Sources() {
       <section className="py-8 sm:py-11 border-b border-ink flex flex-col gap-4 max-w-[860px]">
         <h1 className="m-0 font-cond font-semibold text-[32px] sm:text-[50px] leading-[1.04] tracking-[-0.01em]">Sources</h1>
         <p className="m-0 text-[17px] sm:text-[19px] leading-[1.55]">
-          Every figure comes from one of six public sources, read three times a day. Here is how each one answered, and which part of the
+          Every figure comes from one of five public sources, read three times a day. Here is how each one answered, and which part of the
           picture depends on it. When a source doesn't answer, its items keep their last known figures and say so.
         </p>
       </section>
@@ -189,7 +189,8 @@ export default function Sources() {
             <ThisRun run={run} />
             <p className="m-0 font-mono text-[11px] text-ink-muted">
               Newest data is the age of each source's newest observation when the edition was published. Sources that report events as
-              they happen (earthquakes, disaster alerts, NASA's event tracker) often have nothing new: that is normal for them.
+              they happen (earthquakes, disaster alerts{run.sources?.EONET ? ", NASA's event tracker" : ''}) often have nothing new: that is normal for
+              them.
             </p>
           </Section>
 

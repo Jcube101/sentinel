@@ -176,7 +176,7 @@ export default function About() {
               flood, cyclone and forest-fire alerts from the Global Disaster Alert and Coordination System.
             </Source>
             <Source name="NASA EONET" href="https://eonet.gsfc.nasa.gov/">
-              natural events tracked by NASA's Earth Observatory.
+              natural events tracked by NASA's Earth Observatory, read until 17 November 2026; they appeared on no item.
             </Source>
             <Source name="geoBoundaries" href="https://www.geoboundaries.org/">
               India's outline and district boundaries (source: LGD via Pathways Data), under ODbL 1.0.

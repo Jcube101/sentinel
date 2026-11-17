@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { compareEntries, deskEntries, editionTitle, type DeskEntry } from './entries'
 import { istDate, istTime, shortAge } from './ist'
 import { splitReason } from './levels'
-import { CELL_WORDS, SOURCE_ORDER, cellState, lateNotice, sourceLines } from './sources'
+import { CELL_WORDS, SOURCE_ORDER, cellState, lateNotice, sourceLines, sourcesFor } from './sources'
 import type { Edition, EditionData } from './types'
 import { lastKnownWords } from './words'
 import e14 from './__fixtures__/edition-14.json'
@@ -211,6 +211,19 @@ describe('the Sources page', () => {
       DATAGOV: 'new data',
     })
     expect(cellState(undefined)).toBe('none') // a source not read yet (CPCB before No. 9)
+  })
+
+  it('lists EONET only for editions that read it (not read after No. 85)', () => {
+    const run = editions[25].run
+    // an edition from No. 86 on: no EONET in its record
+    const after = { ...run, sources: Object.fromEntries(Object.entries(run.sources ?? {}).filter(([id]) => id !== 'EONET')) } as Edition
+    expect(sourcesFor([editions[19].run])).toEqual(['FIRMS', 'USGS', 'GDACS', 'EONET', 'OPENAQ', 'DATAGOV'])
+    expect(sourcesFor([after])).toEqual(['FIRMS', 'USGS', 'GDACS', 'OPENAQ', 'DATAGOV'])
+    expect(sourcesFor([editions[19].run, after])).toContain('EONET') // the 21-edition grid across the change
+    // a current source is listed even where an edition has no record of it (CPCB before No. 9)
+    expect(sourcesFor([{ ...run, sources: {} } as Edition])).toEqual(['FIRMS', 'USGS', 'GDACS', 'OPENAQ', 'DATAGOV'])
+    expect(sourceLines(after).map((l) => l.id)).not.toContain('EONET')
+    expect(lateNotice(after, editions[25].status)).toBeNull()
   })
 })
 

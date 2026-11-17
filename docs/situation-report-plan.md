@@ -192,7 +192,8 @@ Listed on 28 Oct, before the build. **Now:** notes give the state on 30 Oct.
      Level 2 in edition 25).
 6. **The all-clear table** shows "Floods & cyclones" as one row and an "Other events ·
    EONET" row. `category_status` has flood and cyclone separately and no EONET (EONET
-   isn't on the desk). Plan: five rows; EONET appears only on the Sources page.
+   isn't on the desk). Plan: five rows; EONET appears only on the Sources page (and, since
+   17 Nov 2026, only for editions up to No. 85, which read it; section 10).
 7. **"On the desk since":** `opened_at` keeps the first opening when an item reopens. Use
    the item's latest `opened` / `reopened` snapshot.
 8. **Closing reasons** ("fell to norm", "very poor ended") aren't stored. Recently closed
@@ -219,7 +220,7 @@ Listed on 28 Oct, before the build. **Now:** notes give the state on 30 Oct.
 - `desk_watch` for every subject (41 rows), not only those watching: how close each state
   is to its next level. Fits the fire item page or the map's vs-norm mode.
 - `pipeline_runs.sources`: per-run status, rows and duration for each source, and the
-  run's own status. For the Sources page, and for the masthead when a run failed.
+  run's own status. For the Sources page (and the masthead until 17 Nov 2026; section 10).
 - `sources.newest_observation_at` vs `last_success_at`: tells "fetched fine, nothing new"
   (a quiet USGS) apart from "fetch failed".
 - Air: every Poor-or-worse city with its state and prominent pollutant,
@@ -365,7 +366,8 @@ notes*). How each shows, and what it reads:
   `source_status`, and per-source status in `pipeline_runs.sources`. The late notice names
   the sources that didn't answer or sent nothing, and which news is as last reported.
   Footer: each source's newest data at publication, in the accent colour when it didn't
-  answer; event-driven sources (GDACS, EONET, USGS) read "no new events" when quiet.
+  answer; event-driven sources (GDACS, USGS, and EONET up to No. 85) read "no new events"
+  when quiet.
 - **The shown reason** ("Level from: …") is the text before the first ` · `, since the
   pipeline appends notes with ` · ` (last known, cap, unconfirmed Severe).
 - **Air:** the source line, from `figures.source`, `figures.approximate` and
@@ -680,6 +682,29 @@ activates, an offline reload shows the banner, and `/edition/80` opens directly.
   supabase-js retries each failed read three times, and React Query tries three times.
 - The service worker and manifest are checked by hand (DevTools → Application), not by
   the test suite.
+
+## 10. EONET retired, no run status in the masthead (Job, 17 Nov 2026)
+
+Edition 85 (17 Nov, 20:30 IST) printed "Run failed" in the masthead because one EONET
+request returned HTTP 500, while every desk item was written fresh. Decisions:
+
+1. **EONET is no longer read** (pipeline, from No. 86; docs/severity-pipeline.md,
+   *Decisions (17 Nov 2026)*). It fed no item. The Sources page lists it only for
+   editions that read it (`sourcesFor()` in `sources.ts`: a retired source shows where
+   an edition's `pipeline_runs.sources` has it), so No. 85 and earlier show it as they
+   ran, and the 21-edition grid keeps its row until the last edition with it leaves the
+   grid (No. 106). Its role reads "Natural events; shown on no item, and not read after
+   No. 85"; the page says five sources; About keeps the acknowledgement, "read until 17
+   November 2026". The Desk's footer line and late notice already skipped a source an
+   edition has no record of.
+2. **The masthead carries no run status.** "· Run failed" is gone from the Desk's
+   masthead. Readers get the late notice, the last-known markers and the Sources page.
+   The Sources page ("· run failed" by the edition's date, "!" in the grid) and the
+   Archive ("· run failed") keep it.
+3. **What "failed" means** (pipeline, from No. 86): an edition is marked failed only when
+   something the desk depends on failed (a desk source, OpenAQ when the air item fell
+   back to it, a severity stage, the edition's record). Other failures still alert Job but
+   leave the edition ok. Editions up to No. 85 keep the status they were given.
 
 ## Decisions (Job, 28 Oct 2026)
 
