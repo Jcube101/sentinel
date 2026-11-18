@@ -145,7 +145,7 @@ describe('sources', () => {
   })
 })
 
-describe('the late notice says only failures that reached an item (from No. 87)', () => {
+describe('the late notice says a source only when an item is last-known (from No. 87)', () => {
   // 85: EONET returned HTTP 500 (it fed no item); every desk item fresh, air from CPCB.
   const ed85 = e85 as unknown as EditionData
   const failed = { status: 'error', rows: 0, new_data: false, newest_observation_at: null, error: '500 Server Error' }
@@ -154,6 +154,12 @@ describe('the late notice says only failures that reached an item (from No. 87)'
     const sources = Object.fromEntries(Object.entries(ed85.run.sources ?? {}).filter(([s]) => s !== 'EONET'))
     for (const s of ids) sources[s] = { ...sources[s], ...failed }
     return { ...ed85.run, id, status: 'ok', sources } as Edition
+  }
+  /** The same, with CPCB's snapshot rejected as old or partial. */
+  const rejectedFeed = (id: number, feed: 'stale' | 'incomplete', ...ids: string[]): Edition => {
+    const r = run(id, ...ids)
+    const datagov = r.sources?.DATAGOV
+    return { ...r, sources: { ...r.sources, DATAGOV: { ...datagov, status: feed, new_data: false } } } as Edition
   }
   const withStatus = (category: string, change: Partial<CategoryStatus>) =>
     ed85.status.map((c) => (c.category === category ? { ...c, ...change } : c))
@@ -178,10 +184,24 @@ describe('the late notice says only failures that reached an item (from No. 87)'
     expect(lateNotice(run(86, 'OPENAQ'), ed85.status)).toBe("OpenAQ's public air monitors didn't answer this time.")
   })
 
-  it('says a main source whose failure changed the item\'s source (CPCB down, OpenAQ set the air item)', () => {
+  it('leaves out a main source when the backup set the item (CPCB down, OpenAQ set the air item)', () => {
     const status = withStatus('air', { source: 'OPENAQ', last_known: false })
-    expect(lateNotice(run(87, 'DATAGOV'), status)).toBe("The pollution control board's live feed didn't answer this time.")
-    expect(sourceLines(run(87, 'DATAGOV'), status).find((l) => l.id === 'DATAGOV')).toMatchObject({ failed: true })
+    expect(lateNotice(run(87, 'DATAGOV'), status)).toBeNull()
+    expect(ids(run(87, 'DATAGOV'), status)).toEqual(['FIRMS', 'USGS', 'GDACS', 'OPENAQ']) // footer
+    expect(sourceLines(run(87, 'DATAGOV'), status).some((l) => l.failed)).toBe(false) // phone wire: none late
+    // No. 86 and earlier said it
+    expect(lateNotice(run(86, 'DATAGOV'), status)).toBe("The pollution control board's live feed didn't answer this time.")
+  })
+
+  it('leaves out an old or partial CPCB snapshot when OpenAQ set the air item, as before', () => {
+    const status = withStatus('air', { source: 'OPENAQ', last_known: false })
+    for (const feed of ['stale', 'incomplete'] as const) {
+      expect(lateNotice(rejectedFeed(87, feed), status)).toBeNull()
+      expect(sourceLines(rejectedFeed(87, feed), status).some((l) => l.failed)).toBe(false)
+      expect(lateNotice(rejectedFeed(86, feed), status)).toBeNull()
+    }
+    // the footer shows it by what it held, not as late
+    expect(sourceLines(rejectedFeed(87, 'incomplete'), status).find((l) => l.id === 'DATAGOV')).toMatchObject({ words: 'partial data' })
   })
 
   it('says every source whose failure left an item last-known', () => {
@@ -195,6 +215,35 @@ describe('the late notice says only failures that reached an item (from No. 87)'
     expect(lateNotice(run(87, 'GDACS'), gdacs)).toBe(
       "The global disaster monitors didn't answer this time, so cyclone and flood news is as last reported.",
     )
+    // an old CPCB snapshot with OpenAQ down: the air item is last-known, both said
+    expect(lateNotice(rejectedFeed(87, 'stale', 'OPENAQ'), air)).toBe(
+      "OpenAQ's public air monitors didn't answer this time and the pollution control board's live feed sent old data this time, so air quality news is as last reported.",
+    )
+    expect(sourceLines(rejectedFeed(87, 'stale', 'OPENAQ'), air).filter((l) => l.failed).map((l) => l.id)).toEqual(['OPENAQ', 'DATAGOV'])
+  })
+
+  it('appears only when an item is last-known, and names only sources that feed one', () => {
+    const desk = ['FIRMS', 'USGS', 'GDACS', 'OPENAQ', 'DATAGOV']
+    const categories = ed85.status.map((c) => c.category)
+    const feeds: Record<string, string[]> = { FIRMS: ['fire'], USGS: ['earthquake'], GDACS: ['cyclone', 'flood', 'fire'], OPENAQ: ['air'], DATAGOV: ['air'] }
+    for (let f = 0; f < 1 << desk.length; f++) {
+      const down = desk.filter((_, i) => f & (1 << i))
+      for (let k = 0; k < 1 << categories.length; k++) {
+        const lastKnown = categories.filter((_, i) => k & (1 << i))
+        // as the air stage sets it: OpenAQ when CPCB is down and OpenAQ answered
+        const airSource = down.includes('DATAGOV') && !down.includes('OPENAQ') ? 'OPENAQ' : 'DATAGOV'
+        const status = ed85.status.map((c) => ({
+          ...c,
+          last_known: lastKnown.includes(c.category),
+          ...(c.category === 'air' ? { source: airSource } : {}),
+        }))
+        const r = run(87, ...down)
+        expect(lateNotice(r, status) !== null).toBe(lastKnown.length > 0)
+        for (const l of sourceLines(r, status).filter((x) => x.failed)) {
+          expect(feeds[l.id].some((c) => lastKnown.includes(c as never))).toBe(true)
+        }
+      }
+    }
   })
 
   it('says the failure when the edition has no category status to tell by', () => {

@@ -45,34 +45,31 @@ const STATUS_WORDS: Record<string, string> = {
 const REJECTED = new Set(['stale', 'incomplete'])
 
 /**
- * From this edition (18 Nov 2026, 14:30 IST), a source that failed is on the Desk (the late
- * notice, the footer, the phone wire) only when its failure reached an item: a category it
- * feeds is last-known, or it is a category's main source and another source set that
- * category (CPCB down, OpenAQ set the air item). A backup that failed while the main source
- * covered (OpenAQ while CPCB answered) is only on the Sources page. Earlier editions keep
- * what they printed: every failure said.
+ * From this edition (18 Nov 2026, 14:30 IST), a source's trouble (it didn't answer, sent
+ * nothing, or sent old or partial data) is on the Desk (the late notice, the footer, the
+ * phone wire's late count) only when a category it feeds is last-known. When another source
+ * covered (OpenAQ set the air item while CPCB was down; CPCB answered while OpenAQ was down)
+ * it is only on the Sources page; the air item's source line says which source set it.
+ * Earlier editions keep what they printed: every failure said, and a rejected snapshot said
+ * only when its category was last-known.
  */
 export const FELT_FROM = 87
 
-/**
- * Whether a failed source's failure reached the desk in this edition (FELT_FROM). Before
- * the rule, or with no category status to tell by (the run's quiet stage failed): yes.
- */
-function felt(run: Edition, id: string, status: CategoryStatus[] | undefined): boolean {
-  if (run.id < FELT_FROM || !status?.length) return true
-  return CATEGORY_SOURCE_MAP.some((m) => {
-    if (m.main !== id && m.also !== id) return false
-    const st = status.find((c) => c.category === m.category)
-    return !!st && (st.last_known || (m.main === id && !!st.source && st.source !== id))
-  })
+/** Whether a category this source feeds is last-known in this edition: nothing covered for it. */
+function leftLastKnown(id: string, status: CategoryStatus[] | undefined): boolean {
+  return CATEGORY_SOURCE_MAP.some(
+    (m) => (m.main === id || m.also === id) && !!status?.some((c) => c.category === m.category && c.last_known),
+  )
 }
 
 /**
- * Whether the category a source mainly feeds is last-known in this edition, i.e. nothing
- * else covered for it. A rejected feed whose category was covered (OpenAQ set the air
- * item) is not a failure to the reader: it isn't red and doesn't count as late.
+ * Whether the Desk says this source's trouble in this edition (FELT_FROM). With no category
+ * status to tell by (the run's quiet stage failed), and before the rule: a failure always, a
+ * rejected snapshot only when the category it mainly feeds is last-known.
  */
-function uncovered(id: string, status: CategoryStatus[] | undefined): boolean {
+function onDesk(run: Edition, id: string, rejected: boolean, status: CategoryStatus[] | undefined): boolean {
+  if (run.id >= FELT_FROM && status?.length) return leftLastKnown(id, status)
+  if (!rejected) return true
   const category = CATEGORY_SOURCE_MAP.find((m) => m.main === id)?.category
   return !!category && !!status?.some((c) => c.category === category && c.last_known)
 }
@@ -123,11 +120,13 @@ export function sourceLines(run: Edition, status?: CategoryStatus[]): SourceLine
     if (!r) continue
     const name = SOURCE_NAMES[id]
     const rejected = REJECTED.has(r.status)
-    if (r.status !== 'ok' && !(rejected && !uncovered(id, status))) {
-      if (!felt(run, id, status)) continue // a failed backup the desk didn't need: the Sources page says it
-      const words = r.status === 'empty' ? 'sent nothing' : rejected ? `sent ${STATUS_WORDS[r.status]}` : "didn't answer"
-      out.push({ id, name, failed: true, text: (STATUS_WORDS[r.status] ?? r.status).toUpperCase(), words })
-      continue
+    if (r.status !== 'ok') {
+      if (onDesk(run, id, rejected, status)) {
+        const words = r.status === 'empty' ? 'sent nothing' : rejected ? `sent ${STATUS_WORDS[r.status]}` : "didn't answer"
+        out.push({ id, name, failed: true, text: (STATUS_WORDS[r.status] ?? r.status).toUpperCase(), words })
+        continue
+      }
+      if (!rejected) continue // another source covered for it: only the Sources page says it
     }
     if (r.status === 'incomplete') {
       out.push({ id, name, failed: false, text: 'PARTIAL', words: 'partial data' })
@@ -146,8 +145,8 @@ export function sourceLines(run: Edition, status?: CategoryStatus[]): SourceLine
 }
 
 /**
- * One or two sentences for the top of the edition when a source failed or a
- * category is last-known in it; null when everything answered.
+ * One or two sentences for the top of the edition when a category is last-known in it
+ * (and, before No. 87 or with no category status, when a source failed); null otherwise.
  */
 export function lateNotice(run: Edition, status: CategoryStatus[]): string | null {
   const silent: string[] = []
@@ -157,13 +156,12 @@ export function lateNotice(run: Edition, status: CategoryStatus[]): string | nul
   for (const id of SOURCE_ORDER) {
     const r = run.sources?.[id]
     if (!r || r.status === 'ok') continue
-    if (REJECTED.has(r.status)) {
-      // said only when nothing covered for it; otherwise the item's own source line says so
-      if (uncovered(id, status)) (r.status === 'stale' ? old : partial).push(SOURCE_WORDS[id] ?? id)
-      continue
-    }
-    if (!felt(run, id, status)) continue
-    ;(r.status === 'empty' ? empty : silent).push(SOURCE_WORDS[id] ?? id)
+    const rejected = REJECTED.has(r.status)
+    // said only when nothing covered for it; otherwise the item's own source line says which source set it
+    if (!onDesk(run, id, rejected, status)) continue
+    const words = SOURCE_WORDS[id] ?? id
+    if (rejected) (r.status === 'stale' ? old : partial).push(words)
+    else (r.status === 'empty' ? empty : silent).push(words)
   }
   const stale = status
     .filter((c) => c.last_known)

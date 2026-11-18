@@ -705,7 +705,7 @@ request returned HTTP 500, while every desk item was written fresh. Decisions:
    something the desk depends on failed (a desk source, OpenAQ when the air item fell
    back to it, a severity stage, the edition's record). Other failures still alert Job but
    leave the edition ok. Editions up to No. 85 keep the status they were given.
-4. **The late notice says only failures readers can feel** (from No. 87, Job, 18 Nov):
+4. **The late notice says only failures readers can feel** (Job, 18 Nov; replaced by item 5):
    a source is on the Desk (late notice, footer, phone wire's late count) only if its
    failure left a desk item last-known or changed the item's source (CPCB down, OpenAQ set
    the air item). A backup that failed while the main source covered (OpenAQ while CPCB
@@ -713,6 +713,14 @@ request returned HTTP 500, while every desk item was written fresh. Decisions:
    (`FELT_FROM` in `sources.ts`; No. 85's "NASA's natural-event tracker didn't answer
    this time" is held in `desk.test.ts`). A CPCB snapshot rejected as old or partial while
    OpenAQ set the air item stays unsaid, as before (style guide, *The late notice*).
+5. **One rule: the late notice only when an item is last-known** (Job, 18 Nov, before
+   No. 87 ran, so it replaces item 4's rule from No. 87). A source is on the Desk (late
+   notice, footer, phone wire's late count) only if a category it feeds is last-known. A
+   source swap is not said, whether CPCB was down or sent old or partial data while
+   OpenAQ covered; the air item's source line ("Sentinel estimate from OpenAQ monitors")
+   says it. With no category status (the quiet stage failed) a source that didn't answer
+   is still said. `desk.test.ts` checks every combination of failed sources and
+   last-known categories. Sources page unchanged; editions up to No. 86 print as before.
 
 ## Decisions (Job, 28 Oct 2026)
 
