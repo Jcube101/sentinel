@@ -95,8 +95,14 @@ shows the latest edition, and updates itself after a deploy (plan, section 9).
 | Oct 2026 | The Situation Report (Phase 7) replaces the old site on 29 Oct: the desk as a newspaper front page, an archive of every edition, hazard map symbols, copy written to a style guide |
 | Oct 2026 | Part C: FIRMS hotspots out of Supabase's `events` (local archive only), the older tables private (migration 009), `events` vacuumed |
 | Oct 2026 | Cyclones close 24 h after their last advisory, with the latest wind next to the peak; Cyclone Arnab closed in edition 32 (30 Oct) |
+| Nov 2026 | Fire levels recalibrated (decided 15 Nov, live from edition 83): norms from 2023–2025, a static-source mask from six years with a persistence rule, Level 3 at 6× norm with at least 40 fire events, Level 4 needs two hotspots, and the caps that held satellite fire levels at 2 lifted; only Orange and Red GDACS wildfire alerts lift a state to Level 3 |
+| Nov 2026 | The Desk's headlines rewritten: one main event and a strong verb, chosen by newsworthiness; fire copy gives place, direction and benchmark |
+| Nov 2026 | An incomplete data.gov.in snapshot is read once more after 90 s, then the air item falls back to OpenAQ (statuses `stale` / `incomplete`, migration 010); the first run after a gap alerts with the editions that never ran |
 | Nov 2026 | The Situation Report is installable (PWA): opens offline with the last saved edition, says so in a banner, updates itself after a deploy |
 | Nov 2026 | The site moves to its own domain, sentinel.job-joseph.com (the Render address still answers) |
+| Nov 2026 | Fire items close after five complete days below Level 2 (was 48 h); a close line against flicker was tested and rejected |
+| Nov 2026 | EONET retired from edition 86 (its `events` rows kept); an edition fails only when something the desk depends on failed, and every failure still alerts |
+| Nov 2026 | Link previews show a paper card: the level squares over the masthead's SENTINEL |
 
 ---
 
@@ -108,13 +114,18 @@ None of these is scheduled. Detail in [docs/severity-pipeline.md](docs/severity-
 
 - **Fire calibration.** The seasonal norms come from FIRMS's reprocessed archive (SP); the
   live feed is near-real-time (NRT). Once SP covers Jul–Sep 2026, compare it with the NRT
-  hotspots kept in the local archive, scale the norms if needed, then decide whether to
-  lift the cap that holds satellite-based fire levels at 2.
-- **Fire threshold tuning.** 25 fires / 2× / 4× came from an in-sample replay of
-  2024–2025; recheck against a few weeks of live items (`tools/replay_fire_levels.py`).
-- **Static mask gaps.** A replayed Level 4 near Dhanbad (Jharia coal field) is probably a
-  coal-seam fire the heat-source mask missed; check live Level 4 candidates near mining
-  areas.
+  hotspots kept in the local archive and scale the norms if needed. The caps that held
+  satellite-based fire levels at 2 were lifted on 15 Nov (`ratio_level_cap` 3,
+  `near_people_cap` 4; live from edition 83), so any gap between the two now shows in the
+  levels readers see.
+- **Fire thresholds and flicker.** 40 fire events / 2× / 6× (15 Nov, from an out-of-sample
+  replay of 2020–2025) and the five-day close (17 Nov) are set. Recheck them against a
+  month of live data (`tools/replay_fire_levels.py`), with the one untested idea for a
+  Level 2 story that drops and comes back: keep it until two days in a row are under 2×.
+- **Static mask gaps.** The persistence rule and exclusion file (15 Nov) filled most of
+  them, and a single hotspot can no longer make Level 4 (the replayed Dhanbad case, in
+  the Jharia coal field, was one). Keep checking live Level 4 candidates near mining areas
+  and power plants.
 - **data.gov.in reliability.** CPCB's feed failed in editions 21–22 and recovered by
   itself. Keep watching how often the air item falls back to OpenAQ.
 - **Cyclone reopening.** A closed cyclone reopens on a new advisory; that path is tested
