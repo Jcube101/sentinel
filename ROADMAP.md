@@ -1,7 +1,10 @@
 # Sentinel Roadmap
 
-Status (30 Oct 2026): Phases 6 and 7 are complete. The Situation Report has been live
-since 29 Oct 2026, and Part C (below) is done. What's next is at the end.
+Status (20 Nov 2026): Phases 6 and 7 are complete. The Situation Report has been live
+since 29 Oct 2026, installable and at sentinel.job-joseph.com since 17 Nov, and Part C
+(below) is done. Since 30 Oct, fire levels use a new baseline and thresholds (from edition
+83) and EONET is retired (from edition 86). The latest edition checked is 92 (20 Nov, 02:30
+IST): ok, every source ok. What's next is at the end.
 
 ## Phase 1 — Pipeline (COMPLETE ✅)
 Data pipeline fetching from 5 APIs into Supabase.
