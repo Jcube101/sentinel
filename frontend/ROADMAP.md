@@ -230,7 +230,12 @@ Dropped: an OpenAQ station layer on the map (`aqi_readings` is private since mig
 ## Phase 5 — Future (💡)
 - [x] ~~Light mode~~: the Situation Report is a light paper design; a dark mode would
       need its own tokens
-- [ ] Alert / subscribe page (notification opt-in)
+- [ ] Push alerts for Level 3+ items (planned, not scheduled): an opt-in page and the
+      service worker's `push` / `notificationclick` handlers; the backend, iOS limits and
+      copy rules in [ROADMAP.md](../ROADMAP.md), *What's next*
+- [ ] Switch off the old Render address, sentinel-frontend-8hem.onrender.com (planned, not
+      scheduled): first a notice on the old host for apps installed there; what to check in
+      [ROADMAP.md](../ROADMAP.md), *What's next*
 - [ ] Public API documentation page
 - [x] Offline support (PWA): installable, offline with the last saved edition and a banner
       that says so, automatic updates (17 Nov 2026; plan, section 9)

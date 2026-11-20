@@ -26,7 +26,8 @@ removed when the Situation Report went live. Execution spec in
 [frontend/ROADMAP.md](frontend/ROADMAP.md) Phase 4.
 
 ## Phase 5 — Enhancements (FUTURE 💡)
-Light mode, alerts/subscribe, public API, expanded coverage.
+Light mode, alerts/subscribe (now push alerts, under What's next), public API, expanded
+coverage.
 
 ## Phase 6 — Severity desk pipeline (COMPLETE ✅)
 Every desk item on one 1–4 severity scale with a reason, so fire hotspots no
@@ -121,6 +122,45 @@ None of these is scheduled. Detail in [docs/severity-pipeline.md](docs/severity-
   vs-norm modes (they need a state outline file); a quiet desk has never appeared live
   (every edition through 32 had a Level 2+ item), so it has only been checked with
   simulated data.
+- **Switch off the old Render address** (planned, not scheduled). The site has been at
+  sentinel.job-joseph.com since 17 Nov 2026; Render's own address,
+  sentinel-frontend-8hem.onrender.com, still answers ([plan](docs/situation-report-plan.md),
+  section 9, *The site's address*). To check first:
+  - *Redirect or disable.* A redirect keeps old links working; turning the address off
+    breaks them. Render's redirect rules match paths, not hosts, so check whether a
+    redirect from the old host is possible at all, and what the address returns once it
+    is off.
+  - *Apps installed from the old address* are a separate install, with their own service
+    worker and saved editions. Neither choice reaches them: the worker keeps serving its
+    saved shell and reading Supabase directly, but can no longer update, so they stay
+    frozen at their last version. Before switching off, ship a notice shown only on the
+    old host that the site has moved (install it again from the new address), and leave
+    it up for a while.
+  - *Old shared links* (chats, posts, link previews other sites have cached) keep working
+    only with a redirect.
+  - Afterwards, update the docs that name the address (CLAUDE.md, frontend/README.md,
+    plan section 9).
+- **Push alerts for Level 3+ items** (planned, not scheduled). A notification when an item
+  reaches Level 3 or 4, for readers who opt in. This reverses the installable app's "no
+  push notifications" (Job, 17 Nov 2026; plan, section 9). These are reader alerts, apart
+  from the pipeline's failure alerts to the webhook.
+  - *A small backend for web push.* Anon is read-only, so the site can't store a
+    subscription itself: it needs an endpoint that writes it with the service role, into
+    a new private table (a migration, with the grants pattern), and a VAPID key pair (the
+    public key in the site's build, the private key only on the Pi). The pipeline sends
+    after the desk stages: once when an item reaches Level 3+, not every edition it stays
+    there; it drops subscriptions the push service reports gone; tests and dry runs never
+    send.
+  - *The site:* an opt-in page, and `push` / `notificationclick` handlers in `src/sw.ts`;
+    a tap opens the item as of that edition.
+  - *iOS limits:* web push works only on iOS 16.4 and later, for the site added to the
+    Home Screen, never in a Safari tab, and permission can only be asked from a tap inside
+    the installed app.
+  - *Copy:* an alert follows [docs/style-guide.md](docs/style-guide.md) like the desk. The
+    desk's lines are written in the frontend (`src/lib/desk/`) but the pipeline would
+    send the alert, so the words need one source: port the templates to the pipeline with
+    tests holding the same lines, or send only what the pipeline already stores (the
+    item's title and level), checked against the guide.
 
 ## Follow-ups / Known Issues
 
