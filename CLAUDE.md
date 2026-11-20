@@ -7,13 +7,18 @@ national air quality) has a level from 1 to 4 and a reason. Each run is an **edi
 numbered in `pipeline_runs`. The site, the **Situation Report**, prints each edition as a
 newspaper front page from the desk tables; it no longer reads `events` or `aqi_readings`.
 
-## Status (30 Oct 2026)
+## Status (20 Nov 2026)
 Both phases are complete. The severity pipeline (Phase 6) has run since 20 Oct, and
 migrations 001-010 are applied. The Situation Report (Phase 7) has been live since 29 Oct
 2026, about 22:30 IST. Part C followed on 29-30 Oct: FIRMS hotspots no longer go to `events`,
-and the four older tables are private. The latest edition checked is 32 (30 Oct, 14:30 IST):
-ok, every source ok. Open follow-ups: docs/severity-pipeline.md (*Follow-ups*),
-docs/situation-report-plan.md (*Open follow-ups*) and ROADMAP.md.
+and the four older tables are private. Since then: fire levels on a new baseline (2023-2025
+norms, a persistence mask, new Level 3 and 4 thresholds and caps; live from edition 83, 17
+Nov) and a completeness guard on data.gov.in (migration 010); on 17 Nov the installable app
+(PWA) and the move to sentinel.job-joseph.com; from edition 86 (18 Nov, 02:30 IST) EONET is
+retired and an edition fails only when something the desk depends on failed (every failure
+still alerts). The latest edition checked is 92 (20 Nov, 02:30 IST): ok, every source ok.
+Open follow-ups: docs/severity-pipeline.md (*Follow-ups*), docs/situation-report-plan.md
+(*Open follow-ups*) and ROADMAP.md.
 
 ## Structure
 - pipeline/: Python pipeline, runs on the Raspberry Pi (jobpi) via a systemd timer at
