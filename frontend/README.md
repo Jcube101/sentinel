@@ -74,7 +74,7 @@ The build also emits `manifest.webmanifest` and `sw.js` (from `src/sw.ts`). Deci
 rules and banner copy: `docs/situation-report-plan.md`, section 9.
 
 - **Precache:** the app shell (28 files, about 860 KiB). Every navigation gets the
-  precached `index.html`, so deep links open offline.
+  precached `index.html`, so deep links open offline (all but `/og-image.png`).
 - **Edition data:** `GET`s to Supabase's REST API are network first with a 4 s timeout;
   the saved copy is the fallback, also on a 5xx. Never stale-while-revalidate.
 - **Saved data says so:** the service worker marks a cached response
@@ -84,6 +84,14 @@ rules and banner copy: `docs/situation-report-plan.md`, section 9.
 - **Updates:** `autoUpdate`. The new version shows on the first open after a deploy,
   after one automatic reload.
 - **Icons:** `node scripts/gen-icons.mjs` redraws the PNGs in `public/` from the palette.
+- **Link preview (Open Graph):** `node scripts/gen-og-image.mjs` redraws
+  `public/og-image.png` (1200 × 630, about 13 KiB; WhatsApp drops one much over 300 KB):
+  the level squares over the masthead's SENTINEL and "Situation report · India", undated.
+  It needs the network (Google Fonts) and a Chromium: `$CHROME`, else Playwright's cached
+  headless shell. The image is left out of the precache, and the service worker's page
+  route lets a tab that opens it reach the network. Render serves it as `image/png` with
+  no dashboard rule. To check a preview: opengraph.xyz or LinkedIn's Post Inspector
+  (both re-fetch the page).
 - **No service worker under `npm run dev`.** Check it on a build: `npm run build`, then
   `npx vite preview` (localhost counts as secure; over the LAN by IP it does not).
 - **Checking by hand:** Chrome DevTools → Application → Manifest (no installability

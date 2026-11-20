@@ -22,8 +22,10 @@ cleanupOutdatedCaches()
 precacheAndRoute(self.__WB_MANIFEST)
 
 // Every address is the one page: a deep link (/edition/83, /item/…) opened
-// offline gets the precached shell, and the router takes it from there.
-registerRoute(new NavigationRoute(createHandlerBoundToURL('index.html')))
+// offline gets the precached shell, and the router takes it from there. The
+// one exception is the link-preview image, which isn't precached: opened in a
+// tab, it goes to the network and shows the image, not the app.
+registerRoute(new NavigationRoute(createHandlerBoundToURL('index.html'), { denylist: [/^\/og-image\.png$/] }))
 
 /** How long the network gets before a saved copy is shown instead. */
 const NETWORK_TIMEOUT_S = 4

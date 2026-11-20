@@ -234,3 +234,5 @@ Dropped: an OpenAQ station layer on the map (`aqi_readings` is private since mig
 - [ ] Public API documentation page
 - [x] Offline support (PWA): installable, offline with the last saved edition and a banner
       that says so, automatic updates (17 Nov 2026; plan, section 9)
+- [x] Link-preview image (Open Graph, 1200 × 630, `scripts/gen-og-image.mjs`) and a large
+      card on X (20 Nov 2026)

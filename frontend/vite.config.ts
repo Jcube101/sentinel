@@ -18,6 +18,9 @@ export default defineConfig({
       injectRegister: false, // registered in main.tsx (virtual:pwa-register)
       injectManifest: {
         globPatterns: ['**/*.{js,css,html,svg,png}'],
+        // The link-preview image is for other sites' crawlers, not the app:
+        // no reason for every install to download it.
+        globIgnores: ['og-image.png'],
       },
       manifest: {
         name: 'Sentinel — Situation Report',

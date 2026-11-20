@@ -612,6 +612,7 @@ nothing changes for a reader in a browser tab with a working connection. Built w
 | What | Rule |
 |---|---|
 | The app shell (JS, CSS, HTML, icons; 28 files, about 860 KiB) | Precached; every navigation gets the precached `index.html`, so deep links open offline |
+| The link-preview image, `/og-image.png` (20 Nov 2026) | Not precached, and left out of the navigation route: it is for other sites' crawlers, and a tab that opens it gets the image from the network |
 | Supabase reads: `GET https://<project>.supabase.co/rest/v1/…` (exact origin, from `VITE_SUPABASE_URL`) | `NetworkFirst`, 4 s timeout, cache `supabase-rest`, 400 entries, 30 days. A 5xx counts as a failure and falls back; a 4xx is passed on |
 | Google Fonts | Stylesheet stale-while-revalidate, font files cache first for a year |
 | Map tiles (Esri) | Not cached by the service worker |

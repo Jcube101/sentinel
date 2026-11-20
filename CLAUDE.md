@@ -162,7 +162,8 @@ symbol (not linked, noindex).
   on); India's outline from `src/lib/desk/geo/india-coast.json`. Leaflet loads lazily,
   after the page's text.
 - **Installable app (PWA; plan section 9):** the shell is precached and every navigation
-  gets `index.html`. Supabase reads are network first (4 s timeout, a 5xx falls back too),
+  gets `index.html`, except the link-preview image `/og-image.png` (not precached; drawn by
+  `scripts/gen-og-image.mjs`). Supabase reads are network first (4 s timeout, a 5xx falls back too),
   never stale-while-revalidate. The service worker marks a response from its cache
   (`X-Sentinel-Cache`); `lib/supabase.ts` reports it, `lib/offline.ts` holds the state and
   `OfflineBanner` says which edition is showing. Saved data is never shown as current; a
