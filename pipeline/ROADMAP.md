@@ -73,3 +73,14 @@ Spec, decisions, status and follow-ups: `docs/severity-pipeline.md`.
 - [ ] Additional data source for floods (GDACS coverage is thin)
 - [ ] Expand bbox beyond India if project grows
 - [ ] Pipeline health dashboard endpoint
+- [ ] Push alerts for Level 3+ items (planned, not scheduled): reader alerts, apart from
+      the failure webhook (`notify.py`). The pipeline's part: a stage after the desk that
+      sends once when an item reaches Level 3+, not every edition it stays there (so it
+      keeps a record of what it sent); a new private subscriptions table (a migration,
+      with the grants pattern), written by a small endpoint with the service role, since
+      anon is read-only; the VAPID private key in the Pi's `.env` only; a web-push library
+      in `requirements.txt`; subscriptions the push service reports gone are dropped.
+      A failed send alerts but leaves the edition ok (the desk doesn't depend on it).
+      Tests and dry runs never send. The words follow docs/style-guide.md, and the desk's
+      lines are built in the frontend, so they need one source. Detail (iOS limits, the
+      site's side): [ROADMAP.md](../ROADMAP.md), *What's next*
